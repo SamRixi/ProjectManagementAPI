@@ -1,2 +1,159 @@
-﻿body {
+﻿/* Style Mobilis - Vert et Blanc */
+
+.auth-container {
+  min-height: 100vh;
+  width: 100vw;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  background: linear-gradient(135deg, #00A651 0%, #008C44 100%);
+  padding: 20px;
+  overflow-x: hidden;
 }
+
+.auth-card {
+    background: white;
+    border-radius: 16px;
+    box-shadow: 0 15px 50px rgba(0, 0, 0, 0.2);
+    padding: 50px;
+    width: 100%;
+    max-width: 480px;
+    border-top: 5px solid #00A651;
+}
+
+    .auth-card h2 {
+        text-align: center;
+        color: #00A651;
+        margin-bottom: 10px;
+        font-size: 32px;
+        font-weight: bold;
+    }
+
+        .auth-card h2::after {
+            content: "";
+            display: block;
+            width: 60px;
+            height: 3px;
+            background: #00A651;
+            margin: 15px auto;
+        }
+
+.form-group {
+    margin-bottom: 25px;
+}
+
+    .form-group label {
+        display: block;
+        margin-bottom: 8px;
+        color: #333;
+        font-weight: 600;
+        font-size: 14px;
+        text-transform: uppercase;
+        letter-spacing: 0.5px;
+    }
+
+    .form-group input {
+        width: 100%;
+        padding: 14px 18px;
+        border: 2px solid #E0E0E0;
+        border-radius: 8px;
+        font-size: 16px;
+        transition: all 0.3s ease;
+        box-sizing: border-box;
+        background-color: #FAFAFA;
+        color: #333; /* ← AJOUTEZ CETTE LIGNE */
+    }
+
+        .form-group input:focus {
+            outline: none;
+            border-color: #00A651;
+            background-color: white;
+            box-shadow: 0 0 0 3px rgba(0, 166, 81, 0.1);
+        }
+
+        .form-group input:disabled {
+            background-color: #F5F5F5;
+            cursor: not-allowed;
+            opacity: 0.6;
+        }
+
+.btn-primary {
+    width: 100%;
+    padding: 16px;
+    background: #00A651;
+    color: white;
+    border: none;
+    border-radius: 8px;
+    font-size: 18px;
+    font-weight: 700;
+    cursor: pointer;
+    transition: all 0.3s ease;
+    margin-top: 15px;
+    text-transform: uppercase;
+    letter-spacing: 1px;
+}
+
+    .btn-primary:hover:not(:disabled) {
+        background: #008C44;
+        transform: translateY(-2px);
+        box-shadow: 0 8px 25px rgba(0, 166, 81, 0.3);
+    }
+
+    .btn-primary:active:not(:disabled) {
+        transform: translateY(0);
+    }
+
+    .btn-primary:disabled {
+        opacity: 0.5;
+        cursor: not-allowed;
+    }
+
+.alert {
+    padding: 14px 18px;
+    border-radius: 8px;
+    margin-bottom: 25px;
+    font-size: 14px;
+    font-weight: 500;
+}
+
+.alert-error {
+    background-color: #FFEBEE;
+    color: #C62828;
+    border-left: 4px solid #C62828;
+}
+
+.alert-success {
+    background-color: #E8F5E9;
+    color: #2E7D32;
+    border-left: 4px solid #00A651;
+}
+
+.auth-footer {
+    text-align: center;
+    margin-top: 30px;
+    color: #666;
+    font-size: 15px;
+}
+
+    .auth-footer a {
+        color: #00A651;
+        text-decoration: none;
+        font-weight: 700;
+        transition: color 0.3s ease;
+    }
+
+        .auth-footer a:hover {
+            color: #008C44;
+            text-decoration: underline;
+        }
+
+/* Logo Mobilis (optionnel - si vous avez un logo) */
+.auth-logo {
+    text-align: center;
+    margin-bottom: 30px;
+}
+
+    .auth-logo img {
+        max-width: 150px;
+        height: auto;
+    }

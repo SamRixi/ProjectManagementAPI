@@ -1,2 +1,78 @@
-﻿body {
+﻿/* Dashboard Style Mobilis */
+
+.dashboard-container {
+    min-height: 100vh;
+    width: 100vw;
+    background-color: #F5F5F5;
+    overflow-x: hidden;
 }
+
+.dashboard-nav {
+    background: linear-gradient(135deg, #00A651 0%, #008C44 100%);
+    color: white;
+    padding: 20px 50px;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    box-shadow: 0 4px 15px rgba(0, 0, 0, 0.1);
+}
+
+    .dashboard-nav h1 {
+        margin: 0;
+        font-size: 28px;
+        font-weight: bold;
+        text-transform: uppercase;
+        letter-spacing: 1px;
+    }
+
+.btn-logout {
+    padding: 12px 25px;
+    background-color: white;
+    color: #00A651;
+    border: 2px solid white;
+    border-radius: 8px;
+    cursor: pointer;
+    font-weight: 700;
+    font-size: 14px;
+    text-transform: uppercase;
+    transition: all 0.3s ease;
+}
+
+    .btn-logout:hover {
+        background-color: transparent;
+        color: white;
+        transform: translateY(-2px);
+    }
+
+.dashboard-content {
+    max-width: 1200px;
+    margin: 50px auto;
+    padding: 0 30px;
+}
+
+.welcome-card {
+    background: white;
+    border-radius: 12px;
+    padding: 40px;
+    box-shadow: 0 4px 20px rgba(0, 0, 0, 0.08);
+    border-left: 5px solid #00A651;
+}
+
+    .welcome-card h2 {
+        color: #00A651;
+        margin: 0 0 25px 0;
+        font-size: 32px;
+        font-weight: bold;
+    }
+
+    .welcome-card p {
+        color: #555;
+        font-size: 18px;
+        margin: 15px 0;
+        line-height: 1.6;
+    }
+
+    .welcome-card strong {
+        color: #00A651;
+        font-weight: 700;
+    }
