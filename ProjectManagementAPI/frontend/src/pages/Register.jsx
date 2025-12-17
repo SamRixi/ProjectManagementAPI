@@ -59,56 +59,56 @@ const Register = () => {
                     <img src="/mobilis-logo.png.png" alt="Mobilis" />
                 </div>
 
-                <h2>Créer un compte</h2>
+                <h2>CREE UN COMPTE</h2>
 
                 {error && <div className="alert alert-error">{error}</div>}
                 {success && <div className="alert alert-success">{success}</div>}
 
                 <form onSubmit={handleSubmit}>
                     <div className="form-group">
-                        <label>Nom d'utilisateur</label>
+                        <label>NOM D'UTILISATEUR</label>
                         <input
                             type="text"
                             name="username"
                             value={formData.username}
                             onChange={handleChange}
-                            placeholder="Entrez votre nom d'utilisateur"
+                            placeholder="ENTREZ VOTRE NOM D'UTILISATEUR"
                             disabled={loading}
                         />
                     </div>
 
                     <div className="form-group">
-                        <label>Prénom</label>
+                        <label>PRENOM</label>
                         <input
                             type="text"
                             name="firstName"
                             value={formData.firstName}
                             onChange={handleChange}
-                            placeholder="Entrez votre prénom"
+                            placeholder="ENTREZ VOTRE PRENOM"
                             disabled={loading}
                         />
                     </div>
 
                     <div className="form-group">
-                        <label>Nom</label>
+                        <label>NOM</label>
                         <input
                             type="text"
                             name="lastName"
                             value={formData.lastName}
                             onChange={handleChange}
-                            placeholder="Entrez votre nom"
+                            placeholder="ENTREZ VOTRE NOM"
                             disabled={loading}
                         />
                     </div>
 
                     <div className="form-group">
-                        <label>Mot de passe</label>
+                        <label>MOT DE PASSE</label>
                         <input
                             type="password"
                             name="password"
                             value={formData.password}
                             onChange={handleChange}
-                            placeholder="Entrez votre mot de passe"
+                            placeholder="ENTREZ VOTRE MOT DE PASSE"
                             disabled={loading}
                         />
                     </div>
@@ -119,7 +119,7 @@ const Register = () => {
                 </form>
 
                 <p className="auth-footer">
-                    Vous avez déjà un compte ? <Link to="/login">Se connecter</Link>
+                    VOUS AVEZ DEJA UN COMPTE ? <Link to="/login">SE CONNECTER</Link>
                 </p>
             </div>
         </div>

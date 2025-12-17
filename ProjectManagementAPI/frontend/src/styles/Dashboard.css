@@ -1,78 +1,370 @@
-﻿/* Dashboard Style Mobilis */
+﻿/* Dashboard Style Mobilis - Modern & Animated */
 
+@import url('https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600;700&display=swap');
+
+:root {
+    --mobilis-green: #00A651;
+    --mobilis-dark: #004D29;
+    --mobilis-light: #B8E986;
+    --accent-cyan: #00D9FF;
+    --bg-light: #F8FAF9;
+}
+
+* {
+    margin: 0;
+    padding: 0;
+    box-sizing: border-box;
+}
+
+/* Container principal */
 .dashboard-container {
     min-height: 100vh;
     width: 100vw;
-    background-color: #F5F5F5;
+    background: linear-gradient(135deg, #F8FAF9 0%, #E8F5E9 100%);
     overflow-x: hidden;
+    font-family: 'Outfit', sans-serif;
+    position: relative;
 }
 
+    /* Cercles décoratifs d'arrière-plan */
+    .dashboard-container::before,
+    .dashboard-container::after {
+        content: "";
+        position: fixed;
+        border-radius: 50%;
+        opacity: 0.05;
+        pointer-events: none;
+    }
+
+    .dashboard-container::before {
+        width: 500px;
+        height: 500px;
+        background: radial-gradient(circle, var(--mobilis-green) 0%, transparent 70%);
+        top: -150px;
+        right: -150px;
+        animation: float 25s ease-in-out infinite;
+    }
+
+    .dashboard-container::after {
+        width: 400px;
+        height: 400px;
+        background: radial-gradient(circle, var(--mobilis-light) 0%, transparent 70%);
+        bottom: -100px;
+        left: -100px;
+        animation: float 20s ease-in-out infinite;
+        animation-delay: 5s;
+    }
+
+@keyframes float {
+    0%, 100% {
+        transform: translate(0, 0) scale(1);
+    }
+
+    33% {
+        transform: translate(30px, -30px) scale(1.1);
+    }
+
+    66% {
+        transform: translate(-30px, 30px) scale(0.9);
+    }
+}
+
+/* Navigation */
 .dashboard-nav {
-    background: linear-gradient(135deg, #00A651 0%, #008C44 100%);
+    background: linear-gradient(135deg, var(--mobilis-green) 0%, var(--mobilis-dark) 100%);
     color: white;
     padding: 20px 50px;
     display: flex;
     justify-content: space-between;
     align-items: center;
-    box-shadow: 0 4px 15px rgba(0, 0, 0, 0.1);
+    box-shadow: 0 8px 30px rgba(0, 166, 81, 0.2);
+    position: relative;
+    z-index: 100;
+    backdrop-filter: blur(10px);
 }
 
-    .dashboard-nav h1 {
-        margin: 0;
-        font-size: 28px;
-        font-weight: bold;
-        text-transform: uppercase;
-        letter-spacing: 1px;
+    .dashboard-nav::before {
+        content: "";
+        position: absolute;
+        bottom: 0;
+        left: 0;
+        right: 0;
+        height: 3px;
+        background: linear-gradient(90deg, transparent 0%, var(--mobilis-light) 50%, transparent 100%);
+        animation: shine 3s ease-in-out infinite;
     }
 
+@keyframes shine {
+    0%, 100% {
+        opacity: 0.3;
+    }
+
+    50% {
+        opacity: 1;
+    }
+}
+
+.dashboard-nav h1 {
+    margin: 0;
+    font-size: 28px;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 2px;
+    animation: slideInLeft 0.6s ease;
+}
+
+@keyframes slideInLeft {
+    from {
+        opacity: 0;
+        transform: translateX(-30px);
+    }
+
+    to {
+        opacity: 1;
+        transform: translateX(0);
+    }
+}
+
+/* Bouton déconnexion */
 .btn-logout {
-    padding: 12px 25px;
-    background-color: white;
-    color: #00A651;
+    padding: 12px 28px;
+    background-color: rgba(255, 255, 255, 0.95);
+    color: var(--mobilis-green);
     border: 2px solid white;
-    border-radius: 8px;
+    border-radius: 12px;
     cursor: pointer;
     font-weight: 700;
     font-size: 14px;
+    font-family: 'Outfit', sans-serif;
     text-transform: uppercase;
-    transition: all 0.3s ease;
+    letter-spacing: 1px;
+    transition: all 0.4s cubic-bezier(0.4, 0, 0.2, 1);
+    box-shadow: 0 4px 15px rgba(0, 0, 0, 0.1);
+    position: relative;
+    overflow: hidden;
+    animation: slideInRight 0.6s ease;
 }
 
-    .btn-logout:hover {
-        background-color: transparent;
-        color: white;
-        transform: translateY(-2px);
+@keyframes slideInRight {
+    from {
+        opacity: 0;
+        transform: translateX(30px);
     }
 
+    to {
+        opacity: 1;
+        transform: translateX(0);
+    }
+}
+
+.btn-logout::before {
+    content: "";
+    position: absolute;
+    top: 0;
+    left: -100%;
+    width: 100%;
+    height: 100%;
+    background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.3), transparent);
+    transition: left 0.5s;
+}
+
+.btn-logout:hover::before {
+    left: 100%;
+}
+
+.btn-logout:hover {
+    background-color: transparent;
+    color: white;
+    transform: translateY(-3px);
+    box-shadow: 0 6px 25px rgba(0, 0, 0, 0.15);
+}
+
+.btn-logout:active {
+    transform: translateY(-1px);
+}
+
+/* Contenu principal */
 .dashboard-content {
     max-width: 1200px;
     margin: 50px auto;
     padding: 0 30px;
+    position: relative;
+    z-index: 1;
 }
 
+/* Welcome card */
 .welcome-card {
-    background: white;
-    border-radius: 12px;
-    padding: 40px;
-    box-shadow: 0 4px 20px rgba(0, 0, 0, 0.08);
-    border-left: 5px solid #00A651;
+    background: rgba(255, 255, 255, 0.95);
+    border-radius: 20px;
+    padding: 45px;
+    box-shadow: 0 15px 50px rgba(0, 0, 0, 0.08), 0 0 30px rgba(0, 166, 81, 0.05);
+    border-left: 5px solid var(--mobilis-green);
+    position: relative;
+    backdrop-filter: blur(10px);
+    animation: fadeInUp 0.8s ease;
+    overflow: hidden;
 }
 
-    .welcome-card h2 {
-        color: #00A651;
-        margin: 0 0 25px 0;
-        font-size: 32px;
-        font-weight: bold;
+@keyframes fadeInUp {
+    from {
+        opacity: 0;
+        transform: translateY(30px);
     }
 
-    .welcome-card p {
-        color: #555;
-        font-size: 18px;
-        margin: 15px 0;
-        line-height: 1.6;
+    to {
+        opacity: 1;
+        transform: translateY(0);
+    }
+}
+
+/* Cercle décoratif dans la card */
+.welcome-card::before {
+    content: "";
+    position: absolute;
+    width: 200px;
+    height: 200px;
+    background: radial-gradient(circle, var(--mobilis-green) 0%, transparent 70%);
+    border-radius: 50%;
+    bottom: -80px;
+    right: -80px;
+    opacity: 0.06;
+    animation: rotate 30s linear infinite;
+}
+
+@keyframes rotate {
+    from {
+        transform: rotate(0deg);
     }
 
-    .welcome-card strong {
-        color: #00A651;
-        font-weight: 700;
+    to {
+        transform: rotate(360deg);
     }
+}
+
+.welcome-card h2 {
+    color: var(--mobilis-green);
+    margin: 0 0 30px 0;
+    font-size: 36px;
+    font-weight: 700;
+    position: relative;
+    z-index: 2;
+}
+
+    .welcome-card h2::after {
+        content: "";
+        display: block;
+        width: 80px;
+        height: 4px;
+        background: linear-gradient(90deg, var(--mobilis-green), var(--mobilis-light));
+        margin-top: 15px;
+        border-radius: 2px;
+        animation: expandWidth 1s ease;
+    }
+
+@keyframes expandWidth {
+    from {
+        width: 0;
+    }
+
+    to {
+        width: 80px;
+    }
+}
+
+.welcome-card p {
+    color: #555;
+    font-size: 18px;
+    margin: 18px 0;
+    line-height: 1.8;
+    position: relative;
+    z-index: 2;
+    animation: fadeIn 1s ease;
+    animation-fill-mode: both;
+}
+
+    .welcome-card p:nth-child(3) {
+        animation-delay: 0.2s;
+    }
+
+    .welcome-card p:nth-child(4) {
+        animation-delay: 0.4s;
+    }
+
+@keyframes fadeIn {
+    from {
+        opacity: 0;
+    }
+
+    to {
+        opacity: 1;
+    }
+}
+
+.welcome-card strong {
+    color: var(--mobilis-green);
+    font-weight: 700;
+    padding: 2px 8px;
+    background: rgba(0, 166, 81, 0.08);
+    border-radius: 6px;
+    transition: all 0.3s ease;
+}
+
+.welcome-card p:hover strong {
+    background: rgba(0, 166, 81, 0.15);
+    transform: scale(1.05);
+}
+
+/* Responsive */
+@media (max-width: 768px) {
+    .dashboard-nav {
+        padding: 15px 25px;
+        flex-direction: column;
+        gap: 15px;
+    }
+
+        .dashboard-nav h1 {
+            font-size: 22px;
+        }
+
+    .btn-logout {
+        width: 100%;
+        padding: 12px 20px;
+    }
+
+    .dashboard-content {
+        margin: 30px auto;
+        padding: 0 20px;
+    }
+     
+    .welcome-card {
+        padding: 30px 25px;
+        border-radius: 16px;
+    }
+
+        .welcome-card h2 {
+            font-size: 28px;
+        }
+
+        .welcome-card p {
+            font-size: 16px;
+        }
+}
+
+@media (max-width: 480px) {
+    .dashboard-nav h1 {
+        font-size: 20px;
+        letter-spacing: 1px;
+    }
+
+    .welcome-card {
+        padding: 25px 20px;
+    }
+
+        .welcome-card h2 {
+            font-size: 24px;
+        }
+
+        .welcome-card p {
+            font-size: 15px;
+        }
+}
