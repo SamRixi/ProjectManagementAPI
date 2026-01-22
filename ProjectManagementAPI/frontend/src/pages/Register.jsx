@@ -72,7 +72,7 @@ const Register = () => {
                             name="username"
                             value={formData.username}
                             onChange={handleChange}
-                            placeholder="ENTREZ VOTRE NOM D'UTILISATEUR"
+                            placeholder="Entrez votre nom d'utilisateur"
                             disabled={loading}
                         />
                     </div>
@@ -84,7 +84,7 @@ const Register = () => {
                             name="firstName"
                             value={formData.firstName}
                             onChange={handleChange}
-                            placeholder="ENTREZ VOTRE PRENOM"
+                            placeholder="Entrez votre prenom"
                             disabled={loading}
                         />
                     </div>
@@ -96,7 +96,7 @@ const Register = () => {
                             name="lastName"
                             value={formData.lastName}
                             onChange={handleChange}
-                            placeholder="ENTREZ VOTRE NOM"
+                            placeholder="Entrez votre nom"
                             disabled={loading}
                         />
                     </div>
@@ -108,7 +108,7 @@ const Register = () => {
                             name="password"
                             value={formData.password}
                             onChange={handleChange}
-                            placeholder="ENTREZ VOTRE MOT DE PASSE"
+                            placeholder="Entrez votre mot de passe"
                             disabled={loading}
                         />
                     </div>
@@ -119,7 +119,7 @@ const Register = () => {
                 </form>
 
                 <p className="auth-footer">
-                    VOUS AVEZ DEJA UN COMPTE ? <Link to="/login">SE CONNECTER</Link>
+                    Vous avez deja un compte? <Link to="/login">Se connecter</Link>
                 </p>
             </div>
         </div>

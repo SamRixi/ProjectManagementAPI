@@ -16,7 +16,7 @@ const Dashboard = () => {
             <nav className="dashboard-nav">
                 <h1>Project Management</h1>
                 <button onClick={handleLogout} className="btn-logout">
-                    DECONNEXION
+                    Deconnection
                 </button>
             </nav>
 

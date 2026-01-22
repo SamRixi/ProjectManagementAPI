@@ -9,7 +9,8 @@ namespace ProjectManagementAPI.Models
         public string Description { get; set; } // Description of the project
         public DateTime StartDate { get; set; } // Start date of the project
         public DateTime EndDate { get; set; } // End date of the project
-     
+        public DateTime CreatedAt { get; set; } = DateTime.UtcNow;
+
         // Progression du projet en pourcentage (0-100)
         [Range(0, 100, ErrorMessage = "Progress must be between 0 and 100.")]
         public int Progress { get; set; } = 0; // Progress percentage of the project

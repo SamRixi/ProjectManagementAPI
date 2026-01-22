@@ -2,8 +2,9 @@ using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.IdentityModel.Tokens;
 using ProjectManagementAPI.Data;
-using ProjectManagementAPI.Services;
-using System.Net;           
+using ProjectManagementAPI.Services.Implementations;
+using ProjectManagementAPI.Services.Interfaces;
+using System.Net;
 using System.Text;
 
 
@@ -40,7 +41,7 @@ var key = Encoding.ASCII.GetBytes(jwtSettings["Key"]);
     });
 
 
-builder.Services.AddAuthentication();
+
 
 // Add Controllers
 
@@ -65,6 +66,12 @@ builder.Services.AddCors(options =>
 builder.Services.AddEndpointsApiExplorer();
 builder.Services.AddSwaggerGen();
 builder.Services.AddScoped<AuthService>();
+builder.Services.AddScoped<IUserService, UserService>();
+//builder.Services.AddScoped<ITeamService, TeamService>(); 
+//builder.Services.AddScoped<IEdbService, EdbService>();
+builder.Services.AddScoped<IProjectService, ProjectService>();
+//builder.Services.AddScoped<ITaskService, TaskService>();
+//builder.Services.AddScoped<IStatisticsService, StatisticsService>();
 var app = builder.Build();
 
 // ============= CONFIGURE HTTP PIPELINE =============

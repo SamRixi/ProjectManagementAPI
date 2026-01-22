@@ -8,7 +8,7 @@ using System.Text;
 
 using BC = BCrypt.Net.BCrypt;
 
-namespace ProjectManagementAPI.Services
+namespace ProjectManagementAPI.Services.Implementations
 {
     
     public class AuthService
@@ -16,7 +16,7 @@ namespace ProjectManagementAPI.Services
        
         /// AuthService - Gère l'authentification et les JWT tokens
         
-       
+  
             private readonly ApplicationDbContext _context;
             private readonly IConfiguration _configuration;
 
@@ -123,8 +123,8 @@ namespace ProjectManagementAPI.Services
                     // Étape 4: Sauvegarder en base de données
                     _context.Users.Add(newUser);
                     await _context.SaveChangesAsync();
-
-                    return new RegisterResponse
+                // Étape 5: Retourner la réponse de succès
+                return new RegisterResponse
                     {
                         Success = true,
                         Message = "Inscription réussie",
