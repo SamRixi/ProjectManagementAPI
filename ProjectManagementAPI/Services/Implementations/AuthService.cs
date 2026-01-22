@@ -114,9 +114,11 @@ namespace ProjectManagementAPI.Services.Implementations
                     var newUser = new User
                     {
                          UserName= request.Username,
+                        Email = request.Email,
                         PasswordHash = hashedPassword,
                         FirstName = request.FirstName,
                         LastName = request.LastName,
+                        IsActive = true,
                         CreatedAt = DateTime.UtcNow
                     };
 

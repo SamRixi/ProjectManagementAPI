@@ -1,18 +1,18 @@
 import { useState } from 'react';
 import { useNavigate, Link } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
+import { Eye, EyeOff, AlertCircle } from 'lucide-react';
 import '../styles/Auth.css';
 
 const Login = () => {
     const navigate = useNavigate();
     const { login, loading } = useAuth();
-
     const [formData, setFormData] = useState({
         username: '',
         password: ''
     });
-
     const [error, setError] = useState('');
+    const [showPassword, setShowPassword] = useState(false);
 
     const handleChange = (e) => {
         setFormData({
@@ -26,8 +26,19 @@ const Login = () => {
         e.preventDefault();
         setError('');
 
+        // Validation
         if (!formData.username || !formData.password) {
             setError('Tous les champs sont obligatoires');
+            return;
+        }
+
+        if (formData.username.length < 3) {
+            setError('Le nom d\'utilisateur doit contenir au moins 3 caractères');
+            return;
+        }
+
+        if (formData.password.length < 6) {
+            setError('Le mot de passe doit contenir au moins 6 caractères');
             return;
         }
 
@@ -36,7 +47,7 @@ const Login = () => {
         if (result.success) {
             navigate('/dashboard');
         } else {
-            setError(result.message);
+            setError(result.message || 'Erreur de connexion');
         }
     };
 
@@ -49,7 +60,12 @@ const Login = () => {
 
                 <h2>Connexion</h2>
 
-                {error && <div className="alert alert-error">{error}</div>}
+                {error && (
+                    <div className="alert alert-error" style={{ display: 'flex', alignItems: 'center' }}>
+                        <AlertCircle size={20} style={{ marginRight: '8px', flexShrink: 0 }} />
+                        <span>{error}</span>
+                    </div>
+                )}
 
                 <form onSubmit={handleSubmit}>
                     <div className="form-group">
@@ -61,22 +77,56 @@ const Login = () => {
                             onChange={handleChange}
                             placeholder="Entrez votre nom d'utilisateur"
                             disabled={loading}
+                            autoComplete="username"
                         />
                     </div>
 
                     <div className="form-group">
                         <label>Mot de passe</label>
-                        <input
-                            type="password"
-                            name="password"
-                            value={formData.password}
-                            onChange={handleChange}
-                            placeholder="Entrez votre mot de passe"
-                            disabled={loading}
-                        />
+                        <div style={{ position: 'relative' }}>
+                            <input
+                                type={showPassword ? "text" : "password"}
+                                name="password"
+                                value={formData.password}
+                                onChange={handleChange}
+                                placeholder="Entrez votre mot de passe"
+                                disabled={loading}
+                                autoComplete="current-password"
+                                style={{ paddingRight: '45px' }}
+                            />
+                            <button
+                                type="button"
+                                onClick={() => setShowPassword(!showPassword)}
+                                disabled={loading}
+                                style={{
+                                    position: 'absolute',
+                                    right: '12px',
+                                    top: '50%',
+                                    transform: 'translateY(-50%)',
+                                    background: 'none',
+                                    border: 'none',
+                                    cursor: 'pointer',
+                                    color: '#666',
+                                    padding: '4px',
+                                    display: 'flex',
+                                    alignItems: 'center',
+                                    justifyContent: 'center'
+                                }}
+                                aria-label={showPassword ? "Cacher le mot de passe" : "Afficher le mot de passe"}
+                            >
+                                {showPassword ? <EyeOff size={20} /> : <Eye size={20} />}
+                            </button>
+                        </div>
+                        <Link to="/forgot-password" className="forgot-password-link">
+                            Mot de passe oublié ?
+                        </Link>
                     </div>
 
-                    <button type="submit" className="btn-primary" disabled={loading}>
+                    <button
+                        type="submit"
+                        className={`btn-primary ${loading ? 'loading' : ''}`}
+                        disabled={loading}
+                    >
                         {loading ? 'Connexion...' : 'Se connecter'}
                     </button>
                 </form>

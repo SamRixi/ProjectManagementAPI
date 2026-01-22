@@ -507,7 +507,7 @@ namespace ProjectManagementAPI.Services.Implementations
                 AccountDeadline = user.AccountDeadline,
                 CreatedAt = user.CreatedAt,
                 LastLoginAt = user.LastLoginAt,
-                Roles = user.TeamMembers.Select(tm => tm.Role.RoleName).Distinct().ToList()
+               
             };
         }
     }
