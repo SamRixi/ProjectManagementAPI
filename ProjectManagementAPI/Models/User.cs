@@ -19,7 +19,7 @@
         public DateTime? PasswordResetTokenExpiry { get; set; }
         public DateTime? LastLoginAt { get; set; }
         public DateTime? UpdatedAt { get; set; }
-       
+      
 
 
 

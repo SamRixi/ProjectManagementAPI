@@ -19,6 +19,8 @@ namespace ProjectManagementAPI.DTOs
         [StringLength(50)]
         public string? LastName { get; set; }
 
+        public int? RoleId { get; set; }  //  - Change user role
+
         public DateTime? AccountDeadline { get; set; }
     }
 }

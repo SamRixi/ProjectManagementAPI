@@ -4,8 +4,8 @@ namespace ProjectManagementAPI.DTOs
 {
     public class ForgotPasswordDTO
     {
-        [Required]
-        [EmailAddress]
+        [Required(ErrorMessage = "Email requis")]
+        [EmailAddress(ErrorMessage = "Format email invalide")]
         public string Email { get; set; }
     }
 }

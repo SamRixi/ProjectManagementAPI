@@ -1,32 +1,35 @@
 ﻿using System.ComponentModel.DataAnnotations;
+using Microsoft.AspNetCore.Http;
 
 namespace ProjectManagementAPI.DTOs
 {
     public class CreateProjectWithEdbDTO
     {
-        [Required]
-        [StringLength(200)]
+        [Required(ErrorMessage = "Nom du projet requis")]
+        [StringLength(200, MinimumLength = 3)]
         public string ProjectName { get; set; }
 
-        [Required]
+        [Required(ErrorMessage = "Description requise")]
+        [StringLength(1000)]
         public string Description { get; set; }
 
-        [Required]
+        [Required(ErrorMessage = "Date de début requise")]
         public DateTime StartDate { get; set; }
 
-        [Required]
+        [Required(ErrorMessage = "Date de fin requise")]
         public DateTime EndDate { get; set; }
 
-        [Required]
+        [Required(ErrorMessage = "Équipe requise")]
         public int TeamId { get; set; }
 
-        [Required]
+        [Required(ErrorMessage = "Statut requis")]
         public int ProjectStatusId { get; set; }
 
-        [Required]
+        [Required(ErrorMessage = "Priorité requise")]
         public int PriorityId { get; set; }
 
-        [Required]
-        public int EdbId { get; set; } // EDB déjà uploadé
+        [Required(ErrorMessage = "Fichier EDB requis")]
+        [PdfOnly]
+        public IFormFile EdbFile { get; set; }  // ✅ FIXED: Upload file, not ID
     }
 }

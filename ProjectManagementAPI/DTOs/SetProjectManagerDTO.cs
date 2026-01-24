@@ -5,9 +5,12 @@ namespace ProjectManagementAPI.DTOs
     public class SetProjectManagerDTO
     {
         [Required]
-        public int TeamMemberId { get; set; }
+        public int ProjectId { get; set; }  //which project?
 
         [Required]
-        public bool IsProjectManager { get; set; }
+        public int UserId { get; set; }  // Which user?
+
+        [Required]
+        public bool IsProjectManager { get; set; }  //  Set as manager or remove
     }
 }

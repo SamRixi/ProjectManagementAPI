@@ -1,22 +1,31 @@
-﻿namespace ProjectManagementAPI.DTOs
+﻿using System.ComponentModel.DataAnnotations;
+
+namespace ProjectManagementAPI.DTOs
 {
     public class CreateProjectDTO
     {
-        public int ProjectId { get; set; }
+        [Required(ErrorMessage = "Nom du projet requis")]
+        [StringLength(200, MinimumLength = 3, ErrorMessage = "Nom doit avoir entre 3 et 200 caractères")]
         public string ProjectName { get; set; }
-        public string Description { get; set; }
+
+        [StringLength(1000, ErrorMessage = "Description max 1000 caractères")]
+        public string? Description { get; set; }
+
+        [Required(ErrorMessage = "Date de début requise")]
         public DateTime StartDate { get; set; }
+
+        [Required(ErrorMessage = "Date de fin requise")]
         public DateTime EndDate { get; set; }
-        public int Progress { get; set; }
-        public int ProjectStatusId { get; set; }  // Add this
+
+        [Required(ErrorMessage = "Statut requis")]
+        public int ProjectStatusId { get; set; }
+
+        [Required(ErrorMessage = "Priorité requise")]
         public int PriorityId { get; set; }
+
+        [Required(ErrorMessage = "Équipe requise")]
+     
         public int TeamId { get; set; }
-        public string TeamName { get; set; }
-        public string StatusName { get; set; }
-        public string StatusColor { get; set; }
-        public string PriorityName { get; set; }
-        public int TaskCount { get; set; }
-        public int CompletedTaskCount { get; set; }
-        public DateTime CreatedAt { get; set; }
+  
     }
 }

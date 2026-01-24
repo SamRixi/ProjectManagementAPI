@@ -24,6 +24,10 @@ namespace ProjectManagementAPI.Models
         public int? AssignedToUserId { get; set; } // Foreign key (nullable if task can be unassigned)
         public User AssignedToUser { get; set; } // Navigation property
 
+        public int? ValidatedByUserId { get; set; }
+        public DateTime? ValidatedAt { get; set; }
+        public User? ValidatedByUser { get; set; }  // Navigation property
+
 
 
     }
