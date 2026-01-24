@@ -23,6 +23,7 @@ namespace ProjectManagementAPI.DTOs
         [Required]
         [StringLength(100, MinimumLength = 6)]
         public string Password { get; set; }
+        public int RoleId { get; set; } 
 
         public DateTime? AccountDeadline { get; set; } // Optionnel
     }

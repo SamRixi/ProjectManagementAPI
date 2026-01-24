@@ -42,12 +42,21 @@ const Login = () => {
             return;
         }
 
-        const result = await login(formData.username, formData.password);
+        try {
+            const result = await login(formData.username, formData.password);
 
-        if (result.success) {
-            navigate('/dashboard');
-        } else {
-            setError(result.message || 'Erreur de connexion');
+            if (result.success) {
+                // Vérifier si changement de mot de passe requis
+                if (result.mustChangePassword) {
+                    navigate('/change-password');
+                } else {
+                    navigate('/dashboard');
+                }
+            } else {
+                setError(result.message || 'Erreur de connexion');
+            }
+        } catch  {
+            setError('Erreur de connexion au serveur');
         }
     };
 
@@ -117,9 +126,16 @@ const Login = () => {
                                 {showPassword ? <EyeOff size={20} /> : <Eye size={20} />}
                             </button>
                         </div>
-                        <Link to="/forgot-password" className="forgot-password-link">
-                            Mot de passe oublié ?
-                        </Link>
+                        <p style={{
+                            textAlign: 'center',
+                            color: '#666',
+                            fontSize: '14px',
+                            margin: '10px 0 0 0',
+                            fontStyle: 'italic',
+                            cursor: 'default'
+                        }}>
+                            Mot de passe oublie ? Contactez le service Reporting
+                        </p>
                     </div>
 
                     <button

@@ -12,11 +12,11 @@ namespace ProjectManagementAPI.Data
         {
         }
         // ============= DbSets (Tables) ============= 
-        public DbSet<User>Users { get; set; }
+        public DbSet<User> Users { get; set; }
         public DbSet<Role> Roles { get; set; }
-        public DbSet<Team>Teams { get; set; }
-        public DbSet<TeamMember>TeamMembers { get; set; }
-        public DbSet<Project>Projects { get; set; }
+        public DbSet<Team> Teams { get; set; }
+        public DbSet<TeamMember> TeamMembers { get; set; }
+        public DbSet<Project> Projects { get; set; }
         public DbSet<ProjectStatus> ProjectStatuses { get; set; }
         public DbSet<ProjectTask> ProjectTasks { get; set; }
 
@@ -33,27 +33,39 @@ namespace ProjectManagementAPI.Data
             // Par exemple, configuration des clés étrangères, des relations many-to-many, etc.
 
 
-            // ========== User - TeamMember (1 to many) ==========
-
-            modelBuilder.Entity<TeamMember>()
-               .HasOne(tm => tm.User)
-               .WithMany(u => u.TeamMembers)
-               .HasForeignKey(tm => tm.UserId)
-               .OnDelete(DeleteBehavior.Cascade);
-            // ========== RELATION 2: Team "représente" TeamMember ==========
-            // Team (1) ─── * TeamMember
-            modelBuilder.Entity<TeamMember>()
-              .HasOne(tm => tm.Team)
-              .WithMany(t => t.TeamMembers)
-              .HasForeignKey(tm => tm.TeamId)
-              .OnDelete(DeleteBehavior.Cascade);
-            // ========== RELATION 3: Role "possède" TeamMember ==========
-            // Role (1) ─── * TeamMember
-            modelBuilder.Entity<TeamMember>()
-                .HasOne(tm => tm.Role)
-                .WithMany(r => r.TeamMembers)
-                .HasForeignKey(tm => tm.RoleId)
+            // ========== MISSING: User - Role relationship ==========
+         
+            modelBuilder.Entity<User>()
+                .HasOne(u => u.Role)
+                .WithMany(r => r.Users)
+                .HasForeignKey(u => u.RoleId)
                 .OnDelete(DeleteBehavior.Restrict);
+
+            // ========== MISSING: User - ProjectTask (task assignment) ==========
+        
+            modelBuilder.Entity<ProjectTask>()
+                .HasOne(pt => pt.AssignedToUser)
+                .WithMany() // or add a collection in User if needed
+                .HasForeignKey(pt => pt.AssignedToUserId)
+                .OnDelete(DeleteBehavior.SetNull); // If user deleted, set task 
+
+
+            // ========== User - TeamMember (1 to many) ==========
+           
+            modelBuilder.Entity<TeamMember>()
+             .HasOne(tm => tm.User)
+             .WithMany(u => u.TeamMembers)
+             .HasForeignKey(tm => tm.UserId)
+            .OnDelete(DeleteBehavior.Restrict); // ← Change from Cascade
+                                              
+           // ========== RELATION 2: Team "représente" TeamMember ==========
+       
+            modelBuilder.Entity<TeamMember>()
+             .HasOne(tm => tm.Team)
+             .WithMany(t => t.TeamMembers)
+             .HasForeignKey(tm => tm.TeamId)
+              .OnDelete(DeleteBehavior.Restrict); // ← Change from Cascade
+         
             // ========== RELATION 4: Team "crée" Project ==========
             // Team (1) ─── * Project
             modelBuilder.Entity<Project>()
@@ -61,6 +73,7 @@ namespace ProjectManagementAPI.Data
               .WithMany(t => t.Projects)
               .HasForeignKey(p => p.TeamId)
               .OnDelete(DeleteBehavior.Cascade);
+         
             // ========== RELATION 5: ProjectStatus "a" Project ==========
             // ProjectStatus (1) ─── * Project
             modelBuilder.Entity<Project>()
@@ -68,6 +81,7 @@ namespace ProjectManagementAPI.Data
                 .WithMany(ps => ps.Projects)
                 .HasForeignKey(p => p.ProjectStatusId)
                 .OnDelete(DeleteBehavior.Restrict);
+         
             // ========== RELATION 6: Priority "a" Project ==========
             // Priority (1) ─── * Project
             modelBuilder.Entity<Project>()
@@ -75,6 +89,7 @@ namespace ProjectManagementAPI.Data
             .WithMany(pr => pr.Projects)
             .HasForeignKey(p => p.PriorityId)
             .OnDelete(DeleteBehavior.Restrict);
+         
             // ========== RELATION 7: Project "contient" ProjectTask ==========
             // Project (1) ─── * ProjectTask
             modelBuilder.Entity<ProjectTask>()
@@ -82,6 +97,7 @@ namespace ProjectManagementAPI.Data
               .WithMany(p => p.ProjectTasks)
               .HasForeignKey(pt => pt.ProjectId)
               .OnDelete(DeleteBehavior.Cascade);
+           
             // ========== RELATION 8: ProjectTaskStatus "a" ProjectTask ==========
             // ProjectTaskStatus (1) ─── * ProjectTask
             modelBuilder.Entity<ProjectTask>()

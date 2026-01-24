@@ -128,7 +128,7 @@ const Register = () => {
                     <img src="/mobilis-logo.png.png" alt="Mobilis" />
                 </div>
 
-                <h2>Créer un compte</h2>
+                <h2>Creer un compte</h2>
 
                 {error && (
                     <div className="alert alert-error" style={{ display: 'flex', alignItems: 'center' }}>
@@ -147,13 +147,13 @@ const Register = () => {
                 <form onSubmit={handleSubmit}>
                     <div className="form-row">
                         <div className="form-group">
-                            <label>Prénom</label>
+                            <label>Prenom</label>
                             <input
                                 type="text"
                                 name="firstName"
                                 value={formData.firstName}
                                 onChange={handleChange}
-                                placeholder="Entrez votre prénom"
+                                placeholder="Entrez votre prenom"
                                 disabled={loading}
                                 autoComplete="given-name"
                             />
@@ -331,7 +331,7 @@ const Register = () => {
                 </form>
 
                 <p className="auth-footer">
-                    Vous avez déjà un compte ? <Link to="/login">Se connecter</Link>
+                    Vous avez deja un compte ? <Link to="/login">Se connecter</Link>
                 </p>
             </div>
         </div>

@@ -8,11 +8,11 @@
         // Foreign keys
         public int UserId { get; set; } // Foreign key to User
         public int TeamId { get; set; } // Foreign key to Team
-        public int RoleId { get; set; } // Foreign key to Role
+      
         // Relations
         public User User { get; set; } // Navigation property to User
         public Team Team { get; set; } // Navigation property to Team
-        public Role Role { get; set; } // Navigation property to Role
+   
 
         public DateTime JoinedDate { get; set; } = DateTime.UtcNow; // Date when the member joined the team
         public DateTime? LeftDate { get; set; }

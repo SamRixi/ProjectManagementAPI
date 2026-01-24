@@ -12,7 +12,7 @@ using ProjectManagementAPI.Data;
 namespace ProjectManagementAPI.Migrations
 {
     [DbContext(typeof(ApplicationDbContext))]
-    [Migration("20260122152838_InitialCreate")]
+    [Migration("20260124163415_InitialCreate")]
     partial class InitialCreate
     {
         /// <inheritdoc />
@@ -144,6 +144,9 @@ namespace ProjectManagementAPI.Migrations
 
                     SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<int>("ProjectTaskId"));
 
+                    b.Property<int?>("AssignedToUserId")
+                        .HasColumnType("int");
+
                     b.Property<string>("Description")
                         .IsRequired()
                         .HasColumnType("nvarchar(max)");
@@ -171,6 +174,8 @@ namespace ProjectManagementAPI.Migrations
                         .HasColumnType("bit");
 
                     b.HasKey("ProjectTaskId");
+
+                    b.HasIndex("AssignedToUserId");
 
                     b.HasIndex("PriorityId");
 
@@ -267,9 +272,6 @@ namespace ProjectManagementAPI.Migrations
                     b.Property<DateTime?>("LeftDate")
                         .HasColumnType("datetime2");
 
-                    b.Property<int>("RoleId")
-                        .HasColumnType("int");
-
                     b.Property<int>("TeamId")
                         .HasColumnType("int");
 
@@ -277,8 +279,6 @@ namespace ProjectManagementAPI.Migrations
                         .HasColumnType("int");
 
                     b.HasKey("TeamMemberId");
-
-                    b.HasIndex("RoleId");
 
                     b.HasIndex("TeamId");
 
@@ -332,6 +332,9 @@ namespace ProjectManagementAPI.Migrations
                     b.Property<DateTime?>("PasswordResetTokenExpiry")
                         .HasColumnType("datetime2");
 
+                    b.Property<int>("RoleId")
+                        .HasColumnType("int");
+
                     b.Property<DateTime?>("UpdatedAt")
                         .HasColumnType("datetime2");
 
@@ -340,6 +343,8 @@ namespace ProjectManagementAPI.Migrations
                         .HasColumnType("nvarchar(max)");
 
                     b.HasKey("UserId");
+
+                    b.HasIndex("RoleId");
 
                     b.ToTable("Users");
                 });
@@ -384,6 +389,11 @@ namespace ProjectManagementAPI.Migrations
 
             modelBuilder.Entity("ProjectManagementAPI.Models.ProjectTask", b =>
                 {
+                    b.HasOne("ProjectManagementAPI.Models.User", "AssignedToUser")
+                        .WithMany()
+                        .HasForeignKey("AssignedToUserId")
+                        .OnDelete(DeleteBehavior.SetNull);
+
                     b.HasOne("ProjectManagementAPI.Models.Priority", "Priority")
                         .WithMany("ProjectTasks")
                         .HasForeignKey("PriorityId")
@@ -402,6 +412,8 @@ namespace ProjectManagementAPI.Migrations
                         .OnDelete(DeleteBehavior.Restrict)
                         .IsRequired();
 
+                    b.Navigation("AssignedToUser");
+
                     b.Navigation("Priority");
 
                     b.Navigation("Project");
@@ -411,29 +423,32 @@ namespace ProjectManagementAPI.Migrations
 
             modelBuilder.Entity("ProjectManagementAPI.Models.TeamMember", b =>
                 {
-                    b.HasOne("ProjectManagementAPI.Models.Role", "Role")
-                        .WithMany("TeamMembers")
-                        .HasForeignKey("RoleId")
-                        .OnDelete(DeleteBehavior.Restrict)
-                        .IsRequired();
-
                     b.HasOne("ProjectManagementAPI.Models.Team", "Team")
                         .WithMany("TeamMembers")
                         .HasForeignKey("TeamId")
-                        .OnDelete(DeleteBehavior.Cascade)
+                        .OnDelete(DeleteBehavior.Restrict)
                         .IsRequired();
 
                     b.HasOne("ProjectManagementAPI.Models.User", "User")
                         .WithMany("TeamMembers")
                         .HasForeignKey("UserId")
-                        .OnDelete(DeleteBehavior.Cascade)
+                        .OnDelete(DeleteBehavior.Restrict)
                         .IsRequired();
-
-                    b.Navigation("Role");
 
                     b.Navigation("Team");
 
                     b.Navigation("User");
+                });
+
+            modelBuilder.Entity("ProjectManagementAPI.Models.User", b =>
+                {
+                    b.HasOne("ProjectManagementAPI.Models.Role", "Role")
+                        .WithMany("Users")
+                        .HasForeignKey("RoleId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+
+                    b.Navigation("Role");
                 });
 
             modelBuilder.Entity("ProjectManagementAPI.Models.Priority", b =>
@@ -462,7 +477,7 @@ namespace ProjectManagementAPI.Migrations
 
             modelBuilder.Entity("ProjectManagementAPI.Models.Role", b =>
                 {
-                    b.Navigation("TeamMembers");
+                    b.Navigation("Users");
                 });
 
             modelBuilder.Entity("ProjectManagementAPI.Models.Team", b =>

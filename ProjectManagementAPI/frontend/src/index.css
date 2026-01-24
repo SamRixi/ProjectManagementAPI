@@ -53,6 +53,24 @@ button:focus,
 button:focus-visible {
   outline: 4px auto -webkit-focus-ring-color;
 }
+.auth-links {
+    text-align: center;
+    margin-top: 10px;
+}
+
+.forgot-password-link {
+    color: #666;
+    font-size: 14px;
+    text-decoration: none;
+    display: inline-block;
+    margin-top: 8px;
+    transition: color 0.3s ease;
+}
+
+    .forgot-password-link:hover {
+        color: #E60028;
+        text-decoration: underline;
+    }
 
 @media (prefers-color-scheme: light) {
   :root {

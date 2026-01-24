@@ -132,10 +132,9 @@ public class TeamService : ITeamService
             var team = await _context.Teams
                 .Include(t => t.TeamMembers)
                     .ThenInclude(tm => tm.User)
-                .Include(t => t.TeamMembers)
-                    .ThenInclude(tm => tm.Role)
+                        .ThenInclude(u => u.Role) // ✅ FIXED: Include Role from User
                 .Include(t => t.Projects)
-               .FirstOrDefaultAsync(t => t.teamId == teamId);
+                .FirstOrDefaultAsync(t => t.teamId == teamId);
 
             if (team == null)
             {
@@ -145,10 +144,11 @@ public class TeamService : ITeamService
                     Message = "Équipe introuvable"
                 };
             }
+
             var teamDetails = new TeamDetailsDTO
             {
-                TeamId = team.teamId,  // Team model uses lowercase 'teamId'
-                TeamName = team.teamName,  // Team model uses lowercase 'teamName'
+                TeamId = team.teamId,
+                TeamName = team.teamName,
                 CreatedAt = team.CreatedAt,
                 Members = team.TeamMembers.Select(tm => new TeamMemberDTO
                 {
@@ -157,8 +157,8 @@ public class TeamService : ITeamService
                     UserName = tm.User.UserName,
                     FirstName = tm.User.FirstName,
                     LastName = tm.User.LastName,
-                    RoleId = tm.RoleId,
-                    RoleName = tm.Role.RoleName,
+                    RoleId = tm.User.RoleId, // ✅ FIXED: Get from User, not TeamMember
+                    RoleName = tm.User.Role.RoleName, // ✅ FIXED: Get from User, not TeamMember
                     IsProjectManager = tm.IsProjectManager,
                     JoinedDate = tm.JoinedDate
                 }).ToList(),
@@ -226,7 +226,10 @@ public class TeamService : ITeamService
         try
         {
             // Vérifier si l'utilisateur existe
-            var user = await _context.Users.FindAsync(dto.UserId);
+            var user = await _context.Users
+                .Include(u => u.Role) // ✅ FIXED: Include Role
+                .FirstOrDefaultAsync(u => u.UserId == dto.UserId);
+
             if (user == null)
             {
                 return new ApiResponse<TeamMemberDTO>
@@ -253,7 +256,7 @@ public class TeamService : ITeamService
             {
                 UserId = dto.UserId,
                 TeamId = dto.TeamId,
-                RoleId = dto.RoleId,
+                // ❌ REMOVED: RoleId = dto.RoleId, (TeamMember doesn't have RoleId)
                 IsProjectManager = dto.IsProjectManager,
                 JoinedDate = DateTime.UtcNow
             };
@@ -264,7 +267,7 @@ public class TeamService : ITeamService
             // Recharger avec les relations
             var addedMember = await _context.TeamMembers
                 .Include(tm => tm.User)
-                .Include(tm => tm.Role)
+                    .ThenInclude(u => u.Role) // ✅ FIXED: Include Role from User
                 .Include(tm => tm.Team)
                 .FirstOrDefaultAsync(tm => tm.TeamMemberId == teamMember.TeamMemberId);
 
@@ -281,8 +284,8 @@ public class TeamService : ITeamService
                     LastName = addedMember.User.LastName,
                     TeamId = addedMember.TeamId,
                     TeamName = addedMember.Team.teamName,
-                    RoleId = addedMember.RoleId,
-                    RoleName = addedMember.Role.RoleName,
+                    RoleId = addedMember.User.RoleId, // ✅ FIXED: Get from User
+                    RoleName = addedMember.User.Role.RoleName, // ✅ FIXED: Get from User
                     IsProjectManager = addedMember.IsProjectManager,
                     JoinedDate = addedMember.JoinedDate
                 }

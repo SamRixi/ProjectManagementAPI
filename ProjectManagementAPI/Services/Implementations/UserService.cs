@@ -40,6 +40,7 @@ namespace ProjectManagementAPI.Services.Implementations
                     FirstName = dto.FirstName,
                     LastName = dto.LastName,
                     PasswordHash = BC.HashPassword(dto.Password),
+                    RoleId = dto.RoleId, // ✅ ADDED: Set the RoleId from DTO
                     IsActive = true,
                     MustChangePassword = true,
                     AccountDeadline = dto.AccountDeadline,
@@ -113,8 +114,9 @@ namespace ProjectManagementAPI.Services.Implementations
             try
             {
                 var user = await _context.Users
+                    .Include(u => u.Role) // ✅ FIXED: Include Role directly from User
                     .Include(u => u.TeamMembers)
-                        .ThenInclude(tm => tm.Role)
+                        .ThenInclude(tm => tm.Team) // ✅ FIXED: Include Team info
                     .FirstOrDefaultAsync(u => u.UserId == userId);
 
                 if (user == null)
@@ -147,15 +149,17 @@ namespace ProjectManagementAPI.Services.Implementations
             try
             {
                 var users = await _context.Users
+                    .Include(u => u.Role) // ✅ FIXED: Include Role from User
                     .Include(u => u.TeamMembers)
-                        .ThenInclude(tm => tm.Role)
-                    .Select(u => MapToUserDTO(u))
+                        .ThenInclude(tm => tm.Team) // ✅ FIXED: Include Team info
                     .ToListAsync();
+
+                var userDTOs = users.Select(u => MapToUserDTO(u)).ToList();
 
                 return new ApiResponse<List<UserDTO>>
                 {
                     Success = true,
-                    Data = users
+                    Data = userDTOs
                 };
             }
             catch (Exception ex)
@@ -173,8 +177,9 @@ namespace ProjectManagementAPI.Services.Implementations
             try
             {
                 var query = _context.Users
+                    .Include(u => u.Role) // ✅ FIXED: Include Role from User
                     .Include(u => u.TeamMembers)
-                        .ThenInclude(tm => tm.Role)
+                        .ThenInclude(tm => tm.Team) // ✅ FIXED: Include Team info
                     .AsQueryable();
 
                 if (!string.IsNullOrEmpty(dto.SearchTerm))
@@ -193,15 +198,16 @@ namespace ProjectManagementAPI.Services.Implementations
 
                 if (dto.RoleId.HasValue)
                 {
-                    query = query.Where(u => u.TeamMembers.Any(tm => tm.RoleId == dto.RoleId.Value));
+                    query = query.Where(u => u.RoleId == dto.RoleId.Value); // ✅ FIXED: Check User.RoleId directly
                 }
 
-                var users = await query.Select(u => MapToUserDTO(u)).ToListAsync();
+                var users = await query.ToListAsync();
+                var userDTOs = users.Select(u => MapToUserDTO(u)).ToList();
 
                 return new ApiResponse<List<UserDTO>>
                 {
                     Success = true,
-                    Data = users
+                    Data = userDTOs
                 };
             }
             catch (Exception ex)
@@ -315,7 +321,7 @@ namespace ProjectManagementAPI.Services.Implementations
 
                 // Mettre à jour mot de passe
                 user.PasswordHash = BC.HashPassword(dto.NewPassword);
-                user.MustChangePassword = false; // Plus besoin de changer
+                user.MustChangePassword = false;
                 user.UpdatedAt = DateTime.UtcNow;
 
                 await _context.SaveChangesAsync();
@@ -344,8 +350,8 @@ namespace ProjectManagementAPI.Services.Implementations
                 var user = await _context.Users.FirstOrDefaultAsync(u => u.Email == email);
 
                 if (user == null)
+              
                 {
-                    // Ne pas révéler si l'email existe (sécurité)
                     return new ApiResponse<bool>
                     {
                         Success = true,
@@ -353,14 +359,12 @@ namespace ProjectManagementAPI.Services.Implementations
                     };
                 }
 
-                // Générer token
                 user.PasswordResetToken = Guid.NewGuid().ToString();
-                user.PasswordResetTokenExpiry = DateTime.UtcNow.AddHours(1); // Expire dans 1h
+                user.PasswordResetTokenExpiry = DateTime.UtcNow.AddHours(1);
 
                 await _context.SaveChangesAsync();
 
                 // TODO: Envoyer email avec token
-                // await _emailService.SendPasswordResetEmail(user.Email, user.PasswordResetToken);
 
                 return new ApiResponse<bool>
                 {
@@ -396,7 +400,6 @@ namespace ProjectManagementAPI.Services.Implementations
                     };
                 }
 
-                // Vérifier expiration
                 if (user.PasswordResetTokenExpiry < DateTime.UtcNow)
                 {
                     return new ApiResponse<bool>
@@ -406,7 +409,6 @@ namespace ProjectManagementAPI.Services.Implementations
                     };
                 }
 
-                // Réinitialiser mot de passe
                 user.PasswordHash = BC.HashPassword(dto.NewPassword);
                 user.PasswordResetToken = null;
                 user.PasswordResetTokenExpiry = null;
@@ -447,7 +449,6 @@ namespace ProjectManagementAPI.Services.Implementations
                     };
                 }
 
-                // Vérifier si compte actif
                 if (!user.IsActive)
                 {
                     return new ApiResponse<bool>
@@ -457,7 +458,6 @@ namespace ProjectManagementAPI.Services.Implementations
                     };
                 }
 
-                // Vérifier deadline
                 if (user.AccountDeadline.HasValue && user.AccountDeadline < DateTime.UtcNow)
                 {
                     return new ApiResponse<bool>
@@ -483,6 +483,45 @@ namespace ProjectManagementAPI.Services.Implementations
             }
         }
 
+        public async Task<ApiResponse<string>> GenerateTemporaryPasswordAsync(int userId)
+        {
+            try
+            {
+                var user = await _context.Users.FindAsync(userId);
+
+                if (user == null)
+                {
+                    return new ApiResponse<string>
+                    {
+                        Success = false,
+                        Message = "Utilisateur introuvable"
+                    };
+                }
+
+                string tempPassword = GenerateRandomPassword();
+                user.PasswordHash = BC.HashPassword(tempPassword);
+                user.MustChangePassword = true;
+                user.UpdatedAt = DateTime.UtcNow;
+
+                await _context.SaveChangesAsync();
+
+                return new ApiResponse<string>
+                {
+                    Success = true,
+                    Message = "Mot de passe temporaire généré avec succès",
+                    Data = tempPassword
+                };
+            }
+            catch (Exception ex)
+            {
+                return new ApiResponse<string>
+                {
+                    Success = false,
+                    Message = $"Erreur: {ex.Message}"
+                };
+            }
+        }
+
         public async Task UpdateLastLoginAsync(int userId)
         {
             var user = await _context.Users.FindAsync(userId);
@@ -491,6 +530,14 @@ namespace ProjectManagementAPI.Services.Implementations
                 user.LastLoginAt = DateTime.UtcNow;
                 await _context.SaveChangesAsync();
             }
+        }
+
+        private string GenerateRandomPassword()
+        {
+            const string chars = "ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789";
+            var random = new Random();
+            return new string(Enumerable.Repeat(chars, 8)
+                .Select(s => s[random.Next(s.Length)]).ToArray());
         }
 
         private UserDTO MapToUserDTO(User user)
@@ -507,9 +554,7 @@ namespace ProjectManagementAPI.Services.Implementations
                 AccountDeadline = user.AccountDeadline,
                 CreatedAt = user.CreatedAt,
                 LastLoginAt = user.LastLoginAt,
-               
             };
         }
     }
 }
-

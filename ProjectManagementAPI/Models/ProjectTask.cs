@@ -21,7 +21,9 @@ namespace ProjectManagementAPI.Models
         public Project Project { get; set; } // Navigation property to Project
         public ProjectTaskStatus ProjectTasksStatus { get; set; } // Navigation property to TaskStatus
         public Priority Priority { get; set; } // Navigation property to Priority
-        
+        public int? AssignedToUserId { get; set; } // Foreign key (nullable if task can be unassigned)
+        public User AssignedToUser { get; set; } // Navigation property
+
 
 
     }

@@ -92,6 +92,7 @@ namespace ProjectManagementAPI.Migrations
                     FirstName = table.Column<string>(type: "nvarchar(max)", nullable: false),
                     LastName = table.Column<string>(type: "nvarchar(max)", nullable: false),
                     CreatedAt = table.Column<DateTime>(type: "datetime2", nullable: false),
+                    RoleId = table.Column<int>(type: "int", nullable: false),
                     Email = table.Column<string>(type: "nvarchar(max)", nullable: false),
                     IsActive = table.Column<bool>(type: "bit", nullable: false),
                     MustChangePassword = table.Column<bool>(type: "bit", nullable: false),
@@ -104,6 +105,12 @@ namespace ProjectManagementAPI.Migrations
                 constraints: table =>
                 {
                     table.PrimaryKey("PK_Users", x => x.UserId);
+                    table.ForeignKey(
+                        name: "FK_Users_Roles_RoleId",
+                        column: x => x.RoleId,
+                        principalTable: "Roles",
+                        principalColumn: "RoleId",
+                        onDelete: ReferentialAction.Restrict);
                 });
 
             migrationBuilder.CreateTable(
@@ -155,7 +162,6 @@ namespace ProjectManagementAPI.Migrations
                     IsActive = table.Column<bool>(type: "bit", nullable: false),
                     UserId = table.Column<int>(type: "int", nullable: false),
                     TeamId = table.Column<int>(type: "int", nullable: false),
-                    RoleId = table.Column<int>(type: "int", nullable: false),
                     JoinedDate = table.Column<DateTime>(type: "datetime2", nullable: false),
                     LeftDate = table.Column<DateTime>(type: "datetime2", nullable: true)
                 },
@@ -163,23 +169,17 @@ namespace ProjectManagementAPI.Migrations
                 {
                     table.PrimaryKey("PK_TeamMembers", x => x.TeamMemberId);
                     table.ForeignKey(
-                        name: "FK_TeamMembers_Roles_RoleId",
-                        column: x => x.RoleId,
-                        principalTable: "Roles",
-                        principalColumn: "RoleId",
-                        onDelete: ReferentialAction.Restrict);
-                    table.ForeignKey(
                         name: "FK_TeamMembers_Teams_TeamId",
                         column: x => x.TeamId,
                         principalTable: "Teams",
                         principalColumn: "teamId",
-                        onDelete: ReferentialAction.Cascade);
+                        onDelete: ReferentialAction.Restrict);
                     table.ForeignKey(
                         name: "FK_TeamMembers_Users_UserId",
                         column: x => x.UserId,
                         principalTable: "Users",
                         principalColumn: "UserId",
-                        onDelete: ReferentialAction.Cascade);
+                        onDelete: ReferentialAction.Restrict);
                 });
 
             migrationBuilder.CreateTable(
@@ -215,7 +215,8 @@ namespace ProjectManagementAPI.Migrations
                     isValidated = table.Column<bool>(type: "bit", nullable: false),
                     ProjectId = table.Column<int>(type: "int", nullable: false),
                     TaskStatusId = table.Column<int>(type: "int", nullable: false),
-                    PriorityId = table.Column<int>(type: "int", nullable: false)
+                    PriorityId = table.Column<int>(type: "int", nullable: false),
+                    AssignedToUserId = table.Column<int>(type: "int", nullable: true)
                 },
                 constraints: table =>
                 {
@@ -238,6 +239,12 @@ namespace ProjectManagementAPI.Migrations
                         principalTable: "Projects",
                         principalColumn: "ProjectId",
                         onDelete: ReferentialAction.Cascade);
+                    table.ForeignKey(
+                        name: "FK_ProjectTasks_Users_AssignedToUserId",
+                        column: x => x.AssignedToUserId,
+                        principalTable: "Users",
+                        principalColumn: "UserId",
+                        onDelete: ReferentialAction.SetNull);
                 });
 
             migrationBuilder.CreateIndex(
@@ -261,6 +268,11 @@ namespace ProjectManagementAPI.Migrations
                 column: "TeamId");
 
             migrationBuilder.CreateIndex(
+                name: "IX_ProjectTasks_AssignedToUserId",
+                table: "ProjectTasks",
+                column: "AssignedToUserId");
+
+            migrationBuilder.CreateIndex(
                 name: "IX_ProjectTasks_PriorityId",
                 table: "ProjectTasks",
                 column: "PriorityId");
@@ -276,11 +288,6 @@ namespace ProjectManagementAPI.Migrations
                 column: "TaskStatusId");
 
             migrationBuilder.CreateIndex(
-                name: "IX_TeamMembers_RoleId",
-                table: "TeamMembers",
-                column: "RoleId");
-
-            migrationBuilder.CreateIndex(
                 name: "IX_TeamMembers_TeamId",
                 table: "TeamMembers",
                 column: "TeamId");
@@ -289,6 +296,11 @@ namespace ProjectManagementAPI.Migrations
                 name: "IX_TeamMembers_UserId",
                 table: "TeamMembers",
                 column: "UserId");
+
+            migrationBuilder.CreateIndex(
+                name: "IX_Users_RoleId",
+                table: "Users",
+                column: "RoleId");
         }
 
         /// <inheritdoc />
@@ -310,9 +322,6 @@ namespace ProjectManagementAPI.Migrations
                 name: "Projects");
 
             migrationBuilder.DropTable(
-                name: "Roles");
-
-            migrationBuilder.DropTable(
                 name: "Users");
 
             migrationBuilder.DropTable(
@@ -323,6 +332,9 @@ namespace ProjectManagementAPI.Migrations
 
             migrationBuilder.DropTable(
                 name: "Teams");
+
+            migrationBuilder.DropTable(
+                name: "Roles");
         }
     }
 }

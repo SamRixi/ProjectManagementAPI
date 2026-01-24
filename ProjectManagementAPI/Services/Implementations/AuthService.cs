@@ -107,6 +107,7 @@ namespace ProjectManagementAPI.Services.Implementations
                         };
                     }
 
+
                     // Étape 2: Hasher le mot de passe avec BCrypt
                     string hashedPassword = BC.HashPassword(request.Password);
 
