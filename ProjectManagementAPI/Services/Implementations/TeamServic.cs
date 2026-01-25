@@ -345,5 +345,15 @@ public class TeamService : ITeamService
     {
         throw new NotImplementedException();
     }
+
+    public Task<ApiResponse<List<TeamMemberDTO>>> GetTeamMembersAsync(int teamId)
+    {
+        throw new NotImplementedException();
+    }
+
+    public Task<ApiResponse<bool>> RemoveMemberAsync(int teamId, int userId)
+    {
+        throw new NotImplementedException();
+    }
 }
 

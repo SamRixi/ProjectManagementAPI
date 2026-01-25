@@ -1,15 +1,19 @@
 ﻿using Microsoft.AspNetCore.Mvc;
 using ProjectManagementAPI.DTOs;
 using ProjectManagementAPI.Services.Implementations;
-
+using LoginRequest = ProjectManagementAPI.DTOs.LoginRequest;
+using RegisterRequest = ProjectManagementAPI.DTOs.RegisterRequest;
+using ForgotPasswordRequest = ProjectManagementAPI.DTOs.ForgotPasswordRequest;
+using ResetPasswordRequest = ProjectManagementAPI.DTOs.ResetPasswordRequest;
 
 namespace ProjectManagementAPI.Controllers
 {
     /// <summary>
-    /// AuthController - Gère les endpoints d'authentification
+    /// AuthController - Gère l'authentification et la gestion des comptes utilisateurs
     /// </summary>
     [ApiController]
     [Route("api/[controller]")]
+    [Produces("application/json")]
     public class AuthController : ControllerBase
     {
         private readonly AuthService _authService;
@@ -21,71 +25,192 @@ namespace ProjectManagementAPI.Controllers
 
         // ============= LOGIN =============
         /// <summary>
-        /// Endpoint: POST /api/auth/login
         /// Authentifie un utilisateur et retourne un JWT token
         /// </summary>
         /// <param name="request">Username et Password</param>
         /// <returns>JWT Token + Données utilisateur</returns>
+        /// <response code="200">Authentification réussie</response>
+        /// <response code="401">Identifiants invalides</response>
+        /// <response code="400">Données de requête invalides</response>
         [HttpPost("login")]
+        [ProducesResponseType(typeof(AuthResponse), StatusCodes.Status200OK)]
+        [ProducesResponseType(StatusCodes.Status401Unauthorized)]
+        [ProducesResponseType(StatusCodes.Status400BadRequest)]
         public async Task<IActionResult> Login([FromBody] LoginRequest request)
         {
-            // Validation basique
-            if (string.IsNullOrEmpty(request.Username) || string.IsNullOrEmpty(request.Password))
+            if (!ModelState.IsValid)
             {
-                return BadRequest(new { message = "Username et Password sont obligatoires" });
+                return BadRequest(new
+                {
+                    success = false,
+                    message = "Données invalides",
+                    errors = ModelState.Values.SelectMany(v => v.Errors.Select(e => e.ErrorMessage))
+                });
             }
 
-            // Appeler le service
-            var response = await _authService.LoginAsync(request);
+            try
+            {
+                var response = await _authService.LoginAsync(request);
 
-            // Retourner la réponse
-            if (response.Success)
-            {
-                return Ok(response);
+                if (response.Success)
+                {
+                    return Ok(response);
+                }
+                else
+                {
+                    return Unauthorized(response);
+                }
             }
-            else
+            catch (Exception ex)
             {
-                return Unauthorized(response);
+                return StatusCode(500, new
+                {
+                    success = false,
+                    message = "Erreur serveur lors de l'authentification",
+                    error = ex.Message
+                });
             }
         }
 
         // ============= REGISTER =============
         /// <summary>
-        /// Endpoint: POST /api/auth/register
-        /// Crée un nouvel utilisateur
+        /// Crée un nouveau compte utilisateur
         /// </summary>
-        /// <param name="request">Username, Password, FirstName, LastName</param>
+        /// <param name="request">Informations du nouvel utilisateur</param>
         /// <returns>Confirmation d'inscription</returns>
+        /// <response code="200">Inscription réussie</response>
+        /// <response code="400">Données invalides ou utilisateur déjà existant</response>
         [HttpPost("register")]
+        [ProducesResponseType(typeof(AuthResponse), StatusCodes.Status200OK)]
+        [ProducesResponseType(StatusCodes.Status400BadRequest)]
         public async Task<IActionResult> Register([FromBody] RegisterRequest request)
         {
-            // Validation basique
-            if (string.IsNullOrEmpty(request.Username) ||
-                string.IsNullOrEmpty(request.Password) ||
-                string.IsNullOrEmpty(request.FirstName) ||
-                string.IsNullOrEmpty(request.LastName))
+            if (!ModelState.IsValid)
             {
-                return BadRequest(new { message = "Tous les champs sont obligatoires" });
+                return BadRequest(new
+                {
+                    success = false,
+                    message = "Données invalides",
+                    errors = ModelState.Values.SelectMany(v => v.Errors.Select(e => e.ErrorMessage))
+                });
             }
 
-            // Vérifier la longueur du mot de passe
-            if (request.Password.Length < 6)
+            try
             {
-                return BadRequest(new { message = "Le mot de passe doit avoir au moins 6 caractères" });
+                // ✅ The AuthService handles role assignment
+                var response = await _authService.RegisterAsync(request);
+
+                if (response.Success)
+                {
+                    return Ok(response);
+                }
+                else
+                {
+                    return BadRequest(response);
+                }
+            }
+            catch (Exception ex)
+            {
+                return StatusCode(500, new
+                {
+                    success = false,
+                    message = "Erreur serveur lors de l'inscription",
+                    error = ex.Message
+                });
+            }
+        }
+
+        // ============= FORGOT PASSWORD =============
+        /// <summary>
+        /// Demande de réinitialisation de mot de passe
+        /// </summary>
+        /// <param name="request">Email de l'utilisateur</param>
+        /// <returns>Confirmation d'envoi du lien de réinitialisation</returns>
+        /// <response code="200">Email de réinitialisation envoyé</response>
+        /// <response code="404">Utilisateur non trouvé</response>
+        [HttpPost("forgot-password")]
+        [ProducesResponseType(StatusCodes.Status200OK)]
+        [ProducesResponseType(StatusCodes.Status404NotFound)]
+        public async Task<IActionResult> ForgotPassword([FromBody] ForgotPasswordRequest request)
+        {
+            if (!ModelState.IsValid)
+            {
+                return BadRequest(new
+                {
+                    success = false,
+                    message = "Email invalide"
+                });
             }
 
-            // Appeler le service
-            var response = await _authService.RegisterAsync(request);
+            try
+            {
+                var response = await _authService.ForgotPasswordAsync(request);
 
-            // Retourner la réponse
-            if (response.Success)
-            {
-                return Ok(response);
+                if (response.Success)
+                {
+                    return Ok(response);
+                }
+                else
+                {
+                    return NotFound(response);
+                }
             }
-            else
+            catch (Exception ex)
             {
-                return BadRequest(response);
+                return StatusCode(500, new
+                {
+                    success = false,
+                    message = "Erreur lors de la demande de réinitialisation",
+                    error = ex.Message
+                });
+            }
+        }
+
+        // ============= RESET PASSWORD =============
+        /// <summary>
+        /// Réinitialise le mot de passe avec un token valide
+        /// </summary>
+        /// <param name="request">Token et nouveau mot de passe</param>
+        /// <returns>Confirmation de réinitialisation</returns>
+        /// <response code="200">Mot de passe réinitialisé avec succès</response>
+        /// <response code="400">Token invalide ou expiré</response>
+        [HttpPost("reset-password")]
+        [ProducesResponseType(StatusCodes.Status200OK)]
+        [ProducesResponseType(StatusCodes.Status400BadRequest)]
+        public async Task<IActionResult> ResetPassword([FromBody] ResetPasswordRequest request)
+        {
+            if (!ModelState.IsValid)
+            {
+                return BadRequest(new
+                {
+                    success = false,
+                    message = "Données invalides"
+                });
+            }
+
+            try
+            {
+                var response = await _authService.ResetPasswordAsync(request);
+
+                if (response.Success)
+                {
+                    return Ok(response);
+                }
+                else
+                {
+                    return BadRequest(response);
+                }
+            }
+            catch (Exception ex)
+            {
+                return StatusCode(500, new
+                {
+                    success = false,
+                    message = "Erreur lors de la réinitialisation",
+                    error = ex.Message
+                });
             }
         }
     }
 }
+

@@ -8,7 +8,8 @@
         // Foreign keys
         public int UserId { get; set; } // Foreign key to User
         public int TeamId { get; set; } // Foreign key to Team
-      
+       
+
         // Relations
         public User User { get; set; } // Navigation property to User
         public Team Team { get; set; } // Navigation property to Team

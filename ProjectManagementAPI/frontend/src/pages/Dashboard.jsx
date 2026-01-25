@@ -1,139 +1,156 @@
-import { useState, useEffect } from 'react';
-import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
-import userService from '../services/userService';
-import UserManagement from '../components/UserManagement'; 
+import { useNavigate } from 'react-router-dom';
+import { LogOut, Code, CheckSquare, Users, FolderKanban, Clock } from 'lucide-react';
+import '../styles/Dashboard.css';
 
 const Dashboard = () => {
+    const { user, logout, hasRole } = useAuth();
     const navigate = useNavigate();
-    const { user, logout } = useAuth();
-    const [users, setUsers] = useState([]);
-    const [loading, setLoading] = useState(true);
-
-    useEffect(() => {
-        loadUsers();
-    }, []);
-
-    const loadUsers = async () => {
-        try {
-            const result = await userService.getAllUsers();
-            if (result.success) {
-                setUsers(result.data);
-            }
-        } catch (error) {
-            console.error('Erreur chargement utilisateurs:', error);
-        } finally {
-            setLoading(false);
-        }
-    };
 
     const handleLogout = () => {
         logout();
         navigate('/login');
     };
 
-    return (
-        <div style={{ minHeight: '100vh', background: '#F5F5F5' }}>
-            
-            <div style={{
-                background: 'white',
-                padding: '16px 32px',
-                boxShadow: '0 2px 4px rgba(0,0,0,0.1)',
-                display: 'flex',
-                justifyContent: 'space-between',
-                alignItems: 'center'
-            }}>
-                <div style={{ display: 'flex', alignItems: 'center', gap: '16px' }}>
-                    <img src="/mobilis-logo.png.png" alt="Mobilis" style={{ height: '40px' }} />
-                    <h1 style={{ margin: 0, fontSize: '24px', color: '#007a33' }}>
-                        Dashboard Reporting
-                    </h1>
-                </div>
-                <div style={{ display: 'flex', alignItems: 'center', gap: '16px' }}>
-                    <span style={{ color: '#666' }}>
-                         {user?.firstName} {user?.lastName}
-                    </span>
-                    <button
-                        onClick={handleLogout}
-                        style={{
-                            padding: '8px 16px',
-                            background: '#F44336',
-                            color: 'white',
-                            border: 'none',
-                            borderRadius: '6px',
-                            cursor: 'pointer',
-                            fontWeight: '600'
-                        }}
-                    >
-                        Déconnexion
+    if (!user) {
+        return <div>Loading...</div>;
+    }
+
+    //  Developer Dashboard
+    if (hasRole('Developer')) {
+        return (
+            <div className="dashboard-container">
+                {/* Header */}
+                <header className="dashboard-header">
+                    <h1>DEVELOPER DASHBOARD</h1>
+                    <button onClick={handleLogout} className="logout-btn">
+                        <LogOut size={20} />
+                        DECONNEXION
                     </button>
+                </header>
+
+                {/* Welcome Section */}
+                <div className="dashboard-content">
+                    <div className="welcome-card">
+                        <h2>Bienvenue, {user.firstName}!</h2>
+                        <div className="user-info">
+                            <p><strong>Username:</strong> {user.userName}</p>
+                            <p><strong>Email:</strong> {user.email}</p>
+                            <p><strong>Role:</strong> Developer</p>
+                        </div>
+                        <p className="welcome-text">
+                            Vous avez acces au tableau de bord developpeur. Gerez vos taches et projets ici.
+                        </p>
+                    </div>
+
+                    {/* Quick Stats */}
+                    <div className="stats-grid">
+                        <div className="stat-card">
+                            <div className="stat-icon">
+                                <FolderKanban size={32} />
+                            </div>
+                            <div className="stat-content">
+                                <h3>Mes Projets</h3>
+                                <p className="stat-number">5</p>
+                                <p className="stat-label">Projets actifs</p>
+                            </div>
+                        </div>
+
+                        <div className="stat-card">
+                            <div className="stat-icon">
+                                <CheckSquare size={32} />
+                            </div>
+                            <div className="stat-content">
+                                <h3>Mes Taches</h3>
+                                <p className="stat-number">12</p>
+                                <p className="stat-label">Taches en cours</p>
+                            </div>
+                        </div>
+
+                        <div className="stat-card">
+                            <div className="stat-icon">
+                                <Code size={32} />
+                            </div>
+                            <div className="stat-content">
+                                <h3>Code Reviews</h3>
+                                <p className="stat-number">3</p>
+                                <p className="stat-label">En attente</p>
+                            </div>
+                        </div>
+
+                        <div className="stat-card">
+                            <div className="stat-icon">
+                                <Clock size={32} />
+                            </div>
+                            <div className="stat-content">
+                                <h3>Temps Aujourd'hui</h3>
+                                <p className="stat-number">6.5h</p>
+                                <p className="stat-label">Heures travaillees</p>
+                            </div>
+                        </div>
+                    </div>
+
+                    {/* Recent Tasks */}
+                    <div className="recent-section">
+                        <h3>Taches Recentes</h3>
+                        <div className="task-list">
+                            <div className="task-item">
+                                <div className="task-status in-progress"></div>
+                                <div className="task-details">
+                                    <h4>Implementer API Authentication</h4>
+                                    <p>Projet: System Backend</p>
+                                    <span className="task-priority high">Haute Priorite</span>
+                                </div>
+                                <div className="task-meta">
+                                    <span>Due: 28 Jan</span>
+                                </div>
+                            </div>
+
+                            <div className="task-item">
+                                <div className="task-status pending"></div>
+                                <div className="task-details">
+                                    <h4>Fix Dashboard UI Bugs</h4>
+                                    <p>Projet: Frontend App</p>
+                                    <span className="task-priority medium">Moyenne Priorite</span>
+                                </div>
+                                <div className="task-meta">
+                                    <span>Due: 30 Jan</span>
+                                </div>
+                            </div>
+
+                            <div className="task-item">
+                                <div className="task-status completed"></div>
+                                <div className="task-details">
+                                    <h4>Database Schema Update</h4>
+                                    <p>Projet: Database Migration</p>
+                                    <span className="task-priority low">Complete</span>
+                                </div>
+                                <div className="task-meta">
+                                    <span>Completed: 25 Jan</span>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
                 </div>
             </div>
+        );
+    }
 
-         
-            <div style={{ padding: '32px' }}>
-                <h2 style={{ marginBottom: '24px', color: '#333' }}>
-                     Gestion des Utilisateurs
-                </h2>
-
-                {loading ? (
-                    <div style={{ textAlign: 'center', padding: '60px' }}>
-                        Chargement...
-                    </div>
-                ) : (
-                    <div style={{
-                        background: 'white',
-                        borderRadius: '12px',
-                        padding: '24px',
-                        boxShadow: '0 2px 8px rgba(0,0,0,0.1)'
-                    }}>
-                        <table style={{ width: '100%', borderCollapse: 'collapse' }}>
-                            <thead>
-                                <tr style={{ borderBottom: '2px solid #E0E0E0' }}>
-                                    <th style={{ padding: '12px', textAlign: 'left' }}>ID</th>
-                                    <th style={{ padding: '12px', textAlign: 'left' }}>Nom d'utilisateur</th>
-                                    <th style={{ padding: '12px', textAlign: 'left' }}>Email</th>
-                                    <th style={{ padding: '12px', textAlign: 'left' }}>Nom complet</th>
-                                    <th style={{ padding: '12px', textAlign: 'left' }}>Statut</th>
-                                    <th style={{ padding: '12px', textAlign: 'left' }}>Actions</th>
-                                </tr>
-                            </thead>
-                            <tbody>
-                                {users.map((u) => (
-                                    <tr key={u.userId} style={{ borderBottom: '1px solid #E0E0E0' }}>
-                                        <td style={{ padding: '12px' }}>{u.userId}</td>
-                                        <td style={{ padding: '12px', fontWeight: '600' }}>{u.userName}</td>
-                                        <td style={{ padding: '12px' }}>{u.email}</td>
-                                        <td style={{ padding: '12px' }}>
-                                            {u.firstName} {u.lastName}
-                                        </td>
-                                        <td style={{ padding: '12px' }}>
-                                            <span style={{
-                                                padding: '4px 8px',
-                                                borderRadius: '4px',
-                                                fontSize: '12px',
-                                                background: u.isActive ? '#E8F5E9' : '#FFEBEE',
-                                                color: u.isActive ? '#4CAF50' : '#F44336',
-                                                fontWeight: '600'
-                                            }}>
-                                                {u.isActive ? 'Actif' : 'Inactif'}
-                                            </span>
-                                        </td>
-                                        <td style={{ padding: '12px' }}>
-                                            <UserManagement user={u} />
-                                        </td>
-                                    </tr>
-                                ))}
-                            </tbody>
-                        </table>
-
-                        {users.length === 0 && (
-                            <div style={{ textAlign: 'center', padding: '40px', color: '#999' }}>
-                                Aucun utilisateur trouvé
-                            </div>
-                        )}
-                    </div>
-                )}
+    //  Default fallback
+    return (
+        <div className="dashboard-container">
+            <header className="dashboard-header">
+                <h1>DASHBOARD</h1>
+                <button onClick={handleLogout} className="logout-btn">
+                    <LogOut size={20} />
+                    DECONNEXION
+                </button>
+            </header>
+            <div className="dashboard-content">
+                <div className="welcome-card">
+                    <h2>Bienvenue, {user.firstName}!</h2>
+                    <p>Votre role: {user.roleName}</p>
+                </div>
             </div>
         </div>
     );

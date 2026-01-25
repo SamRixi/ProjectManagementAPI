@@ -6,11 +6,11 @@ import '../styles/Auth.css';
 
 const Register = () => {
     const navigate = useNavigate();
-    const { register, loading } = useAuth();
+    const { register } = useAuth();
 
     const [formData, setFormData] = useState({
         username: '',
-        email: '',  // Added email field
+        email: '',
         password: '',
         confirmPassword: '',
         firstName: '',
@@ -19,6 +19,7 @@ const Register = () => {
 
     const [error, setError] = useState('');
     const [success, setSuccess] = useState('');
+    const [loading, setLoading] = useState(false);
     const [showPassword, setShowPassword] = useState(false);
     const [showConfirmPassword, setShowConfirmPassword] = useState(false);
     const [passwordStrength, setPasswordStrength] = useState(0);
@@ -32,7 +33,6 @@ const Register = () => {
         });
         setError('');
 
-        // Calculer la force du mot de passe
         if (name === 'password') {
             calculatePasswordStrength(value);
         }
@@ -71,7 +71,6 @@ const Register = () => {
             return false;
         }
 
-        // Email validation
         const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
         if (!emailRegex.test(formData.email)) {
             setError('Veuillez entrer une adresse email valide');
@@ -105,17 +104,55 @@ const Register = () => {
             return;
         }
 
-        // Enlever confirmPassword avant d'envoyer
-        const { confirmPassword: _, ...dataToSend } = formData;
-        const result = await register(dataToSend);
+        setLoading(true);
 
-        if (result.success) {
-            setSuccess('Inscription réussie ! Redirection vers la connexion...');
-            setTimeout(() => {
-                navigate('/login');
-            }, 2000);
-        } else {
-            setError(result.message || 'Erreur lors de l\'inscription');
+        try {
+            //  Send ALL data including confirmPassword
+            const dataToSend = {
+                username: formData.username,
+                email: formData.email,
+                password: formData.password,
+                confirmPassword: formData.confirmPassword,
+                firstName: formData.firstName,
+                lastName: formData.lastName
+            };
+
+            const result = await register(dataToSend);
+
+            if (result.success) {
+                //  Set success message FIRST (while still loading)
+                setSuccess('Inscription reussie ! Redirection vers la connexion dans 3 secondes...');
+
+                //  Stop loading AFTER
+
+                setLoading(false);
+
+                // Clear form
+                setFormData({
+                    username: '',
+                    email: '',
+                    password: '',
+                    confirmPassword: '',
+                    firstName: '',
+                    lastName: ''
+                });
+
+                // Scroll to top to see success message
+                window.scrollTo({ top: 0, behavior: 'smooth' });
+
+                // Redirect after 3 seconds
+                setTimeout(() => {
+                    navigate('/login');
+                }, 3000);
+            } else {
+                setError(result.message || 'Erreur lors de l\'inscription');
+                window.scrollTo({ top: 0, behavior: 'smooth' });
+            }
+        } catch (error) {
+            console.error('Registration error:', error);
+            setLoading(false);
+            setError('Erreur de connexion au serveur');
+            window.scrollTo({ top: 0, behavior: 'smooth' });
         }
     };
 

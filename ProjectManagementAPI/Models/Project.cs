@@ -10,6 +10,8 @@ namespace ProjectManagementAPI.Models
         public DateTime StartDate { get; set; } // Start date of the project
         public DateTime EndDate { get; set; } // End date of the project
         public DateTime CreatedAt { get; set; } = DateTime.UtcNow;
+        [Required]
+        public int CreatedByUserId { get; set; }
 
         // Progression du projet en pourcentage (0-100)
         [Range(0, 100, ErrorMessage = "Progress must be between 0 and 100.")]
@@ -18,6 +20,7 @@ namespace ProjectManagementAPI.Models
         public int TeamId { get; set; } // Foreign key to Team
         public int ProjectStatusId { get; set; } // Foreign key to ProjectStatus
         public int PriorityId { get; set; } // Foreign key to Priority
+        public User CreatedByUser { get; set; }
 
         // Relations
         public ProjectStatus ProjectStatus { get; set; } // Navigation property to ProjectStatus
@@ -25,6 +28,7 @@ namespace ProjectManagementAPI.Models
         public Priority Priority { get; set; } // Navigation property to Priority
         public ICollection<EDB> EDBs { get; set; } = new List<EDB>(); // Relation to EDBs
         public ICollection<ProjectTask> ProjectTasks { get; set; } = new List<ProjectTask>();
+        public ICollection<Notification> Notifications { get; set; }
 
 
 

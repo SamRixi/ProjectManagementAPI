@@ -12,9 +12,8 @@ namespace ProjectManagementAPI.DTOs
         [StringLength(100, MinimumLength = 6, ErrorMessage = "Mot de passe doit avoir entre 6 et 100 caractères")]
         public string Password { get; set; }
 
-        [Required(ErrorMessage = "Confirmation du mot de passe requise")]
-        [Compare("Password", ErrorMessage = "Les mots de passe ne correspondent pas")]
-        public string ConfirmPassword { get; set; }  // ✅ ADDED
+      
+        public string? ConfirmPassword { get; set; }  // ✅ ADDED
 
         [Required(ErrorMessage = "Prénom requis")]
         [StringLength(50, ErrorMessage = "Prénom max 50 caractères")]
@@ -28,7 +27,8 @@ namespace ProjectManagementAPI.DTOs
         [EmailAddress(ErrorMessage = "Format email invalide")]
         public string Email { get; set; }
 
-        [Required(ErrorMessage = "Rôle requis")]
-        public int RoleId { get; set; }  // ✅ ADDED - What role is the user registering as?
+       
+        public int? RoleId { get; set; }
+        //  ADDED - What role is the user registering as?
     }
 }

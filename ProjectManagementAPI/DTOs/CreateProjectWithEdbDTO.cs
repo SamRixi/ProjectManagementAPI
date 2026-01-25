@@ -5,6 +5,10 @@ namespace ProjectManagementAPI.DTOs
 {
     public class CreateProjectWithEdbDTO
     {
+
+        [Required]
+        public int EdbId { get; set; } 
+
         [Required(ErrorMessage = "Nom du projet requis")]
         [StringLength(200, MinimumLength = 3)]
         public string ProjectName { get; set; }
@@ -31,5 +35,6 @@ namespace ProjectManagementAPI.DTOs
         [Required(ErrorMessage = "Fichier EDB requis")]
         [PdfOnly]
         public IFormFile EdbFile { get; set; }  // ✅ FIXED: Upload file, not ID
+        
     }
 }

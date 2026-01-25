@@ -40,7 +40,7 @@ namespace ProjectManagementAPI.Services.Implementations
                     FirstName = dto.FirstName,
                     LastName = dto.LastName,
                     PasswordHash = BC.HashPassword(dto.Password),
-                    RoleId = dto.RoleId, // ✅ ADDED: Set the RoleId from DTO
+                    RoleId = dto.RoleId, //   Set the RoleId from DTO
                     IsActive = true,
                     MustChangePassword = true,
                     AccountDeadline = dto.AccountDeadline,
@@ -383,7 +383,7 @@ namespace ProjectManagementAPI.Services.Implementations
             }
         }
 
-        public async Task<ApiResponse<bool>> ResetPasswordAsync(ResetPasswordDTO dto)
+        public async Task<ApiResponse<bool>> ResetPasswordAsync(ResetPasswordRequest dto)
         {
             try
             {

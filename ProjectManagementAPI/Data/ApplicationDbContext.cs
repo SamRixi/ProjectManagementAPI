@@ -1,16 +1,15 @@
-﻿ using Microsoft.EntityFrameworkCore;
+﻿using Microsoft.EntityFrameworkCore;
 using ProjectManagementAPI.Models;
+
 namespace ProjectManagementAPI.Data
 {
-    /// ApplicationDbContext - Gestionnaire de la base de données
-    /// Hérite de DbContext (Entity Framework Core)
-    /// Gère toutes les tables et relations
     public class ApplicationDbContext : DbContext
     {
-        public ApplicationDbContext(DbContextOptions<ApplicationDbContext> options) 
+        public ApplicationDbContext(DbContextOptions<ApplicationDbContext> options)
             : base(options)
         {
         }
+
         // ============= DbSets (Tables) ============= 
         public DbSet<User> Users { get; set; }
         public DbSet<Role> Roles { get; set; }
@@ -19,110 +18,175 @@ namespace ProjectManagementAPI.Data
         public DbSet<Project> Projects { get; set; }
         public DbSet<ProjectStatus> ProjectStatuses { get; set; }
         public DbSet<ProjectTask> ProjectTasks { get; set; }
-
+        public DbSet<PasswordResetToken> PasswordResetTokens { get; set; }
         public DbSet<ProjectTaskStatus> ProjectTaskStatuses { get; set; }
-
         public DbSet<Priority> Priorities { get; set; }
         public DbSet<EDB> EDBs { get; set; }
+        public DbSet<Notification> Notifications { get; set; }
+        public DbSet<Comment> Comments { get; set; }
 
-        // ============= OnModelCreating (Configuration des relations) ===========
         protected override void OnModelCreating(ModelBuilder modelBuilder)
         {
             base.OnModelCreating(modelBuilder);
-            // Configuration des relations et contraintes supplémentaires si nécessaire
-            // Par exemple, configuration des clés étrangères, des relations many-to-many, etc.
 
-
-            // ========== MISSING: User - Role relationship ==========
-         
+            // ========== User - Role ==========
             modelBuilder.Entity<User>()
                 .HasOne(u => u.Role)
                 .WithMany(r => r.Users)
                 .HasForeignKey(u => u.RoleId)
                 .OnDelete(DeleteBehavior.Restrict);
 
-            // ========== MISSING: User - ProjectTask (task assignment) ==========
-        
+            // ========== User - ProjectTask (Assignment) ==========
             modelBuilder.Entity<ProjectTask>()
                 .HasOne(pt => pt.AssignedToUser)
-                .WithMany() // or add a collection in User if needed
+                .WithMany(u => u.AssignedTasks)
                 .HasForeignKey(pt => pt.AssignedToUserId)
-                .OnDelete(DeleteBehavior.SetNull); // If user deleted, set task 
+                .OnDelete(DeleteBehavior.Restrict);  // ✅ FIXED: Changed from SetNull
 
+            // ========== User - ProjectTask (CreatedBy) ==========
+            modelBuilder.Entity<ProjectTask>()
+                .HasOne(pt => pt.CreatedByUser)
+                .WithMany(u => u.CreatedTasks)
+                .HasForeignKey(pt => pt.CreatedByUserId)
+                .OnDelete(DeleteBehavior.Restrict);
 
-            // ========== User - TeamMember (1 to many) ==========
-           
+            // ========== User - ProjectTask (ValidatedBy) ==========
+            modelBuilder.Entity<ProjectTask>()
+                .HasOne(pt => pt.ValidatedByUser)
+                .WithMany()
+                .HasForeignKey(pt => pt.ValidatedByUserId)
+                .OnDelete(DeleteBehavior.Restrict);  // ✅ FIXED: Changed from SetNull
+
+            // ========== User - TeamMember ==========
             modelBuilder.Entity<TeamMember>()
-             .HasOne(tm => tm.User)
-             .WithMany(u => u.TeamMembers)
-             .HasForeignKey(tm => tm.UserId)
-            .OnDelete(DeleteBehavior.Restrict); // ← Change from Cascade
-                                              
-           // ========== RELATION 2: Team "représente" TeamMember ==========
-       
+                .HasOne(tm => tm.User)
+                .WithMany(u => u.TeamMembers)
+                .HasForeignKey(tm => tm.UserId)
+                .OnDelete(DeleteBehavior.Restrict);
+
+            // ========== Team - TeamMember ==========
             modelBuilder.Entity<TeamMember>()
-             .HasOne(tm => tm.Team)
-             .WithMany(t => t.TeamMembers)
-             .HasForeignKey(tm => tm.TeamId)
-              .OnDelete(DeleteBehavior.Restrict); // ← Change from Cascade
-         
-            // ========== RELATION 4: Team "crée" Project ==========
-            // Team (1) ─── * Project
+                .HasOne(tm => tm.Team)
+                .WithMany(t => t.TeamMembers)
+                .HasForeignKey(tm => tm.TeamId)
+                .OnDelete(DeleteBehavior.Cascade);  // ✅ OK: Can cascade delete team members
+
+            // ========== COMPOSITE KEY: TeamMember ==========
+            modelBuilder.Entity<TeamMember>()
+                .HasKey(tm => new { tm.TeamId, tm.UserId });
+
+            // ========== Team - Project ==========
             modelBuilder.Entity<Project>()
-              .HasOne(p => p.Team)
-              .WithMany(t => t.Projects)
-              .HasForeignKey(p => p.TeamId)
-              .OnDelete(DeleteBehavior.Cascade);
-         
-            // ========== RELATION 5: ProjectStatus "a" Project ==========
-            // ProjectStatus (1) ─── * Project
+                .HasOne(p => p.Team)
+                .WithMany(t => t.Projects)
+                .HasForeignKey(p => p.TeamId)
+                .OnDelete(DeleteBehavior.Restrict);  // ✅ CHANGED: Don't delete team if it has projects
+
+            // ========== User - Project (CreatedBy) ==========
+            modelBuilder.Entity<Project>()
+                .HasOne(p => p.CreatedByUser)
+                .WithMany(u => u.CreatedProjects)
+                .HasForeignKey(p => p.CreatedByUserId)
+                .OnDelete(DeleteBehavior.Restrict);
+
+            // ========== ProjectStatus - Project ==========
             modelBuilder.Entity<Project>()
                 .HasOne(p => p.ProjectStatus)
                 .WithMany(ps => ps.Projects)
                 .HasForeignKey(p => p.ProjectStatusId)
                 .OnDelete(DeleteBehavior.Restrict);
-         
-            // ========== RELATION 6: Priority "a" Project ==========
-            // Priority (1) ─── * Project
+
+            // ========== Priority - Project ==========
             modelBuilder.Entity<Project>()
-            .HasOne(p => p.Priority)
-            .WithMany(pr => pr.Projects)
-            .HasForeignKey(p => p.PriorityId)
-            .OnDelete(DeleteBehavior.Restrict);
-         
-            // ========== RELATION 7: Project "contient" ProjectTask ==========
-            // Project (1) ─── * ProjectTask
+                .HasOne(p => p.Priority)
+                .WithMany(pr => pr.Projects)
+                .HasForeignKey(p => p.PriorityId)
+                .OnDelete(DeleteBehavior.Restrict);
+
+            // ========== Project - ProjectTask ==========
             modelBuilder.Entity<ProjectTask>()
-              .HasOne(pt => pt.Project)
-              .WithMany(p => p.ProjectTasks)
-              .HasForeignKey(pt => pt.ProjectId)
-              .OnDelete(DeleteBehavior.Cascade);
-           
-            // ========== RELATION 8: ProjectTaskStatus "a" ProjectTask ==========
-            // ProjectTaskStatus (1) ─── * ProjectTask
+                .HasOne(pt => pt.Project)
+                .WithMany(p => p.ProjectTasks)
+                .HasForeignKey(pt => pt.ProjectId)
+                .OnDelete(DeleteBehavior.Cascade);  // ✅ OK: Delete tasks when project deleted
+
+            // ========== ProjectTaskStatus - ProjectTask ==========
             modelBuilder.Entity<ProjectTask>()
                 .HasOne(t => t.ProjectTasksStatus)
                 .WithMany(ts => ts.ProjectTasks)
                 .HasForeignKey(t => t.TaskStatusId)
                 .OnDelete(DeleteBehavior.Restrict);
 
-            // ========== RELATION 9: Priority "a" ProjectTask ==========
-            // Priority (1) ─── * ProjectTask
+            // ========== Priority - ProjectTask ==========
             modelBuilder.Entity<ProjectTask>()
                 .HasOne(t => t.Priority)
                 .WithMany(p => p.ProjectTasks)
                 .HasForeignKey(t => t.PriorityId)
                 .OnDelete(DeleteBehavior.Restrict);
 
-
-            // ========== RELATION 10: Project "référence" EDB ==========
-            // Project (1) ─── * EDB
+            // ========== Project - EDB ==========
             modelBuilder.Entity<EDB>()
                 .HasOne(e => e.Project)
                 .WithMany(p => p.EDBs)
                 .HasForeignKey(e => e.ProjectId)
-                .OnDelete(DeleteBehavior.Cascade);
-        }
+                .OnDelete(DeleteBehavior.Cascade);  // ✅ OK: Delete EDBs when project deleted
 
+            // ========== User - PasswordResetToken ==========
+            modelBuilder.Entity<PasswordResetToken>()
+                .HasOne(prt => prt.User)
+                .WithMany()
+                .HasForeignKey(prt => prt.UserId)
+                .OnDelete(DeleteBehavior.Cascade);  // ✅ OK: Delete tokens when user deleted
+
+            // ========== User - Notification ==========
+            modelBuilder.Entity<Notification>()
+                .HasOne(n => n.User)
+                .WithMany(u => u.Notifications)
+                .HasForeignKey(n => n.UserId)
+                .OnDelete(DeleteBehavior.Cascade);  // ✅ OK: Delete notifications when user deleted
+
+            // ========== Notification - Project (Optional) ==========
+            modelBuilder.Entity<Notification>()
+                .HasOne(n => n.RelatedProject)
+                .WithMany()
+                .HasForeignKey(n => n.RelatedProjectId)
+                .OnDelete(DeleteBehavior.Restrict);  // ✅ FIXED: Changed from SetNull to avoid conflicts
+
+            // ========== Notification - ProjectTask (Optional) ==========
+            modelBuilder.Entity<Notification>()
+                .HasOne(n => n.RelatedTask)
+                .WithMany()
+                .HasForeignKey(n => n.RelatedTaskId)
+                .OnDelete(DeleteBehavior.Restrict);  // ✅ FIXED: Changed from SetNull to avoid conflicts
+
+            // ========== Comment - ProjectTask ==========
+            modelBuilder.Entity<Comment>()
+                .HasOne(c => c.ProjectTask)
+                .WithMany(pt => pt.Comments)
+                .HasForeignKey(c => c.TaskId)
+                .OnDelete(DeleteBehavior.Cascade);  // ✅ OK: Delete comments when task deleted
+
+            // ========== Comment - User (CreatedBy) ==========
+            modelBuilder.Entity<Comment>()
+                .HasOne(c => c.CreatedByUser)
+                .WithMany(u => u.Comments)
+                .HasForeignKey(c => c.CreatedByUserId)
+                .OnDelete(DeleteBehavior.Restrict);
+
+            // ========== INDEXES ==========
+            modelBuilder.Entity<User>()
+                .HasIndex(u => u.UserName)
+                .IsUnique();
+
+            modelBuilder.Entity<User>()
+                .HasIndex(u => u.Email)
+                .IsUnique();
+
+            modelBuilder.Entity<Notification>()
+                .HasIndex(n => n.UserId);
+
+            modelBuilder.Entity<Comment>()
+                .HasIndex(c => c.TaskId);
+        }
     }
 }

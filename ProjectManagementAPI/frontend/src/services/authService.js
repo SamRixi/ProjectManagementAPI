@@ -1,6 +1,4 @@
-﻿import axios from 'axios';
-
-const API_URL = 'https://localhost:7013/api/auth';
+﻿import api from './api';
 
 const authService = {
     register: async (userData) => {
@@ -9,24 +7,21 @@ const authService = {
                 username: userData.username,
                 email: userData.email,
                 password: userData.password,
+                confirmPassword: userData.confirmPassword,
                 firstName: userData.firstName,
                 lastName: userData.lastName
             };
 
             console.log('Sending registration data:', payload);
 
-            const response = await axios.post(`${API_URL}/register`, payload, {
-                headers: {
-                    'Content-Type': 'application/json'
-                }
-            });
+            const response = await api.post('/api/auth/register', payload); // ✅ FIXED
 
             console.log('Registration successful:', response.data);
 
             return {
-                success: true,
-                data: response.data,
-                message: 'Inscription réussie'
+                success: response.data.success,
+                data: response.data.data,
+                message: response.data.message || 'Inscription réussie'
             };
         } catch (error) {
             console.error('Register error:', error);
@@ -51,15 +46,23 @@ const authService = {
 
             console.log('Sending login data:', payload);
 
-            const response = await axios.post(`${API_URL}/login`, payload, {
-                headers: {
-                    'Content-Type': 'application/json'
-                }
-            });
+            const response = await api.post('/api/auth/login', payload); // ✅ FIXED
 
             console.log('Login successful:', response.data);
 
-            return response.data;
+            if (response.data.success) {
+                return {
+                    success: true,
+                    token: response.data.data.token,
+                    user: response.data.data.user,
+                    message: response.data.message
+                };
+            } else {
+                return {
+                    success: false,
+                    message: response.data.message || 'Erreur de connexion'
+                };
+            }
         } catch (error) {
             console.error('Login error:', error);
             console.error('Error response:', error.response?.data);

@@ -8,6 +8,8 @@ namespace ProjectManagementAPI.Models
         public string TaskName { get; set; } // Name of the task
         public string Description { get; set; } // Description of the task
         public DateTime DueDate { get; set; } // Due date of the task
+        [Required]
+        public int CreatedByUserId { get; set; }
 
         // progression de la tache en pourcentage (0-100)
         [Range(0, 100, ErrorMessage = "Progress must be between 0 and 100.")]
@@ -27,6 +29,12 @@ namespace ProjectManagementAPI.Models
         public int? ValidatedByUserId { get; set; }
         public DateTime? ValidatedAt { get; set; }
         public User? ValidatedByUser { get; set; }  // Navigation property
+        public ICollection<Comment> Comments { get; set; }
+        public User CreatedByUser { get; set; } = null!;
+       
+
+
+
 
 
 

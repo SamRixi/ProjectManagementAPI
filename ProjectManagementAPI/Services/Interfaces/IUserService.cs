@@ -18,7 +18,7 @@ namespace ProjectManagementAPI.Services.Interfaces
         // Password Management
         Task<ApiResponse<bool>> ChangePasswordAsync(int userId, ChangePasswordDTO dto);
         Task<ApiResponse<bool>> ForgotPasswordAsync(string email);
-        Task<ApiResponse<bool>> ResetPasswordAsync(ResetPasswordDTO dto);
+        Task<ApiResponse<bool>> ResetPasswordAsync(ResetPasswordRequest dto);
         Task<ApiResponse<string>> GenerateTemporaryPasswordAsync(int userId);
 
         // Login helpers

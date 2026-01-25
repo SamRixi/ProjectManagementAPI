@@ -7,6 +7,7 @@
         public DateTime CreatedAt { get; set; } = DateTime.UtcNow; // Timestamp of team creation
         public bool IsActive { get; set; } = true;
         public DateTime? UpdatedAt { get; set; }
+       
 
         // Relations
         public ICollection<TeamMember> TeamMembers { get; set; } = new List<TeamMember>(); // Relation to TeamMembers

@@ -2,7 +2,7 @@
 
 namespace ProjectManagementAPI.DTOs
 {
-    public class ResetPasswordDTO
+    public class ResetPasswordRequest
     {
         [Required]
         public string Token { get; set; } // Token envoyé par email

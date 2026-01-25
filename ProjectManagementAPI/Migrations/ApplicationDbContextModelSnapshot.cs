@@ -22,6 +22,40 @@ namespace ProjectManagementAPI.Migrations
 
             SqlServerModelBuilderExtensions.UseIdentityColumns(modelBuilder);
 
+            modelBuilder.Entity("ProjectManagementAPI.Models.Comment", b =>
+                {
+                    b.Property<int>("CommentId")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("int");
+
+                    SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<int>("CommentId"));
+
+                    b.Property<string>("Content")
+                        .IsRequired()
+                        .HasMaxLength(2000)
+                        .HasColumnType("nvarchar(2000)");
+
+                    b.Property<DateTime>("CreatedAt")
+                        .HasColumnType("datetime2");
+
+                    b.Property<int>("CreatedByUserId")
+                        .HasColumnType("int");
+
+                    b.Property<int>("TaskId")
+                        .HasColumnType("int");
+
+                    b.Property<DateTime?>("UpdatedAt")
+                        .HasColumnType("datetime2");
+
+                    b.HasKey("CommentId");
+
+                    b.HasIndex("CreatedByUserId");
+
+                    b.HasIndex("TaskId");
+
+                    b.ToTable("Comments");
+                });
+
             modelBuilder.Entity("ProjectManagementAPI.Models.EDB", b =>
                 {
                     b.Property<int>("EdbId")
@@ -42,6 +76,94 @@ namespace ProjectManagementAPI.Migrations
                     b.HasIndex("ProjectId");
 
                     b.ToTable("EDBs");
+                });
+
+            modelBuilder.Entity("ProjectManagementAPI.Models.Notification", b =>
+                {
+                    b.Property<int>("NotificationId")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("int");
+
+                    SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<int>("NotificationId"));
+
+                    b.Property<DateTime>("CreatedAt")
+                        .HasColumnType("datetime2");
+
+                    b.Property<bool>("IsRead")
+                        .HasColumnType("bit");
+
+                    b.Property<string>("Message")
+                        .IsRequired()
+                        .HasMaxLength(1000)
+                        .HasColumnType("nvarchar(1000)");
+
+                    b.Property<int?>("ProjectId")
+                        .HasColumnType("int");
+
+                    b.Property<DateTime?>("ReadAt")
+                        .HasColumnType("datetime2");
+
+                    b.Property<int?>("RelatedProjectId")
+                        .HasColumnType("int");
+
+                    b.Property<int?>("RelatedTaskId")
+                        .HasColumnType("int");
+
+                    b.Property<string>("Title")
+                        .IsRequired()
+                        .HasMaxLength(200)
+                        .HasColumnType("nvarchar(200)");
+
+                    b.Property<string>("Type")
+                        .HasMaxLength(50)
+                        .HasColumnType("nvarchar(50)");
+
+                    b.Property<int>("UserId")
+                        .HasColumnType("int");
+
+                    b.HasKey("NotificationId");
+
+                    b.HasIndex("ProjectId");
+
+                    b.HasIndex("RelatedProjectId");
+
+                    b.HasIndex("RelatedTaskId");
+
+                    b.HasIndex("UserId");
+
+                    b.ToTable("Notifications");
+                });
+
+            modelBuilder.Entity("ProjectManagementAPI.Models.PasswordResetToken", b =>
+                {
+                    b.Property<int>("PasswordResetTokenId")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("int");
+
+                    SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<int>("PasswordResetTokenId"));
+
+                    b.Property<DateTime>("CreatedAt")
+                        .HasColumnType("datetime2");
+
+                    b.Property<DateTime>("ExpiresAt")
+                        .HasColumnType("datetime2");
+
+                    b.Property<bool>("IsUsed")
+                        .HasColumnType("bit");
+
+                    b.Property<string>("Token")
+                        .IsRequired()
+                        .HasMaxLength(500)
+                        .HasColumnType("nvarchar(500)");
+
+                    b.Property<int>("UserId")
+                        .HasColumnType("int");
+
+                    b.HasKey("PasswordResetTokenId");
+
+                    b.HasIndex("UserId");
+
+                    b.ToTable("PasswordResetTokens");
                 });
 
             modelBuilder.Entity("ProjectManagementAPI.Models.Priority", b =>
@@ -73,6 +195,9 @@ namespace ProjectManagementAPI.Migrations
                     b.Property<DateTime>("CreatedAt")
                         .HasColumnType("datetime2");
 
+                    b.Property<int>("CreatedByUserId")
+                        .HasColumnType("int");
+
                     b.Property<string>("Description")
                         .IsRequired()
                         .HasColumnType("nvarchar(max)");
@@ -100,6 +225,8 @@ namespace ProjectManagementAPI.Migrations
                         .HasColumnType("int");
 
                     b.HasKey("ProjectId");
+
+                    b.HasIndex("CreatedByUserId");
 
                     b.HasIndex("PriorityId");
 
@@ -144,6 +271,9 @@ namespace ProjectManagementAPI.Migrations
                     b.Property<int?>("AssignedToUserId")
                         .HasColumnType("int");
 
+                    b.Property<int>("CreatedByUserId")
+                        .HasColumnType("int");
+
                     b.Property<string>("Description")
                         .IsRequired()
                         .HasColumnType("nvarchar(max)");
@@ -167,6 +297,12 @@ namespace ProjectManagementAPI.Migrations
                     b.Property<int>("TaskStatusId")
                         .HasColumnType("int");
 
+                    b.Property<DateTime?>("ValidatedAt")
+                        .HasColumnType("datetime2");
+
+                    b.Property<int?>("ValidatedByUserId")
+                        .HasColumnType("int");
+
                     b.Property<bool>("isValidated")
                         .HasColumnType("bit");
 
@@ -174,11 +310,15 @@ namespace ProjectManagementAPI.Migrations
 
                     b.HasIndex("AssignedToUserId");
 
+                    b.HasIndex("CreatedByUserId");
+
                     b.HasIndex("PriorityId");
 
                     b.HasIndex("ProjectId");
 
                     b.HasIndex("TaskStatusId");
+
+                    b.HasIndex("ValidatedByUserId");
 
                     b.ToTable("ProjectTasks");
                 });
@@ -251,11 +391,11 @@ namespace ProjectManagementAPI.Migrations
 
             modelBuilder.Entity("ProjectManagementAPI.Models.TeamMember", b =>
                 {
-                    b.Property<int>("TeamMemberId")
-                        .ValueGeneratedOnAdd()
+                    b.Property<int>("TeamId")
                         .HasColumnType("int");
 
-                    SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<int>("TeamMemberId"));
+                    b.Property<int>("UserId")
+                        .HasColumnType("int");
 
                     b.Property<bool>("IsActive")
                         .HasColumnType("bit");
@@ -269,15 +409,10 @@ namespace ProjectManagementAPI.Migrations
                     b.Property<DateTime?>("LeftDate")
                         .HasColumnType("datetime2");
 
-                    b.Property<int>("TeamId")
+                    b.Property<int>("TeamMemberId")
                         .HasColumnType("int");
 
-                    b.Property<int>("UserId")
-                        .HasColumnType("int");
-
-                    b.HasKey("TeamMemberId");
-
-                    b.HasIndex("TeamId");
+                    b.HasKey("TeamId", "UserId");
 
                     b.HasIndex("UserId");
 
@@ -300,7 +435,7 @@ namespace ProjectManagementAPI.Migrations
 
                     b.Property<string>("Email")
                         .IsRequired()
-                        .HasColumnType("nvarchar(max)");
+                        .HasColumnType("nvarchar(450)");
 
                     b.Property<string>("FirstName")
                         .IsRequired()
@@ -337,13 +472,38 @@ namespace ProjectManagementAPI.Migrations
 
                     b.Property<string>("UserName")
                         .IsRequired()
-                        .HasColumnType("nvarchar(max)");
+                        .HasColumnType("nvarchar(450)");
 
                     b.HasKey("UserId");
 
+                    b.HasIndex("Email")
+                        .IsUnique();
+
                     b.HasIndex("RoleId");
 
+                    b.HasIndex("UserName")
+                        .IsUnique();
+
                     b.ToTable("Users");
+                });
+
+            modelBuilder.Entity("ProjectManagementAPI.Models.Comment", b =>
+                {
+                    b.HasOne("ProjectManagementAPI.Models.User", "CreatedByUser")
+                        .WithMany("Comments")
+                        .HasForeignKey("CreatedByUserId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+
+                    b.HasOne("ProjectManagementAPI.Models.ProjectTask", "ProjectTask")
+                        .WithMany("Comments")
+                        .HasForeignKey("TaskId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.Navigation("CreatedByUser");
+
+                    b.Navigation("ProjectTask");
                 });
 
             modelBuilder.Entity("ProjectManagementAPI.Models.EDB", b =>
@@ -357,8 +517,54 @@ namespace ProjectManagementAPI.Migrations
                     b.Navigation("Project");
                 });
 
+            modelBuilder.Entity("ProjectManagementAPI.Models.Notification", b =>
+                {
+                    b.HasOne("ProjectManagementAPI.Models.Project", null)
+                        .WithMany("Notifications")
+                        .HasForeignKey("ProjectId");
+
+                    b.HasOne("ProjectManagementAPI.Models.Project", "RelatedProject")
+                        .WithMany()
+                        .HasForeignKey("RelatedProjectId")
+                        .OnDelete(DeleteBehavior.Restrict);
+
+                    b.HasOne("ProjectManagementAPI.Models.ProjectTask", "RelatedTask")
+                        .WithMany()
+                        .HasForeignKey("RelatedTaskId")
+                        .OnDelete(DeleteBehavior.Restrict);
+
+                    b.HasOne("ProjectManagementAPI.Models.User", "User")
+                        .WithMany("Notifications")
+                        .HasForeignKey("UserId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.Navigation("RelatedProject");
+
+                    b.Navigation("RelatedTask");
+
+                    b.Navigation("User");
+                });
+
+            modelBuilder.Entity("ProjectManagementAPI.Models.PasswordResetToken", b =>
+                {
+                    b.HasOne("ProjectManagementAPI.Models.User", "User")
+                        .WithMany()
+                        .HasForeignKey("UserId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.Navigation("User");
+                });
+
             modelBuilder.Entity("ProjectManagementAPI.Models.Project", b =>
                 {
+                    b.HasOne("ProjectManagementAPI.Models.User", "CreatedByUser")
+                        .WithMany("CreatedProjects")
+                        .HasForeignKey("CreatedByUserId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+
                     b.HasOne("ProjectManagementAPI.Models.Priority", "Priority")
                         .WithMany("Projects")
                         .HasForeignKey("PriorityId")
@@ -374,8 +580,10 @@ namespace ProjectManagementAPI.Migrations
                     b.HasOne("ProjectManagementAPI.Models.Team", "Team")
                         .WithMany("Projects")
                         .HasForeignKey("TeamId")
-                        .OnDelete(DeleteBehavior.Cascade)
+                        .OnDelete(DeleteBehavior.Restrict)
                         .IsRequired();
+
+                    b.Navigation("CreatedByUser");
 
                     b.Navigation("Priority");
 
@@ -387,9 +595,15 @@ namespace ProjectManagementAPI.Migrations
             modelBuilder.Entity("ProjectManagementAPI.Models.ProjectTask", b =>
                 {
                     b.HasOne("ProjectManagementAPI.Models.User", "AssignedToUser")
-                        .WithMany()
+                        .WithMany("AssignedTasks")
                         .HasForeignKey("AssignedToUserId")
-                        .OnDelete(DeleteBehavior.SetNull);
+                        .OnDelete(DeleteBehavior.Restrict);
+
+                    b.HasOne("ProjectManagementAPI.Models.User", "CreatedByUser")
+                        .WithMany("CreatedTasks")
+                        .HasForeignKey("CreatedByUserId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
 
                     b.HasOne("ProjectManagementAPI.Models.Priority", "Priority")
                         .WithMany("ProjectTasks")
@@ -409,13 +623,22 @@ namespace ProjectManagementAPI.Migrations
                         .OnDelete(DeleteBehavior.Restrict)
                         .IsRequired();
 
+                    b.HasOne("ProjectManagementAPI.Models.User", "ValidatedByUser")
+                        .WithMany()
+                        .HasForeignKey("ValidatedByUserId")
+                        .OnDelete(DeleteBehavior.Restrict);
+
                     b.Navigation("AssignedToUser");
+
+                    b.Navigation("CreatedByUser");
 
                     b.Navigation("Priority");
 
                     b.Navigation("Project");
 
                     b.Navigation("ProjectTasksStatus");
+
+                    b.Navigation("ValidatedByUser");
                 });
 
             modelBuilder.Entity("ProjectManagementAPI.Models.TeamMember", b =>
@@ -423,7 +646,7 @@ namespace ProjectManagementAPI.Migrations
                     b.HasOne("ProjectManagementAPI.Models.Team", "Team")
                         .WithMany("TeamMembers")
                         .HasForeignKey("TeamId")
-                        .OnDelete(DeleteBehavior.Restrict)
+                        .OnDelete(DeleteBehavior.Cascade)
                         .IsRequired();
 
                     b.HasOne("ProjectManagementAPI.Models.User", "User")
@@ -459,12 +682,19 @@ namespace ProjectManagementAPI.Migrations
                 {
                     b.Navigation("EDBs");
 
+                    b.Navigation("Notifications");
+
                     b.Navigation("ProjectTasks");
                 });
 
             modelBuilder.Entity("ProjectManagementAPI.Models.ProjectStatus", b =>
                 {
                     b.Navigation("Projects");
+                });
+
+            modelBuilder.Entity("ProjectManagementAPI.Models.ProjectTask", b =>
+                {
+                    b.Navigation("Comments");
                 });
 
             modelBuilder.Entity("ProjectManagementAPI.Models.ProjectTaskStatus", b =>
@@ -486,6 +716,16 @@ namespace ProjectManagementAPI.Migrations
 
             modelBuilder.Entity("ProjectManagementAPI.Models.User", b =>
                 {
+                    b.Navigation("AssignedTasks");
+
+                    b.Navigation("Comments");
+
+                    b.Navigation("CreatedProjects");
+
+                    b.Navigation("CreatedTasks");
+
+                    b.Navigation("Notifications");
+
                     b.Navigation("TeamMembers");
                 });
 #pragma warning restore 612, 618

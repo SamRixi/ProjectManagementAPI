@@ -437,18 +437,159 @@ public class ProjectService : IProjectService
         };
     }
 
-    public Task<ApiResponse<bool>> AssignTeamToProjectAsync(int projectId, int teamId)
+    // ========== ASSIGN TEAM TO PROJECT ==========
+    public async Task<ApiResponse<bool>> AssignTeamToProjectAsync(int projectId, int teamId)
     {
-        throw new NotImplementedException();
+        try
+        {
+            var project = await _context.Projects.FindAsync(projectId);
+
+            if (project == null)
+            {
+                return new ApiResponse<bool>
+                {
+                    Success = false,
+                    Message = "Projet introuvable"
+                };
+            }
+
+            var team = await _context.Teams.FindAsync(teamId);
+
+            if (team == null)
+            {
+                return new ApiResponse<bool>
+                {
+                    Success = false,
+                    Message = "Équipe introuvable"
+                };
+            }
+
+            project.TeamId = teamId;
+            await _context.SaveChangesAsync();
+
+            return new ApiResponse<bool>
+            {
+                Success = true,
+                Message = "Équipe assignée au projet",
+                Data = true
+            };
+        }
+        catch (Exception ex)
+        {
+            return new ApiResponse<bool>
+            {
+                Success = false,
+                Message = "Erreur lors de l'assignation"
+            };
+        }
     }
 
-    public Task<ApiResponse<bool>> SetProjectManagerAsync(int teamMemberId, bool isProjectManager)
+    // ========== SET PROJECT MANAGER ==========
+    public async Task<ApiResponse<bool>> SetProjectManagerAsync(int teamMemberId, bool isProjectManager)
     {
-        throw new NotImplementedException();
+        try
+        {
+            var teamMember = await _context.TeamMembers.FindAsync(teamMemberId);
+
+            if (teamMember == null)
+            {
+                return new ApiResponse<bool>
+                {
+                    Success = false,
+                    Message = "Membre introuvable"
+                };
+            }
+
+            teamMember.IsProjectManager = isProjectManager;
+            await _context.SaveChangesAsync();
+
+            return new ApiResponse<bool>
+            {
+                Success = true,
+                Message = isProjectManager
+                    ? "Chef de projet défini"
+                    : "Chef de projet retiré",
+                Data = true
+            };
+        }
+        catch (Exception ex)
+        {
+            return new ApiResponse<bool>
+            {
+                Success = false,
+                Message = "Erreur lors de la modification"
+            };
+        }
     }
 
-    public Task<ApiResponse<List<TeamMemberDTO>>> GetProjectTeamMembersAsync(int projectId, string? search)
+    // ========== GET PROJECT TEAM MEMBERS ==========
+    public async Task<ApiResponse<List<TeamMemberDTO>>> GetProjectTeamMembersAsync(int projectId, string? search)
     {
-        throw new NotImplementedException();
+        try
+        {
+            var project = await _context.Projects
+                .Include(p => p.Team)
+                    .ThenInclude(t => t.TeamMembers)
+                        .ThenInclude(tm => tm.User)
+                            .ThenInclude(u => u.Role)
+                .FirstOrDefaultAsync(p => p.ProjectId == projectId);
+
+            if (project == null)
+            {
+                return new ApiResponse<List<TeamMemberDTO>>
+                {
+                    Success = false,
+                    Message = "Projet introuvable"
+                };
+            }
+
+            var members = project.Team.TeamMembers
+                .Where(tm => tm.IsActive)
+                .AsEnumerable(); // Switch to client-side evaluation
+
+            // Apply search filter if provided
+            if (!string.IsNullOrEmpty(search))
+            {
+                search = search.ToLower();
+                members = members.Where(tm =>
+                    tm.User.FirstName.ToLower().Contains(search) ||
+                    tm.User.LastName.ToLower().Contains(search) ||
+                    tm.User.UserName.ToLower().Contains(search) ||
+                    tm.User.Email.ToLower().Contains(search));
+            }
+
+            var teamMemberDTOs = members.Select(tm => new TeamMemberDTO
+            {
+                TeamMemberId = tm.TeamMemberId,
+                TeamId = tm.TeamId,
+                TeamName = project.Team.teamName,
+                UserId = tm.UserId,
+                UserName = tm.User.UserName,
+                FirstName = tm.User.FirstName,
+                LastName = tm.User.LastName,
+                FullName = $"{tm.User.FirstName} {tm.User.LastName}",
+                Email = tm.User.Email,
+                RoleId = tm.User.RoleId,
+                RoleName = tm.User.Role.RoleName,
+                IsProjectManager = tm.IsProjectManager,
+                IsActive = tm.IsActive,
+                JoinedDate = tm.JoinedDate
+            }).ToList();
+
+            return new ApiResponse<List<TeamMemberDTO>>
+            {
+                Success = true,
+                Message = $"{teamMemberDTOs.Count} membre(s) trouvé(s)",
+                Data = teamMemberDTOs
+            };
+        }
+        catch (Exception ex)
+        {
+            return new ApiResponse<List<TeamMemberDTO>>
+            {
+                Success = false,
+                Message = "Erreur lors de la récupération"
+            };
+        }
     }
 }

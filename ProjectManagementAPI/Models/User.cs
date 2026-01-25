@@ -24,6 +24,13 @@
 
 
         // Relation to TeamMembers 
-        public ICollection<TeamMember> TeamMembers { get; set; } = new List<TeamMember>(); 
+        public ICollection<TeamMember> TeamMembers { get; set; } = new List<TeamMember>();
+        public ICollection<ProjectTask> AssignedTasks { get; set; }
+        public ICollection<ProjectTask> CreatedTasks { get; set; }
+        public ICollection<Project> CreatedProjects { get; set; }
+        public ICollection<Notification> Notifications { get; set; }
+        public ICollection<Comment> Comments { get; set; }
+      
+        
     }
 }
