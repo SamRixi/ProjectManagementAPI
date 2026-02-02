@@ -86,6 +86,7 @@ namespace ProjectManagementAPI.Services.Implementations
                 if (dto.Email != null) user.Email = dto.Email;
                 if (dto.FirstName != null) user.FirstName = dto.FirstName;
                 if (dto.LastName != null) user.LastName = dto.LastName;
+                if (dto.RoleId.HasValue) user.RoleId = dto.RoleId.Value; // important to  change roles 
                 if (dto.AccountDeadline.HasValue) user.AccountDeadline = dto.AccountDeadline;
 
                 user.UpdatedAt = DateTime.UtcNow;
@@ -554,6 +555,8 @@ namespace ProjectManagementAPI.Services.Implementations
                 AccountDeadline = user.AccountDeadline,
                 CreatedAt = user.CreatedAt,
                 LastLoginAt = user.LastLoginAt,
+                RoleId = user.RoleId, 
+                RoleName = user.Role?.RoleName ?? "N/A",
             };
         }
     }

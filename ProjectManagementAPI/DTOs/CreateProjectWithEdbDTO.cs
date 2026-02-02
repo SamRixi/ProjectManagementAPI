@@ -36,5 +36,8 @@ namespace ProjectManagementAPI.DTOs
         [PdfOnly]
         public IFormFile EdbFile { get; set; }  // ✅ FIXED: Upload file, not ID
         
+        public int? CreatedByUserId { get; set; }
+     
+
     }
 }

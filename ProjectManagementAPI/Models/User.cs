@@ -30,7 +30,8 @@
         public ICollection<Project> CreatedProjects { get; set; }
         public ICollection<Notification> Notifications { get; set; }
         public ICollection<Comment> Comments { get; set; }
-      
-        
+        public ICollection<Project> ManagedProjects { get; set; }
+
+
     }
 }

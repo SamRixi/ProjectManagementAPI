@@ -89,6 +89,13 @@ namespace ProjectManagementAPI.Data
                 .HasForeignKey(p => p.CreatedByUserId)
                 .OnDelete(DeleteBehavior.Restrict);
 
+            // ========== User - Project (ProjectManager) ==========
+            modelBuilder.Entity<Project>()
+                .HasOne(p => p.ProjectManager)
+                .WithMany(u => u.ManagedProjects)
+                .HasForeignKey(p => p.ProjectManagerId)
+                .OnDelete(DeleteBehavior.Restrict);
+
             // ========== ProjectStatus - Project ==========
             modelBuilder.Entity<Project>()
                 .HasOne(p => p.ProjectStatus)

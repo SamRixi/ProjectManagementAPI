@@ -79,6 +79,8 @@ public class ProjectService : IProjectService
                 Description = dto.Description,
                 StartDate = dto.StartDate,
                 EndDate = dto.EndDate,
+               
+                CreatedByUserId = dto.CreatedByUserId,
                 TeamId = dto.TeamId,
                 ProjectStatusId = dto.ProjectStatusId,
                 PriorityId = dto.PriorityId,
@@ -98,6 +100,7 @@ public class ProjectService : IProjectService
                 .Include(p => p.Team)
                 .Include(p => p.ProjectStatus)
                 .Include(p => p.Priority)
+                .Include(p => p.ProjectManager)
                 .FirstOrDefaultAsync(p => p.ProjectId == project.ProjectId);
 
             return new ApiResponse<ProjectDTO>
@@ -133,6 +136,7 @@ public class ProjectService : IProjectService
             }
 
             project.ProjectName = dto.ProjectName;
+            
             project.Description = dto.Description;
             project.StartDate = dto.StartDate;
             project.EndDate = dto.EndDate;
@@ -427,6 +431,10 @@ public class ProjectService : IProjectService
             StartDate = p.StartDate,
             EndDate = p.EndDate,
             Progress = p.Progress,
+            ProjectManagerId = p.ProjectManagerId,
+            ProjectManagerName = p.ProjectManager != null   
+            ? $"{p.ProjectManager.FirstName} {p.ProjectManager.LastName}"
+            : "Non assigné",
             TeamName = p.Team.teamName,
             StatusName = p.ProjectStatus.StatusName,
             StatusColor = p.ProjectStatus.Color,
@@ -591,5 +599,15 @@ public class ProjectService : IProjectService
                 Message = "Erreur lors de la récupération"
             };
         }
+    }
+
+    public Task<ApiResponse<bool>> AssignProjectManagerAsync(int projectId, int userId)
+    {
+        throw new NotImplementedException();
+    }
+
+    public Task<ApiResponse<List<ProjectDTO>>> GetManagedProjectsAsync(int userId)
+    {
+        throw new NotImplementedException();
     }
 }

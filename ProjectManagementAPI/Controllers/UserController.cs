@@ -5,7 +5,6 @@ using ProjectManagementAPI.Models;
 using ProjectManagementAPI.Services.Interfaces;
 using System.Security.Claims;
 
-
 namespace ProjectManagementAPI.Controllers
 {
     [ApiController]
@@ -22,7 +21,7 @@ namespace ProjectManagementAPI.Controllers
         // ============= CRUD (Reporting uniquement) =============
 
         [HttpPost]
-        [Authorize(Roles = "Reporting")]
+        [Authorize(Roles = "Manager,Reporting")]
         public async Task<IActionResult> CreateUser([FromBody] CreateUserDTO dto)
         {
             var result = await _userService.CreateUserAsync(dto);
@@ -30,7 +29,7 @@ namespace ProjectManagementAPI.Controllers
         }
 
         [HttpPut("{userId}")]
-        [Authorize(Roles = "Reporting")]
+        [Authorize(Roles = "Manager,Reporting")]
         public async Task<IActionResult> UpdateUser(int userId, [FromBody] UpdateUserDTO dto)
         {
             dto.UserId = userId;
@@ -39,7 +38,7 @@ namespace ProjectManagementAPI.Controllers
         }
 
         [HttpGet]
-        [Authorize(Roles = "Reporting")]
+        [Authorize(Roles = "Manager,Reporting")]
         public async Task<IActionResult> GetAllUsers()
         {
             var result = await _userService.GetAllUsersAsync();
@@ -55,7 +54,7 @@ namespace ProjectManagementAPI.Controllers
         }
 
         [HttpGet("search")]
-        [Authorize(Roles = "Reporting")]
+        [Authorize(Roles = "Manager,Reporting")]
         public async Task<IActionResult> SearchUsers([FromQuery] SearchUsersDTO dto)
         {
             var result = await _userService.SearchUsersAsync(dto);
@@ -64,8 +63,36 @@ namespace ProjectManagementAPI.Controllers
 
         // ============= Account Management (Reporting) =============
 
+        // ✅ NEW: Toggle User Status (Activate/Deactivate)
+        [HttpPatch("{userId}/toggle-status")]
+        [Authorize(Roles = "Manager,Reporting")]
+        public async Task<IActionResult> ToggleUserStatus(int userId)
+        {
+            // Get current user
+            var userResult = await _userService.GetUserByIdAsync(userId);
+            if (!userResult.Success)
+            {
+                return NotFound(userResult);
+            }
+
+            // Extract current status using reflection or dynamic
+            var userData = userResult.Data;
+            bool currentStatus = false;
+
+            // Try to get isActive property
+            var isActiveProp = userData?.GetType().GetProperty("IsActive");
+            if (isActiveProp != null)
+            {
+                currentStatus = (bool)(isActiveProp.GetValue(userData) ?? false);
+            }
+
+            // Toggle the status
+            var result = await _userService.ToggleUserActiveAsync(userId, !currentStatus);
+            return result.Success ? Ok(result) : BadRequest(result);
+        }
+
         [HttpPut("{userId}/toggle-active")]
-        [Authorize(Roles = "Reporting")]
+        [Authorize(Roles = "Manager,Reporting")]
         public async Task<IActionResult> ToggleUserActive(int userId, [FromBody] bool isActive)
         {
             var result = await _userService.ToggleUserActiveAsync(userId, isActive);
@@ -73,7 +100,7 @@ namespace ProjectManagementAPI.Controllers
         }
 
         [HttpPut("{userId}/deadline")]
-        [Authorize(Roles = "Reporting")]
+        [Authorize(Roles = "Manager,Reporting")]
         public async Task<IActionResult> SetAccountDeadline(int userId, [FromBody] DateTime? deadline)
         {
             var result = await _userService.SetAccountDeadlineAsync(userId, deadline);

@@ -3,6 +3,7 @@ using System;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Infrastructure;
 using Microsoft.EntityFrameworkCore.Metadata;
+using Microsoft.EntityFrameworkCore.Migrations;
 using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 using ProjectManagementAPI.Data;
 
@@ -11,9 +12,11 @@ using ProjectManagementAPI.Data;
 namespace ProjectManagementAPI.Migrations
 {
     [DbContext(typeof(ApplicationDbContext))]
-    partial class ApplicationDbContextModelSnapshot : ModelSnapshot
+    [Migration("20260201181617_AddProjectManagerIdToProject")]
+    partial class AddProjectManagerIdToProject
     {
-        protected override void BuildModel(ModelBuilder modelBuilder)
+        /// <inheritdoc />
+        protected override void BuildTargetModel(ModelBuilder modelBuilder)
         {
 #pragma warning disable 612, 618
             modelBuilder
@@ -53,7 +56,7 @@ namespace ProjectManagementAPI.Migrations
 
                     b.HasIndex("TaskId");
 
-                    b.ToTable("Comments", (string)null);
+                    b.ToTable("Comments");
                 });
 
             modelBuilder.Entity("ProjectManagementAPI.Models.EDB", b =>
@@ -75,7 +78,7 @@ namespace ProjectManagementAPI.Migrations
 
                     b.HasIndex("ProjectId");
 
-                    b.ToTable("EDBs", (string)null);
+                    b.ToTable("EDBs");
                 });
 
             modelBuilder.Entity("ProjectManagementAPI.Models.Notification", b =>
@@ -131,7 +134,7 @@ namespace ProjectManagementAPI.Migrations
 
                     b.HasIndex("UserId");
 
-                    b.ToTable("Notifications", (string)null);
+                    b.ToTable("Notifications");
                 });
 
             modelBuilder.Entity("ProjectManagementAPI.Models.PasswordResetToken", b =>
@@ -163,7 +166,7 @@ namespace ProjectManagementAPI.Migrations
 
                     b.HasIndex("UserId");
 
-                    b.ToTable("PasswordResetTokens", (string)null);
+                    b.ToTable("PasswordResetTokens");
                 });
 
             modelBuilder.Entity("ProjectManagementAPI.Models.Priority", b =>
@@ -181,7 +184,7 @@ namespace ProjectManagementAPI.Migrations
 
                     b.HasKey("PriorityId");
 
-                    b.ToTable("Priorities", (string)null);
+                    b.ToTable("Priorities");
                 });
 
             modelBuilder.Entity("ProjectManagementAPI.Models.Project", b =>
@@ -239,7 +242,7 @@ namespace ProjectManagementAPI.Migrations
 
                     b.HasIndex("TeamId");
 
-                    b.ToTable("Projects", (string)null);
+                    b.ToTable("Projects");
                 });
 
             modelBuilder.Entity("ProjectManagementAPI.Models.ProjectStatus", b =>
@@ -262,7 +265,7 @@ namespace ProjectManagementAPI.Migrations
 
                     b.HasKey("ProjectStatusId");
 
-                    b.ToTable("ProjectStatuses", (string)null);
+                    b.ToTable("ProjectStatuses");
                 });
 
             modelBuilder.Entity("ProjectManagementAPI.Models.ProjectTask", b =>
@@ -325,7 +328,7 @@ namespace ProjectManagementAPI.Migrations
 
                     b.HasIndex("ValidatedByUserId");
 
-                    b.ToTable("ProjectTasks", (string)null);
+                    b.ToTable("ProjectTasks");
                 });
 
             modelBuilder.Entity("ProjectManagementAPI.Models.ProjectTaskStatus", b =>
@@ -348,7 +351,7 @@ namespace ProjectManagementAPI.Migrations
 
                     b.HasKey("ProjectTaskStatusId");
 
-                    b.ToTable("ProjectTaskStatuses", (string)null);
+                    b.ToTable("ProjectTaskStatuses");
                 });
 
             modelBuilder.Entity("ProjectManagementAPI.Models.Role", b =>
@@ -365,7 +368,7 @@ namespace ProjectManagementAPI.Migrations
 
                     b.HasKey("RoleId");
 
-                    b.ToTable("Roles", (string)null);
+                    b.ToTable("Roles");
                 });
 
             modelBuilder.Entity("ProjectManagementAPI.Models.Team", b =>
@@ -391,7 +394,7 @@ namespace ProjectManagementAPI.Migrations
 
                     b.HasKey("teamId");
 
-                    b.ToTable("Teams", (string)null);
+                    b.ToTable("Teams");
                 });
 
             modelBuilder.Entity("ProjectManagementAPI.Models.TeamMember", b =>
@@ -421,7 +424,7 @@ namespace ProjectManagementAPI.Migrations
 
                     b.HasIndex("UserId");
 
-                    b.ToTable("TeamMembers", (string)null);
+                    b.ToTable("TeamMembers");
                 });
 
             modelBuilder.Entity("ProjectManagementAPI.Models.User", b =>
@@ -489,7 +492,7 @@ namespace ProjectManagementAPI.Migrations
                     b.HasIndex("UserName")
                         .IsUnique();
 
-                    b.ToTable("Users", (string)null);
+                    b.ToTable("Users");
                 });
 
             modelBuilder.Entity("ProjectManagementAPI.Models.Comment", b =>

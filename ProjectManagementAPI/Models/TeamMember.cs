@@ -2,7 +2,7 @@
 {
     public class TeamMember
     {
-          public int TeamMemberId { get; set; } // Primary key
+        public int TeamMemberId { get; set; } // Primary key
         public bool IsProjectManager { get; set; } = false; // Indicates if the member is a project manager
         public bool IsActive { get; set; } = true;  
         // Foreign keys

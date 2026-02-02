@@ -14,13 +14,13 @@ namespace ProjectManagementAPI.Models
         // progression de la tache en pourcentage (0-100)
         [Range(0, 100, ErrorMessage = "Progress must be between 0 and 100.")]
         public int Progress { get; set; } = 0; // Progress percentage of the task
-        public bool isValidated { get; set; } = false; // Indicates if the task is validated
-                                                       // foreign keys
+     
         public int ProjectId { get; set; } // Foreign key to Project
         public int TaskStatusId { get; set; } // Foreign key to TaskStatus
         public int PriorityId { get; set; } // Foreign key to Priority
         // Relations
         public Project Project { get; set; } // Navigation property to Project
+        public bool IsValidated { get; set; } = false;
         public ProjectTaskStatus ProjectTasksStatus { get; set; } // Navigation property to TaskStatus
         public Priority Priority { get; set; } // Navigation property to Priority
         public int? AssignedToUserId { get; set; } // Foreign key (nullable if task can be unassigned)
@@ -32,11 +32,5 @@ namespace ProjectManagementAPI.Models
         public ICollection<Comment> Comments { get; set; }
         public User CreatedByUser { get; set; } = null!;
        
-
-
-
-
-
-
     }
 }

@@ -18,5 +18,6 @@ namespace ProjectManagementAPI.DTOs
 
         public int ProjectStatusId { get; set; }
         public int PriorityId { get; set; }
+        public int? ProjectManagerId { get; set; }  // Permet de changer le chef
     }
 }

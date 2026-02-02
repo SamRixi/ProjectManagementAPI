@@ -26,6 +26,9 @@ namespace ProjectManagementAPI.DTOs
         [Required(ErrorMessage = "Équipe requise")]
      
         public int TeamId { get; set; }
-  
+
+        public int? ProjectManagerId { get; set; }
+        public int? CreatedByUserId { get; set; }
+
     }
 }

@@ -12,6 +12,8 @@
         // Team info
         public int TeamId { get; set; }  //  ADDED
         public string TeamName { get; set; }
+        public int ProjectManagerId { get; set; }
+        public string ProjectManagerName { get; set; }
 
         // Status info
         public int ProjectStatusId { get; set; }  //  ADDED

@@ -336,24 +336,171 @@ public class TeamService : ITeamService
         }
     }
 
-    public Task<ApiResponse<bool>> ToggleTeamActiveAsync(int teamId, bool isActive)
+    // ⭐ 1. Toggle Team Active (Activer/Désactiver équipe)
+    public async Task<ApiResponse<bool>> ToggleTeamActiveAsync(int teamId, bool isActive)
     {
-        throw new NotImplementedException();
+        try
+        {
+            var team = await _context.Teams.FindAsync(teamId);
+
+            if (team == null)
+            {
+                return new ApiResponse<bool>
+                {
+                    Success = false,
+                    Message = "Équipe introuvable"
+                };
+            }
+
+            team.IsActive = isActive;
+            await _context.SaveChangesAsync();
+
+            return new ApiResponse<bool>
+            {
+                Success = true,
+                Message = isActive ? "Équipe activée" : "Équipe désactivée",
+                Data = true
+            };
+        }
+        catch (Exception ex)
+        {
+            return new ApiResponse<bool>
+            {
+                Success = false,
+                Message = $"Erreur: {ex.Message}"
+            };
+        }
     }
 
-    public Task<ApiResponse<bool>> ToggleMemberActiveAsync(int memberId, bool isActive)
+    // ⭐ 2. Toggle Member Active (Activer/Désactiver membre)
+    public async Task<ApiResponse<bool>> ToggleMemberActiveAsync(int memberId, bool isActive)
     {
-        throw new NotImplementedException();
+        try
+        {
+            var teamMember = await _context.TeamMembers.FindAsync(memberId);
+
+            if (teamMember == null)
+            {
+                return new ApiResponse<bool>
+                {
+                    Success = false,
+                    Message = "Membre introuvable"
+                };
+            }
+
+            teamMember.IsActive = isActive;
+            await _context.SaveChangesAsync();
+
+            return new ApiResponse<bool>
+            {
+                Success = true,
+                Message = isActive ? "Membre activé" : "Membre désactivé",
+                Data = true
+            };
+        }
+        catch (Exception ex)
+        {
+            return new ApiResponse<bool>
+            {
+                Success = false,
+                Message = $"Erreur: {ex.Message}"
+            };
+        }
     }
 
-    public Task<ApiResponse<List<TeamMemberDTO>>> GetTeamMembersAsync(int teamId)
+    // ⭐ 3. Get Team Members (Récupérer tous les membres d'une équipe)
+    public async Task<ApiResponse<List<TeamMemberDTO>>> GetTeamMembersAsync(int teamId)
     {
-        throw new NotImplementedException();
+        try
+        {
+            var team = await _context.Teams
+                .Include(t => t.TeamMembers)
+                    .ThenInclude(tm => tm.User)
+                        .ThenInclude(u => u.Role)
+                .FirstOrDefaultAsync(t => t.teamId == teamId);
+
+            if (team == null)
+            {
+                return new ApiResponse<List<TeamMemberDTO>>
+                {
+                    Success = false,
+                    Message = "Équipe introuvable"
+                };
+            }
+
+            var members = team.TeamMembers
+                .Select(tm => new TeamMemberDTO
+                {
+                    TeamMemberId = tm.TeamMemberId,
+                    TeamId = tm.TeamId,
+                    TeamName = team.teamName,
+                    UserId = tm.UserId,
+                    UserName = tm.User.UserName,
+                    FirstName = tm.User.FirstName,
+                    LastName = tm.User.LastName,
+                    FullName = $"{tm.User.FirstName} {tm.User.LastName}",
+                    Email = tm.User.Email,
+                    RoleId = tm.User.RoleId,
+                    RoleName = tm.User.Role.RoleName,
+                    IsProjectManager = tm.IsProjectManager,
+                    IsActive = tm.IsActive,
+                    JoinedDate = tm.JoinedDate
+                })
+                .ToList();
+
+            return new ApiResponse<List<TeamMemberDTO>>
+            {
+                Success = true,
+                Message = $"{members.Count} membre(s) trouvé(s)",
+                Data = members
+            };
+        }
+        catch (Exception ex)
+        {
+            return new ApiResponse<List<TeamMemberDTO>>
+            {
+                Success = false,
+                Message = $"Erreur: {ex.Message}"
+            };
+        }
     }
 
-    public Task<ApiResponse<bool>> RemoveMemberAsync(int teamId, int userId)
+    // ⭐ 4. Remove Member (Retirer membre par TeamId + UserId)
+    public async Task<ApiResponse<bool>> RemoveMemberAsync(int teamId, int userId)
     {
-        throw new NotImplementedException();
+        try
+        {
+            var teamMember = await _context.TeamMembers
+                .FirstOrDefaultAsync(tm => tm.TeamId == teamId && tm.UserId == userId);
+
+            if (teamMember == null)
+            {
+                return new ApiResponse<bool>
+                {
+                    Success = false,
+                    Message = "Membre introuvable dans cette équipe"
+                };
+            }
+
+            _context.TeamMembers.Remove(teamMember);
+            await _context.SaveChangesAsync();
+
+            return new ApiResponse<bool>
+            {
+                Success = true,
+                Message = "Membre retiré avec succès",
+                Data = true
+            };
+        }
+        catch (Exception ex)
+        {
+            return new ApiResponse<bool>
+            {
+                Success = false,
+                Message = $"Erreur: {ex.Message}"
+            };
+        }
     }
+
 }
 

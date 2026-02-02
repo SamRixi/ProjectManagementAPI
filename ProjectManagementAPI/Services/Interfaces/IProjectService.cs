@@ -16,5 +16,7 @@ namespace ProjectManagementAPI.Services.Interfaces
         Task<ApiResponse<bool>> AssignTeamToProjectAsync(int projectId, int teamId);
         Task<ApiResponse<bool>> SetProjectManagerAsync(int teamMemberId, bool isProjectManager);
         Task<ApiResponse<List<TeamMemberDTO>>> GetProjectTeamMembersAsync(int projectId, string? search);
+        Task<ApiResponse<bool>> AssignProjectManagerAsync(int projectId, int userId);
+        Task<ApiResponse<List<ProjectDTO>>> GetManagedProjectsAsync(int userId);
     }
 }

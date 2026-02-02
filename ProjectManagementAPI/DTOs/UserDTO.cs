@@ -8,6 +8,7 @@
         public string FirstName { get; set; }
         public string LastName { get; set; }
         public string RoleName { get; set; }
+        public int RoleId { get; set; }
         public bool IsActive { get; set; }
         public bool MustChangePassword { get; set; }
         public DateTime? AccountDeadline { get; set; }

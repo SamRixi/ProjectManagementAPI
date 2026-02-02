@@ -22,7 +22,7 @@ namespace ProjectManagementAPI.Controllers
             _projectService = projectService;
         }
 
-        // ============= CREATE PROJECTS (Reporting/Admin) =============
+        // ============= CREATE PROJECTS (Reporting/Manager) =============
 
         /// <summary>
         /// Crée un nouveau projet
@@ -33,7 +33,7 @@ namespace ProjectManagementAPI.Controllers
         /// <response code="400">Données invalides</response>
         /// <response code="403">Rôle insuffisant</response>
         [HttpPost]
-        [Authorize(Roles = "Reporting,Admin")]
+        [Authorize(Roles = "Manager,Reporting")]
         [ProducesResponseType(StatusCodes.Status200OK)]
         [ProducesResponseType(StatusCodes.Status400BadRequest)]
         [ProducesResponseType(StatusCodes.Status403Forbidden)]
@@ -73,7 +73,7 @@ namespace ProjectManagementAPI.Controllers
         /// <response code="200">Projet créé avec succès</response>
         /// <response code="400">EDB non trouvé ou données invalides</response>
         [HttpPost("with-edb")]
-        [Authorize(Roles = "Reporting,Admin")]
+        [Authorize(Roles = "Manager,Reporting")]
         [ProducesResponseType(StatusCodes.Status200OK)]
         [ProducesResponseType(StatusCodes.Status400BadRequest)]
         public async Task<IActionResult> CreateProjectWithEdb([FromBody] CreateProjectWithEdbDTO dto)
@@ -104,7 +104,7 @@ namespace ProjectManagementAPI.Controllers
             }
         }
 
-        // ============= UPDATE PROJECT (Reporting/Admin) =============
+        // ============= UPDATE PROJECT (Reporting/Manager) =============
 
         /// <summary>
         /// Met à jour un projet existant
@@ -116,7 +116,7 @@ namespace ProjectManagementAPI.Controllers
         /// <response code="400">Données invalides</response>
         /// <response code="404">Projet non trouvé</response>
         [HttpPut("{projectId}")]
-        [Authorize(Roles = "Reporting,Admin")]
+        [Authorize(Roles = "Manager,Reporting")]
         [ProducesResponseType(StatusCodes.Status200OK)]
         [ProducesResponseType(StatusCodes.Status400BadRequest)]
         [ProducesResponseType(StatusCodes.Status404NotFound)]
@@ -149,7 +149,7 @@ namespace ProjectManagementAPI.Controllers
             }
         }
 
-        // ============= ASSIGN TEAM (Reporting/Admin) =============
+        // ============= ASSIGN TEAM (Reporting/Manager) =============
 
         /// <summary>
         /// Assigne une équipe à un projet
@@ -160,7 +160,7 @@ namespace ProjectManagementAPI.Controllers
         /// <response code="200">Équipe assignée avec succès</response>
         /// <response code="400">Projet ou équipe non trouvé</response>
         [HttpPut("{projectId}/assign-team")]
-        [Authorize(Roles = "Reporting,Admin")]
+        [Authorize(Roles = "Manager,Reporting")]
         [ProducesResponseType(StatusCodes.Status200OK)]
         [ProducesResponseType(StatusCodes.Status400BadRequest)]
         public async Task<IActionResult> AssignTeamToProject(int projectId, [FromBody] int teamId)
@@ -190,7 +190,50 @@ namespace ProjectManagementAPI.Controllers
             }
         }
 
-        // ============= SET PROJECT MANAGER (Reporting/Admin) =============
+        // ⭐ ============= ASSIGN PROJECT MANAGER (NEW) =============
+
+        /// <summary>
+        /// Assigne un chef de projet à un projet spécifique
+        /// </summary>
+        /// <param name="projectId">ID du projet</param>
+        /// <param name="dto">ID du user à assigner comme chef</param>
+        /// <returns>Confirmation d'assignation</returns>
+        /// <response code="200">Chef de projet assigné avec succès</response>
+        /// <response code="400">User ou projet non trouvé</response>
+        /// <response code="404">Projet non trouvé</response>
+        [HttpPut("{projectId}/assign-manager")]
+        [Authorize(Roles = "Manager,Reporting")]
+        [ProducesResponseType(StatusCodes.Status200OK)]
+        [ProducesResponseType(StatusCodes.Status400BadRequest)]
+        [ProducesResponseType(StatusCodes.Status404NotFound)]
+        public async Task<IActionResult> AssignProjectManager(int projectId, [FromBody] AssignProjectManagerDTO dto)
+        {
+            if (!ModelState.IsValid)
+            {
+                return BadRequest(new
+                {
+                    success = false,
+                    message = "Données invalides"
+                });
+            }
+
+            try
+            {
+                var result = await _projectService.AssignProjectManagerAsync(projectId, dto.UserId);
+                return result.Success ? Ok(result) : BadRequest(result);
+            }
+            catch (Exception ex)
+            {
+                return StatusCode(500, new
+                {
+                    success = false,
+                    message = "Erreur lors de l'assignation du chef de projet",
+                    error = ex.Message
+                });
+            }
+        }
+
+        // ============= SET PROJECT MANAGER STATUS (Reporting/Manager) =============
 
         /// <summary>
         /// Définit ou retire le rôle de chef de projet d'un membre d'équipe
@@ -200,7 +243,7 @@ namespace ProjectManagementAPI.Controllers
         /// <response code="200">Statut mis à jour avec succès</response>
         /// <response code="400">Membre non trouvé</response>
         [HttpPut("set-project-manager")]
-        [Authorize(Roles = "Reporting,Admin")]
+        [Authorize(Roles = "Reporting,Manager")]
         [ProducesResponseType(StatusCodes.Status200OK)]
         [ProducesResponseType(StatusCodes.Status400BadRequest)]
         public async Task<IActionResult> SetProjectManager([FromBody] SetProjectManagerDTO dto)
@@ -337,6 +380,34 @@ namespace ProjectManagementAPI.Controllers
             }
         }
 
+        // ⭐ ============= GET MANAGED PROJECTS (NEW) =============
+
+        /// <summary>
+        /// Récupère tous les projets managés par un chef de projet
+        /// </summary>
+        /// <param name="userId">ID du chef de projet</param>
+        /// <returns>Liste des projets managés</returns>
+        /// <response code="200">Liste récupérée avec succès</response>
+        [HttpGet("managed-by/{userId}")]
+        [ProducesResponseType(StatusCodes.Status200OK)]
+        public async Task<IActionResult> GetManagedProjects(int userId)
+        {
+            try
+            {
+                var result = await _projectService.GetManagedProjectsAsync(userId);
+                return result.Success ? Ok(result) : BadRequest(result);
+            }
+            catch (Exception ex)
+            {
+                return StatusCode(500, new
+                {
+                    success = false,
+                    message = "Erreur lors de la récupération des projets managés",
+                    error = ex.Message
+                });
+            }
+        }
+
         // ============= GET TEAM MEMBERS FOR PROJECT =============
 
         /// <summary>
@@ -347,7 +418,7 @@ namespace ProjectManagementAPI.Controllers
         /// <returns>Liste des membres de l'équipe</returns>
         /// <response code="200">Liste récupérée avec succès</response>
         [HttpGet("{projectId}/team-members")]
-        [Authorize(Roles = "Reporting,Admin")]
+        [Authorize(Roles = "Reporting,Manager")]
         [ProducesResponseType(StatusCodes.Status200OK)]
         public async Task<IActionResult> GetProjectTeamMembers(int projectId, [FromQuery] string? search)
         {
@@ -397,17 +468,17 @@ namespace ProjectManagementAPI.Controllers
             }
         }
 
-        // ============= DELETE PROJECT (Optional - Admin only) =============
+        // ============= DELETE PROJECT (Manager/Reporting only) =============
 
         /// <summary>
-        /// Supprime un projet (Admin uniquement)
+        /// Supprime un projet
         /// </summary>
         /// <param name="projectId">ID du projet à supprimer</param>
         /// <returns>Confirmation de suppression</returns>
         /// <response code="200">Projet supprimé avec succès</response>
         /// <response code="404">Projet non trouvé</response>
         [HttpDelete("{projectId}")]
-        [Authorize(Roles = "Admin")]
+        [Authorize(Roles = "Manager,Reporting")]
         [ProducesResponseType(StatusCodes.Status200OK)]
         [ProducesResponseType(StatusCodes.Status404NotFound)]
         public async Task<IActionResult> DeleteProject(int projectId)
@@ -429,3 +500,4 @@ namespace ProjectManagementAPI.Controllers
         }
     }
 }
+

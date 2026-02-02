@@ -1,7 +1,8 @@
 ﻿import axios from 'axios';
 
-// ✅ Your backend URL
+//  Your backend URL
 const API_BASE_URL = 'https://localhost:7013';
+//const API_BASE_URL = 'https://localhost:7013/api'; 
 
 
 const api = axios.create({
@@ -11,7 +12,7 @@ const api = axios.create({
     }
 });
 
-// ✅ Automatically add JWT token to requests
+//  Automatically add JWT token to requests
 api.interceptors.request.use(
     (config) => {
         const token = localStorage.getItem('token');
