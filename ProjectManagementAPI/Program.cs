@@ -41,7 +41,8 @@ var key = Encoding.ASCII.GetBytes(jwtSettings["Key"]);
     });
 
 
-
+// ============= 5. ADD HttpContextAccessor =============
+builder.Services.AddHttpContextAccessor(); 
 
 // Add Controllers
 
@@ -77,6 +78,13 @@ builder.Services.AddScoped<INotificationService, NotificationService>();
 
 var app = builder.Build();
 
+
+
+// Use Cors policy
+app.UseCors("AllowAll");
+
+
+
 // ============= CONFIGURE HTTP PIPELINE =============
 if (app.Environment.IsDevelopment())
 {
@@ -85,8 +93,23 @@ if (app.Environment.IsDevelopment())
 }
 
 app.UseHttpsRedirection();
-// Use Cors policy
+
+// ============= SERVE UPLOADED FILES =============
+var uploadsPath = Path.Combine(builder.Environment.ContentRootPath, "Uploads");
+if (!Directory.Exists(uploadsPath))
+{
+    Directory.CreateDirectory(uploadsPath);
+}
+
+app.UseStaticFiles(new StaticFileOptions
+{
+    FileProvider = new Microsoft.Extensions.FileProviders.PhysicalFileProvider(uploadsPath),
+    RequestPath = "/Uploads"
+});
+
 app.UseCors("AllowAll");
+
+
 // ============= USE AUTHENTICATION & AUTHORIZATION =============
 
 app.UseAuthentication();
