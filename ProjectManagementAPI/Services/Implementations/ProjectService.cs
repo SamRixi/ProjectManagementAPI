@@ -79,7 +79,7 @@ public class ProjectService : IProjectService
                 Description = dto.Description,
                 StartDate = dto.StartDate,
                 EndDate = dto.EndDate,
-               
+
                 CreatedByUserId = dto.CreatedByUserId,
                 TeamId = dto.TeamId,
                 ProjectStatusId = dto.ProjectStatusId,
@@ -136,7 +136,7 @@ public class ProjectService : IProjectService
             }
 
             project.ProjectName = dto.ProjectName;
-            
+
             project.Description = dto.Description;
             project.StartDate = dto.StartDate;
             project.EndDate = dto.EndDate;
@@ -432,7 +432,7 @@ public class ProjectService : IProjectService
             EndDate = p.EndDate,
             Progress = p.Progress,
             ProjectManagerId = p.ProjectManagerId,
-            ProjectManagerName = p.ProjectManager != null   
+            ProjectManagerName = p.ProjectManager != null
             ? $"{p.ProjectManager.FirstName} {p.ProjectManager.LastName}"
             : "Non assigné",
             TeamName = p.Team.teamName,
@@ -601,13 +601,117 @@ public class ProjectService : IProjectService
         }
     }
 
-    public Task<ApiResponse<bool>> AssignProjectManagerAsync(int projectId, int userId)
+    // ========== ASSIGN PROJECT MANAGER ==========
+    public async Task<ApiResponse<bool>> AssignProjectManagerAsync(int projectId, int userId)
     {
-        throw new NotImplementedException();
+        try
+        {
+            var project = await _context.Projects.FindAsync(projectId);
+
+            if (project == null)
+            {
+                return new ApiResponse<bool>
+                {
+                    Success = false,
+                    Message = "Projet introuvable"
+                };
+            }
+
+            var user = await _context.Users.FindAsync(userId);
+
+            if (user == null)
+            {
+                return new ApiResponse<bool>
+                {
+                    Success = false,
+                    Message = "Utilisateur introuvable"
+                };
+            }
+
+            // Vérifier que l'utilisateur fait partie de l'équipe du projet
+            var isTeamMember = await _context.TeamMembers
+                .AnyAsync(tm => tm.TeamId == project.TeamId && tm.UserId == userId && tm.IsActive);
+
+            if (!isTeamMember)
+            {
+                return new ApiResponse<bool>
+                {
+                    Success = false,
+                    Message = "L'utilisateur doit faire partie de l'équipe du projet"
+                };
+            }
+
+            project.ProjectManagerId = userId;
+            await _context.SaveChangesAsync();
+
+            // Mettre à jour le TeamMember comme chef de projet
+            var teamMember = await _context.TeamMembers
+                .FirstOrDefaultAsync(tm => tm.TeamId == project.TeamId && tm.UserId == userId);
+
+            if (teamMember != null)
+            {
+                teamMember.IsProjectManager = true;
+                await _context.SaveChangesAsync();
+            }
+
+            return new ApiResponse<bool>
+            {
+                Success = true,
+                Message = "Chef de projet assigné avec succès",
+                Data = true
+            };
+        }
+        catch (Exception ex)
+        {
+            return new ApiResponse<bool>
+            {
+                Success = false,
+                Message = $"Erreur : {ex.Message}"
+            };
+        }
     }
 
-    public Task<ApiResponse<List<ProjectDTO>>> GetManagedProjectsAsync(int userId)
+    // ========== GET MANAGED PROJECTS ==========
+    public async Task<ApiResponse<List<ProjectDTO>>> GetManagedProjectsAsync(int userId)
     {
-        throw new NotImplementedException();
+        try
+        {
+            var user = await _context.Users.FindAsync(userId);
+
+            if (user == null)
+            {
+                return new ApiResponse<List<ProjectDTO>>
+                {
+                    Success = false,
+                    Message = "Utilisateur introuvable"
+                };
+            }
+
+            var projects = await _context.Projects
+                .Where(p => p.ProjectManagerId == userId)
+                .Include(p => p.Team)
+                .Include(p => p.ProjectStatus)
+                .Include(p => p.Priority)
+                .Include(p => p.ProjectTasks)
+                .Include(p => p.ProjectManager)
+                .ToListAsync();
+
+            var projectDtos = projects.Select(p => MapToProjectDTO(p)).ToList();
+
+            return new ApiResponse<List<ProjectDTO>>
+            {
+                Success = true,
+                Message = $"{projectDtos.Count} projet(s) géré(s) par cet utilisateur",
+                Data = projectDtos
+            };
+        }
+        catch (Exception ex)
+        {
+            return new ApiResponse<List<ProjectDTO>>
+            {
+                Success = false,
+                Message = $"Erreur : {ex.Message}"
+            };
+        }
     }
 }

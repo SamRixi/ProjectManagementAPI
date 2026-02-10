@@ -65,13 +65,16 @@ builder.Services.AddCors(options =>
 // Learn more about configuring Swagger/OpenAPI at https://aka.ms/aspnetcore/swashbuckle
 builder.Services.AddEndpointsApiExplorer();
 builder.Services.AddSwaggerGen();
-builder.Services.AddScoped<AuthService>();
+builder.Services.AddScoped<IAuthService, AuthService>();
 builder.Services.AddScoped<IUserService, UserService>();
-//builder.Services.AddScoped<ITeamService, TeamService>(); 
-//builder.Services.AddScoped<IEdbService, EdbService>();
+builder.Services.AddScoped<ITeamService, TeamService>();
+builder.Services.AddScoped<IEdbService, EdbService>();
 builder.Services.AddScoped<IProjectService, ProjectService>();
-//builder.Services.AddScoped<ITaskService, TaskService>();
-//builder.Services.AddScoped<IStatisticsService, StatisticsService>();
+builder.Services.AddScoped<ITaskService, ProjectTaskService>();
+builder.Services.AddScoped<IStatisticsService, StatisticsService>();
+builder.Services.AddScoped<ICommentService, CommentService>();
+builder.Services.AddScoped<INotificationService, NotificationService>();
+
 var app = builder.Build();
 
 // ============= CONFIGURE HTTP PIPELINE =============
