@@ -1,9 +1,10 @@
 ﻿using Microsoft.AspNetCore.Mvc;
 using ProjectManagementAPI.DTOs;
 using ProjectManagementAPI.Services.Implementations;
+using ProjectManagementAPI.Services.Interfaces;
+using ForgotPasswordRequest = ProjectManagementAPI.DTOs.ForgotPasswordRequest;
 using LoginRequest = ProjectManagementAPI.DTOs.LoginRequest;
 using RegisterRequest = ProjectManagementAPI.DTOs.RegisterRequest;
-using ForgotPasswordRequest = ProjectManagementAPI.DTOs.ForgotPasswordRequest;
 using ResetPasswordRequest = ProjectManagementAPI.DTOs.ResetPasswordRequest;
 
 namespace ProjectManagementAPI.Controllers
@@ -14,11 +15,12 @@ namespace ProjectManagementAPI.Controllers
     [ApiController]
     [Route("api/[controller]")]
     [Produces("application/json")]
+
     public class AuthController : ControllerBase
     {
-        private readonly AuthService _authService;
+        private readonly IAuthService _authService;
 
-        public AuthController(AuthService authService)
+        public AuthController(IAuthService authService)
         {
             _authService = authService;
         }

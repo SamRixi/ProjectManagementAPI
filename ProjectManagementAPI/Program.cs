@@ -72,7 +72,6 @@ builder.Services.AddScoped<ITeamService, TeamService>();
 builder.Services.AddScoped<IEdbService, EdbService>();
 builder.Services.AddScoped<IProjectService, ProjectService>();
 builder.Services.AddScoped<ITaskService, ProjectTaskService>();
-builder.Services.AddScoped<IStatisticsService, StatisticsService>();
 builder.Services.AddScoped<ICommentService, CommentService>();
 builder.Services.AddScoped<INotificationService, NotificationService>();
 

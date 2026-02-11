@@ -6,11 +6,11 @@ using ProjectManagementAPI.Data;
 namespace ProjectManagementAPI.Controllers
 {
     /// <summary>
-    /// StatsController - Statistiques globales (Manager/Reporting uniquement)
+    /// StatsController - Statistiques (Manager / Reporting)
     /// </summary>
     [ApiController]
     [Route("api/[controller]")]
-    [Authorize(Roles = "Manager,Reporting")]
+    [Authorize] // Authentifié, rôles gérés par action
     [Produces("application/json")]
     public class StatsController : ControllerBase
     {
@@ -22,12 +22,10 @@ namespace ProjectManagementAPI.Controllers
         }
 
         /// <summary>
-        /// Récupère les statistiques globales pour le dashboard admin
+        /// Récupère les statistiques globales pour le dashboard Manager
         /// </summary>
-        /// <returns>Statistiques globales</returns>
-        /// <response code="200">Statistiques récupérées avec succès</response>
-        /// <response code="500">Erreur serveur</response>
         [HttpGet("global")]
+        [Authorize(Roles = "Manager")] // 🔐 Manager uniquement
         [ProducesResponseType(StatusCodes.Status200OK)]
         [ProducesResponseType(StatusCodes.Status500InternalServerError)]
         public async Task<IActionResult> GetGlobalStats()
@@ -37,7 +35,7 @@ namespace ProjectManagementAPI.Controllers
                 var totalProjects = await _context.Projects.CountAsync();
 
                 var activeProjects = await _context.Projects
-                    .Where(p => p.EndDate >= DateTime.UtcNow) // ✅ Utilise UtcNow
+                    .Where(p => p.EndDate >= DateTime.UtcNow)
                     .CountAsync();
 
                 var totalUsers = await _context.Users.CountAsync();
@@ -50,24 +48,25 @@ namespace ProjectManagementAPI.Controllers
 
                 var totalTasks = await _context.ProjectTasks.CountAsync();
 
-                // ✅ CORRIGÉ: Compare TaskStatusId au lieu de ProjectTaskId
                 var completedTasks = await _context.ProjectTasks
-                    .Where(t => t.TaskStatusId == 3) // Assuming TaskStatusId 3 = Completed
+                    .Where(t => t.TaskStatusId == 3) // 3 = Completed
                     .CountAsync();
 
-                // ✅ BONUS: Tâches validées
                 var validatedTasks = await _context.ProjectTasks
                     .Where(t => t.IsValidated)
                     .CountAsync();
 
-                // ✅ BONUS: Tâches en retard
                 var overdueTasks = await _context.ProjectTasks
                     .Where(t => t.DueDate < DateTime.UtcNow && !t.IsValidated)
                     .CountAsync();
 
-                // ✅ BONUS: Progression moyenne
                 var avgProgress = await _context.Projects
-                    .AverageAsync(p => (double?)p.Progress) ?? 0;
+                    .Select(p => (double?)p.Progress)
+                    .AverageAsync() ?? 0;
+
+                var pendingTasks = await _context.ProjectTasks
+                    .Where(t => t.TaskStatusId != 3)
+                    .CountAsync();
 
                 var stats = new
                 {
@@ -90,7 +89,7 @@ namespace ProjectManagementAPI.Controllers
                     completedTasks,
                     validatedTasks,
                     overdueTasks,
-                    pendingTasks = totalTasks - completedTasks
+                    pendingTasks
                 };
 
                 return Ok(new
@@ -114,8 +113,8 @@ namespace ProjectManagementAPI.Controllers
         /// <summary>
         /// Récupère les statistiques détaillées par projet
         /// </summary>
-        /// <returns>Statistiques par projet</returns>
         [HttpGet("projects")]
+        [Authorize(Roles = "Manager,Reporting")] // 🔐 Manager + Reporting
         [ProducesResponseType(StatusCodes.Status200OK)]
         public async Task<IActionResult> GetProjectsStats()
         {
@@ -124,13 +123,15 @@ namespace ProjectManagementAPI.Controllers
                 var projectStats = await _context.Projects
                     .Include(p => p.ProjectTasks)
                     .Include(p => p.Team)
-                    .Include(p => p.ProjectManager) // ✅ Include ProjectManager
+                    .Include(p => p.ProjectManager)
                     .Select(p => new
                     {
                         p.ProjectId,
                         p.ProjectName,
-                        teamName = p.Team.teamName,
-                        projectManagerName = p.ProjectManager.FirstName + " " + p.ProjectManager.LastName, // ✅ NEW
+                        teamName = p.Team != null ? p.Team.teamName : null,
+                        projectManagerName = p.ProjectManager != null
+                            ? p.ProjectManager.FirstName + " " + p.ProjectManager.LastName
+                            : null,
                         p.Progress,
                         totalTasks = p.ProjectTasks.Count,
                         completedTasks = p.ProjectTasks.Count(t => t.TaskStatusId == 3),
@@ -162,6 +163,7 @@ namespace ProjectManagementAPI.Controllers
         /// Récupère les statistiques par statut de tâche
         /// </summary>
         [HttpGet("tasks-by-status")]
+        [Authorize(Roles = "Manager,Reporting")] // 🔐 Manager + Reporting
         [ProducesResponseType(StatusCodes.Status200OK)]
         public async Task<IActionResult> GetTasksByStatus()
         {
@@ -172,8 +174,8 @@ namespace ProjectManagementAPI.Controllers
                     .GroupBy(t => new
                     {
                         t.TaskStatusId,
-                        t.ProjectTasksStatus.StatusName,
-                        t.ProjectTasksStatus.Color
+                        StatusName = t.ProjectTasksStatus.StatusName,
+                        Color = t.ProjectTasksStatus.Color
                     })
                     .Select(g => new
                     {

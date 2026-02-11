@@ -44,18 +44,28 @@ const Login = () => {
 
         try {
             const result = await login(formData.username, formData.password);
+            console.log('RESULT LOGIN ===>', result);
 
             if (result.success) {
-                // Vérifier si changement de mot de passe requis
-                if (result.mustChangePassword) {
+                const user = result.user;
+                console.log('USER ===>', user);
+                console.log(
+                    'mustChangePassword ===>',
+                    result.mustChangePassword,
+                    user?.mustChangePassword
+                );
+
+                if (user?.mustChangePassword || result.mustChangePassword) {
+                    localStorage.setItem('mustChangePassword', 'true');
                     navigate('/change-password');
                 } else {
+                    localStorage.removeItem('mustChangePassword');
                     navigate('/dashboard');
                 }
             } else {
                 setError(result.message || 'Erreur de connexion');
             }
-        } catch  {
+        } catch {
             setError('Erreur de connexion au serveur');
         }
     };
@@ -94,7 +104,7 @@ const Login = () => {
                         <label>Mot de passe</label>
                         <div style={{ position: 'relative' }}>
                             <input
-                                type={showPassword ? "text" : "password"}
+                                type={showPassword ? 'text' : 'password'}
                                 name="password"
                                 value={formData.password}
                                 onChange={handleChange}
@@ -121,20 +131,22 @@ const Login = () => {
                                     alignItems: 'center',
                                     justifyContent: 'center'
                                 }}
-                                aria-label={showPassword ? "Cacher le mot de passe" : "Afficher le mot de passe"}
+                                aria-label={showPassword ? 'Cacher le mot de passe' : 'Afficher le mot de passe'}
                             >
                                 {showPassword ? <EyeOff size={20} /> : <Eye size={20} />}
                             </button>
                         </div>
-                        <p style={{
-                            textAlign: 'center',
-                            color: '#666',
-                            fontSize: '14px',
-                            margin: '10px 0 0 0',
-                            fontStyle: 'italic',
-                            cursor: 'default'
-                        }}>
-                            Mot de passe oublie ? Contactez le service Reporting
+                        <p
+                            style={{
+                                textAlign: 'center',
+                                color: '#666',
+                                fontSize: '14px',
+                                margin: '10px 0 0 0',
+                                fontStyle: 'italic',
+                                cursor: 'default'
+                            }}
+                        >
+                            Mot de passe oublié ? Contactez le service Reporting
                         </p>
                     </div>
 

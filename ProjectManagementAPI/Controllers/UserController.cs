@@ -132,6 +132,22 @@ namespace ProjectManagementAPI.Controllers
         {
             var result = await _userService.ResetPasswordAsync(dto);
             return result.Success ? Ok(result) : BadRequest(result);
+         
+
         }
+
+        // ============= Temporary Password (Reporting / Manager) =============
+        [HttpPost("{userId}/generate-temp-password")]
+        [Authorize(Roles = "Manager,Reporting")]
+        public async Task<IActionResult> GenerateTemporaryPassword(int userId)
+        {
+            var result = await _userService.GenerateTemporaryPasswordAsync(userId);
+
+            if (!result.Success)
+                return BadRequest(result);
+
+            return Ok(result);
+        }
+
     }
 }

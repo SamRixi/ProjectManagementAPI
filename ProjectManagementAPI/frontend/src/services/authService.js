@@ -53,8 +53,9 @@ const authService = {
             if (response.data.success) {
                 return {
                     success: true,
-                    token: response.data.data.token,
-                    user: response.data.data.user,
+                    token: response.data.token,              // adapte si ton DTO a .data.token
+                    user: response.data.user,                // pareil ici si c'est data.user
+                    mustChangePassword: response.data.mustChangePassword,
                     message: response.data.message
                 };
             } else {

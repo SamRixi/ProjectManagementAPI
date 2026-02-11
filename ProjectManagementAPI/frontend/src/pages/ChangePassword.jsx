@@ -77,9 +77,10 @@ const ChangePassword = () => {
                 </div>
 
                 <h2>Changement de mot de passe obligatoire</h2>
-                <p style={{ textAlign: 'center', color: '#666', marginBottom: '20px' }}>
+                <p className="change-password-subtitle">
                     Pour des raisons de sécurité, vous devez changer votre mot de passe.
                 </p>
+
 
                 {error && <div className="alert alert-error">{error}</div>}
                 {success && <div className="alert alert-success">{success}</div>}
