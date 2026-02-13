@@ -1,4 +1,4 @@
-import { useState } from 'react';
+﻿import { useState } from 'react';
 import { useNavigate, Link } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
 import { Eye, EyeOff, AlertCircle } from 'lucide-react';
@@ -33,12 +33,12 @@ const Login = () => {
         }
 
         if (formData.username.length < 3) {
-            setError('Le nom d\'utilisateur doit contenir au moins 3 caract�res');
+            setError('Le nom d\'utilisateur doit contenir au moins 3 caractères');
             return;
         }
 
         if (formData.password.length < 6) {
-            setError('Le mot de passe doit contenir au moins 6 caract�res');
+            setError('Le mot de passe doit contenir au moins 6 caractères');
             return;
         }
 
@@ -55,17 +55,31 @@ const Login = () => {
                     user?.mustChangePassword
                 );
 
+                // ✅ Vérifier si l'utilisateur doit changer son mot de passe
                 if (user?.mustChangePassword || result.mustChangePassword) {
-                    localStorage.setItem('mustChangePassword', 'true');
-                    navigate('/change-password');
-                } else {
-                    localStorage.removeItem('mustChangePassword');
-                    navigate('/dashboard');
+                    console.log('🔒 User must change password');
+                    console.log('Navigating with userId:', user.userId);
+                    console.log('Navigating with username:', user.userName);
+
+                    // ✅ Passer userId et username via state
+                    navigate('/change-password', {
+                        state: {
+                            userId: user.userId,
+                            username: user.userName,
+                            isFirstLogin: true
+                        }
+                    });
+                    return;
                 }
+
+                // Sinon, redirection normale vers le dashboard
+                localStorage.removeItem('mustChangePassword');
+                navigate('/dashboard');
             } else {
                 setError(result.message || 'Erreur de connexion');
             }
-        } catch {
+        } catch (err) {
+            console.error('Login error:', err);
             setError('Erreur de connexion au serveur');
         }
     };
@@ -146,7 +160,7 @@ const Login = () => {
                                 cursor: 'default'
                             }}
                         >
-                            Mot de passe oubli� ? Contactez le service Reporting
+                            Mot de passe oublié ? Contactez le service Reporting
                         </p>
                     </div>
 

@@ -168,15 +168,63 @@ namespace ProjectManagementAPI.Controllers
             }
         }
 
-        // ============= RESET PASSWORD =============
+        // ============= CHANGE PASSWORD (✅ NOUVEAU) =============
         /// <summary>
-        /// Réinitialise le mot de passe avec un token valide
+        /// Change le mot de passe d'un utilisateur (utilisé pour les mots de passe temporaires)
         /// </summary>
-        /// <param name="request">Token et nouveau mot de passe</param>
-        /// <returns>Confirmation de réinitialisation</returns>
-        /// <response code="200">Mot de passe réinitialisé avec succès</response>
-        /// <response code="400">Token invalide ou expiré</response>
-        [HttpPost("reset-password")]
+        /// <param name="userId">ID de l'utilisateur</param>
+        /// <param name="dto">CurrentPassword, NewPassword, ConfirmPassword</param>
+        /// <returns>Confirmation du changement de mot de passe</returns>
+        /// <response code="200">Mot de passe changé avec succès</response>
+        /// <response code="400">Données invalides ou mot de passe actuel incorrect</response>
+        [HttpPost("change-password/{userId}")]
+        [ProducesResponseType(StatusCodes.Status200OK)]
+        [ProducesResponseType(StatusCodes.Status400BadRequest)]
+        public async Task<IActionResult> ChangePassword(int userId, [FromBody] ChangePasswordDTO dto)
+        {
+            if (!ModelState.IsValid)
+            {
+                return BadRequest(new
+                {
+                    success = false,
+                    message = "Données invalides",
+                    errors = ModelState.Values.SelectMany(v => v.Errors.Select(e => e.ErrorMessage))
+                });
+            }
+
+            try
+            {
+                var response = await _authService.ChangePasswordAsync(userId, dto);
+
+                if (response.Success)
+                {
+                    return Ok(response);
+                }
+                else
+                {
+                    return BadRequest(response);
+                }
+            }
+            catch (Exception ex)
+            {
+                return StatusCode(500, new
+                {
+                    success = false,
+                    message = "Erreur lors du changement de mot de passe",
+                    error = ex.Message
+                });
+            }
+        }
+
+            // ============= RESET PASSWORD =============
+            /// <summary>
+            /// Réinitialise le mot de passe avec un token valide
+            /// </summary>
+            /// <param name="request">Token et nouveau mot de passe</param>
+            /// <returns>Confirmation de réinitialisation</returns>
+            /// <response code="200">Mot de passe réinitialisé avec succès</response>
+            /// <response code="400">Token invalide ou expiré</response>
+            [HttpPost("reset-password")]
         [ProducesResponseType(StatusCodes.Status200OK)]
         [ProducesResponseType(StatusCodes.Status400BadRequest)]
         public async Task<IActionResult> ResetPassword([FromBody] ResetPasswordRequest request)
@@ -212,6 +260,7 @@ namespace ProjectManagementAPI.Controllers
                     error = ex.Message
                 });
             }
+
         }
     }
 }

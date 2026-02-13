@@ -14,7 +14,7 @@ export const useAuth = () => {
 export const AuthProvider = ({ children }) => {
     const [user, setUser] = useState(null);
     const [token, setToken] = useState(null);
-    const [loading, setLoading] = useState(true); // ✅ Start with true
+    const [loading, setLoading] = useState(true);
 
     // ✅ Load user from localStorage on app start
     useEffect(() => {
@@ -45,18 +45,28 @@ export const AuthProvider = ({ children }) => {
             setLoading(true);
             const response = await authService.login({ username, password });
 
+            console.log('📥 Response from authService:', response);
+
             if (response.success) {
+                // ✅ CORRECT : Le token et l'utilisateur sont directement dans response
+                const userData = response.user;
+                const authToken = response.token;
+
                 // ✅ Save to state
-                setUser(response.user);
-                setToken(response.token);
+                setUser(userData);
+                setToken(authToken);
 
                 // ✅ Save to localStorage
-                localStorage.setItem('token', response.token);
-                localStorage.setItem('user', JSON.stringify(response.user));
+                localStorage.setItem('token', authToken);
+                localStorage.setItem('user', JSON.stringify(userData));
+
+                console.log('✅ Token saved:', authToken);
+                console.log('✅ User saved:', userData);
 
                 return {
                     success: true,
-                    mustChangePassword: response.user?.mustChangePassword || false
+                    mustChangePassword: userData?.mustChangePassword || false,
+                    user: userData
                 };
             } else {
                 return {
@@ -68,7 +78,7 @@ export const AuthProvider = ({ children }) => {
             console.error('Login error:', error);
             return {
                 success: false,
-                message: error.response?.data?.message || 'Erreur de connexion au serveur'
+                message: error.message || 'Erreur de connexion au serveur'
             };
         } finally {
             setLoading(false);

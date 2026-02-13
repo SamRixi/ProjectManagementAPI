@@ -1,10 +1,16 @@
-import { useState, useEffect } from 'react';
-import { useNavigate } from 'react-router-dom';
-import userService from '../services/userService';
+﻿import { useState, useEffect } from 'react';
+import { useNavigate, useLocation } from 'react-router-dom';
+import authService from '../services/authService';
+import { Eye, EyeOff, AlertCircle } from 'lucide-react';
 import '../styles/Auth.css';
 
 const ChangePassword = () => {
     const navigate = useNavigate();
+    const location = useLocation();
+
+    // ✅ Récupérer userId, username et isFirstLogin depuis location.state
+    const { userId, username, isFirstLogin } = location.state || {};
+
     const [formData, setFormData] = useState({
         currentPassword: '',
         newPassword: '',
@@ -14,13 +20,15 @@ const ChangePassword = () => {
     const [success, setSuccess] = useState('');
     const [loading, setLoading] = useState(false);
 
+   
+
     useEffect(() => {
-        // V�rifier si le changement est requis
-        const mustChange = localStorage.getItem('mustChangePassword');
-        if (!mustChange) {
-            navigate('/dashboard');
+        // ✅ Vérifier si userId existe, sinon rediriger vers login
+        if (!userId) {
+            console.error('❌ No userId provided, redirecting to login');
+            navigate('/login');
         }
-    }, [navigate]);
+    }, [userId, navigate]);
 
     const handleChange = (e) => {
         setFormData({
@@ -28,6 +36,7 @@ const ChangePassword = () => {
             [e.target.name]: e.target.value
         });
         setError('');
+        setSuccess('');
     };
 
     const handleSubmit = async (e) => {
@@ -35,13 +44,14 @@ const ChangePassword = () => {
         setError('');
         setSuccess('');
 
+        // Validations
         if (!formData.currentPassword || !formData.newPassword || !formData.confirmPassword) {
             setError('Tous les champs sont obligatoires');
             return;
         }
 
         if (formData.newPassword.length < 6) {
-            setError('Le nouveau mot de passe doit contenir au moins 6 caract�res');
+            setError('Le nouveau mot de passe doit contenir au moins 6 caractères');
             return;
         }
 
@@ -50,19 +60,42 @@ const ChangePassword = () => {
             return;
         }
 
+        if (formData.newPassword === formData.currentPassword) {
+            setError('Le nouveau mot de passe doit être différent de l\'ancien');
+            return;
+        }
+
         setLoading(true);
 
         try {
-            await userService.changePassword(formData.currentPassword, formData.newPassword);
-            setSuccess('Mot de passe chang� avec succ�s ! Redirection...');
+            console.log('🔄 Changing password for userId:', userId);
 
-            // Supprimer le flag de changement obligatoire
-            localStorage.removeItem('mustChangePassword');
+            // ✅ Appeler authService.changePassword avec userId
+            const result = await authService.changePassword(userId, {
+                currentPassword: formData.currentPassword,
+                newPassword: formData.newPassword,
+                confirmPassword: formData.confirmPassword
+            });
 
-            setTimeout(() => {
-                navigate('/dashboard');
-            }, 2000);
+            console.log('Change password result:', result);
+
+            if (result.success) {
+                setSuccess('✅ Mot de passe changé avec succès ! Vous allez être redirigé vers la page de connexion...');
+
+                // Nettoyer le localStorage
+                localStorage.removeItem('token');
+                localStorage.removeItem('user');
+                localStorage.removeItem('mustChangePassword');
+
+                // Rediriger vers login après 2 secondes
+                setTimeout(() => {
+                    navigate('/login');
+                }, 2000);
+            } else {
+                setError(result.message || 'Erreur lors du changement de mot de passe');
+            }
         } catch (err) {
+            console.error('❌ Error changing password:', err);
             setError(err.message || 'Erreur lors du changement de mot de passe');
         } finally {
             setLoading(false);
@@ -76,11 +109,23 @@ const ChangePassword = () => {
                     <img src="/mobilis-logo.png.png" alt="Mobilis" />
                 </div>
 
-                <h2>Changement de mot de passe obligatoire</h2>
-                <p className="change-password-subtitle">
-                    Pour des raisons de s�curit�, vous devez changer votre mot de passe.
-                </p>
+                {isFirstLogin && (
+                    <div className="alert alert-warning" style={{ marginBottom: '1rem' }}>
+                         Première connexion : vous devez changer votre mot de passe temporaire
+                    </div>
+                )}
 
+                <h2>Changement de mot de passe obligatoire</h2>
+
+                {username && (
+                    <p className="change-password-subtitle">
+                        Utilisateur : <strong>{username}</strong>
+                    </p>
+                )}
+
+                <p className="change-password-subtitle">
+                    Pour des raisons de sécurité, vous devez changer votre mot de passe.
+                </p>
 
                 {error && <div className="alert alert-error">{error}</div>}
                 {success && <div className="alert alert-success">{success}</div>}
@@ -95,6 +140,7 @@ const ChangePassword = () => {
                             onChange={handleChange}
                             placeholder="Entrez le mot de passe temporaire"
                             disabled={loading}
+                            required
                         />
                     </div>
 
@@ -105,8 +151,9 @@ const ChangePassword = () => {
                             name="newPassword"
                             value={formData.newPassword}
                             onChange={handleChange}
-                            placeholder="Minimum 6 caract�res"
+                            placeholder="Minimum 6 caractères"
                             disabled={loading}
+                            required
                         />
                     </div>
 
@@ -119,13 +166,18 @@ const ChangePassword = () => {
                             onChange={handleChange}
                             placeholder="Retapez le nouveau mot de passe"
                             disabled={loading}
+                            required
                         />
                     </div>
 
                     <button type="submit" className="btn-primary" disabled={loading}>
-                        {loading ? 'Changement...' : 'Changer le mot de passe'}
+                        {loading ? 'Changement en cours...' : 'Changer le mot de passe'}
                     </button>
                 </form>
+
+                <div style={{ marginTop: '1rem', textAlign: 'center', fontSize: '0.9rem', color: '#666' }}>
+                    Après le changement, vous serez redirigé vers la page de connexion.
+                </div>
             </div>
         </div>
     );
