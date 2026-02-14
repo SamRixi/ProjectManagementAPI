@@ -26,6 +26,7 @@ public class ProjectService : IProjectService
                 TeamId = dto.TeamId,
                 ProjectStatusId = dto.ProjectStatusId,
                 PriorityId = dto.PriorityId,
+                ProjectManagerId = dto.ProjectManagerId,
                 Progress = 0,
                 CreatedAt = DateTime.UtcNow
             };
@@ -38,6 +39,7 @@ public class ProjectService : IProjectService
                 .Include(p => p.ProjectStatus)
                 .Include(p => p.Priority)
                 .Include(p => p.ProjectManager)
+                .Include(p => p.ProjectTasks)
                 .FirstOrDefaultAsync(p => p.ProjectId == project.ProjectId);
 
             return new ApiResponse<ProjectDTO>
@@ -81,6 +83,7 @@ public class ProjectService : IProjectService
                 TeamId = dto.TeamId,
                 ProjectStatusId = dto.ProjectStatusId,
                 PriorityId = dto.PriorityId,
+                ProjectManagerId = dto.ProjectManagerId,
                 Progress = 0,
                 CreatedAt = DateTime.UtcNow
             };
@@ -96,6 +99,7 @@ public class ProjectService : IProjectService
                 .Include(p => p.ProjectStatus)
                 .Include(p => p.Priority)
                 .Include(p => p.ProjectManager)
+                .Include(p => p.ProjectTasks)
                 .FirstOrDefaultAsync(p => p.ProjectId == project.ProjectId);
 
             return new ApiResponse<ProjectDTO>
@@ -144,6 +148,7 @@ public class ProjectService : IProjectService
                 .Include(p => p.ProjectStatus)
                 .Include(p => p.Priority)
                 .Include(p => p.ProjectManager)
+                .Include(p => p.ProjectTasks)
                 .FirstOrDefaultAsync(p => p.ProjectId == dto.ProjectId);
 
             return new ApiResponse<ProjectDTO>
@@ -230,29 +235,29 @@ public class ProjectService : IProjectService
                 StartDate = project.StartDate,
                 EndDate = project.EndDate,
                 Progress = project.Progress,
-                Team = new TeamDTO
+                Team = project.Team != null ? new TeamDTO
                 {
                     TeamId = project.Team.teamId,
                     TeamName = project.Team.teamName
-                },
-                Status = new ProjectStatusDTO
+                } : null,
+                Status = project.ProjectStatus != null ? new ProjectStatusDTO
                 {
                     ProjectStatusId = project.ProjectStatus.ProjectStatusId,
                     StatusName = project.ProjectStatus.StatusName,
                     Color = project.ProjectStatus.Color
-                },
-                Priority = new PriorityDTO
+                } : null,
+                Priority = project.Priority != null ? new PriorityDTO
                 {
                     PriorityId = project.Priority.PriorityId,
                     Name = project.Priority.Name
-                },
-                Tasks = project.ProjectTasks.Select(t => new TaskDTO
+                } : null,
+                Tasks = project.ProjectTasks?.Select(t => new TaskDTO
                 {
                     TaskId = t.ProjectTaskId,
                     TaskName = t.TaskName,
                     Progress = t.Progress,
-                    StatusName = t.ProjectTasksStatus.StatusName
-                }).ToList(),
+                    StatusName = t.ProjectTasksStatus?.StatusName ?? "N/A"
+                }).ToList() ?? new List<TaskDTO>(),
                 CreatedAt = project.CreatedAt
             };
 
@@ -348,7 +353,6 @@ public class ProjectService : IProjectService
                 .ToListAsync();
 
             Console.WriteLine($"✅ Found {userTeamIds.Count} team(s) for user");
-            Console.WriteLine($"📋 Team IDs: {string.Join(", ", userTeamIds)}");
 
             if (!userTeamIds.Any())
             {
@@ -362,7 +366,7 @@ public class ProjectService : IProjectService
             }
 
             var projects = await _context.Projects
-                .Where(p => userTeamIds.Contains(p.TeamId))
+                .Where(p => p.TeamId.HasValue && userTeamIds.Contains(p.TeamId.Value))
                 .Include(p => p.Team)
                 .Include(p => p.ProjectStatus)
                 .Include(p => p.Priority)
@@ -372,28 +376,7 @@ public class ProjectService : IProjectService
 
             Console.WriteLine($"✅ Found {projects.Count} project(s)");
 
-            var projectDTOs = projects.Select(p => new ProjectDTO
-            {
-                ProjectId = p.ProjectId,
-                ProjectName = p.ProjectName ?? "Sans nom",
-                Description = p.Description ?? "",
-                StartDate = p.StartDate,
-                EndDate = p.EndDate,
-                Progress = p.Progress,
-                ProjectManagerId = p.ProjectManagerId,
-                ProjectManagerName = p.ProjectManager != null
-                    ? $"{p.ProjectManager.FirstName} {p.ProjectManager.LastName}"
-                    : "Non assigné",
-                TeamName = p.Team?.teamName ?? "N/A",
-                StatusName = p.ProjectStatus?.StatusName ?? "N/A",
-                StatusColor = p.ProjectStatus?.Color ?? "#000000",
-                PriorityName = p.Priority?.Name ?? "N/A",
-                TaskCount = p.ProjectTasks?.Count ?? 0,
-                CompletedTaskCount = p.ProjectTasks?.Count(t => t.Progress == 100) ?? 0,
-                CreatedAt = p.CreatedAt
-            }).ToList();
-
-            Console.WriteLine($"✅ Mapped {projectDTOs.Count} project DTOs successfully");
+            var projectDTOs = projects.Select(p => MapToProjectDTO(p)).ToList();
 
             return new ApiResponse<List<ProjectDTO>>
             {
@@ -404,14 +387,7 @@ public class ProjectService : IProjectService
         }
         catch (Exception ex)
         {
-            Console.WriteLine($"❌ ERROR in GetUserProjectsAsync");
-            Console.WriteLine($"❌ Message: {ex.Message}");
-            Console.WriteLine($"❌ Stack trace: {ex.StackTrace}");
-            if (ex.InnerException != null)
-            {
-                Console.WriteLine($"❌ Inner exception: {ex.InnerException.Message}");
-            }
-
+            Console.WriteLine($"❌ ERROR: {ex.Message}");
             return new ApiResponse<List<ProjectDTO>>
             {
                 Success = false,
@@ -442,12 +418,12 @@ public class ProjectService : IProjectService
             {
                 ProjectId = project.ProjectId,
                 ProjectName = project.ProjectName,
-                TotalTasks = project.ProjectTasks.Count,
-                CompletedTasks = project.ProjectTasks.Count(t => t.Progress == 100),
-                InProgressTasks = project.ProjectTasks.Count(t => t.Progress > 0 && t.Progress < 100),
-                TodoTasks = project.ProjectTasks.Count(t => t.Progress == 0),
+                TotalTasks = project.ProjectTasks?.Count ?? 0,
+                CompletedTasks = project.ProjectTasks?.Count(t => t.Progress == 100) ?? 0,
+                InProgressTasks = project.ProjectTasks?.Count(t => t.Progress > 0 && t.Progress < 100) ?? 0,
+                TodoTasks = project.ProjectTasks?.Count(t => t.Progress == 0) ?? 0,
                 Progress = project.Progress,
-                IsDelayed = project.EndDate < DateTime.UtcNow && project.Progress < 100
+                IsDelayed = project.EndDate.HasValue && project.EndDate < DateTime.UtcNow && project.Progress < 100
             };
 
             return new ApiResponse<ProjectStatsDTO>
@@ -467,8 +443,18 @@ public class ProjectService : IProjectService
         }
     }
 
+    // ✅ CORRECTION : TeamId ajouté dans MapToProjectDTO
     private ProjectDTO MapToProjectDTO(Project p)
     {
+        var taskCount = p.ProjectTasks?.Count ?? 0;
+        var completedTaskCount = p.ProjectTasks?.Count(t => t.Progress == 100) ?? 0;
+
+        int calculatedProgress = 0;
+        if (taskCount > 0)
+        {
+            calculatedProgress = (int)Math.Round((double)completedTaskCount / taskCount * 100);
+        }
+
         return new ProjectDTO
         {
             ProjectId = p.ProjectId,
@@ -476,18 +462,20 @@ public class ProjectService : IProjectService
             Description = p.Description ?? "",
             StartDate = p.StartDate,
             EndDate = p.EndDate,
-            Progress = p.Progress,
-            ProjectManagerId = p.ProjectManagerId,
+            Progress = calculatedProgress,
+            TeamId = p.TeamId ?? 0,                          // ✅ CORRECTION - était absent !
+            TeamName = p.Team?.teamName ?? "N/A",
+            ProjectManagerId = p.ProjectManagerId ?? 0,
             ProjectManagerName = p.ProjectManager != null
                 ? $"{p.ProjectManager.FirstName} {p.ProjectManager.LastName}"
                 : "Non assigné",
-            TeamName = p.Team?.teamName ?? "N/A",
             StatusName = p.ProjectStatus?.StatusName ?? "N/A",
             StatusColor = p.ProjectStatus?.Color ?? "#000000",
             PriorityName = p.Priority?.Name ?? "N/A",
-            TaskCount = p.ProjectTasks?.Count ?? 0,
-            CompletedTaskCount = p.ProjectTasks?.Count(t => t.Progress == 100) ?? 0,
-            CreatedAt = p.CreatedAt
+            TaskCount = taskCount,
+            CompletedTaskCount = completedTaskCount,
+            CreatedAt = p.CreatedAt,
+            HasEdb = p.EDBs?.Any() ?? false
         };
     }
 
@@ -580,12 +568,12 @@ public class ProjectService : IProjectService
                             .ThenInclude(u => u.Role)
                 .FirstOrDefaultAsync(p => p.ProjectId == projectId);
 
-            if (project == null)
+            if (project == null || project.Team == null)
             {
                 return new ApiResponse<List<TeamMemberDTO>>
                 {
                     Success = false,
-                    Message = "Projet introuvable"
+                    Message = "Projet ou équipe introuvable"
                 };
             }
 

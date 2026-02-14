@@ -1,15 +1,18 @@
-﻿import { useState } from 'react';
+﻿// src/components/layout/ReportingLayout.jsx
+import { useState } from 'react';
 import { useNavigate, useLocation } from 'react-router-dom';
 import {
     LayoutDashboard,
+    Users,
+    UsersRound,
     FolderKanban,
-    CheckSquare,
+    FileText,
     LogOut,
     Menu,
     RefreshCw
 } from 'lucide-react';
 
-const DeveloperLayout = ({ children }) => {
+const ReportingLayout = ({ children }) => {
     const navigate = useNavigate();
     const location = useLocation();
     const [sidebarOpen, setSidebarOpen] = useState(false);
@@ -27,20 +30,22 @@ const DeveloperLayout = ({ children }) => {
     };
 
     const menuItems = [
-        { icon: LayoutDashboard, label: 'Dashboard', path: '/developer/dashboard' },
-        { icon: FolderKanban, label: 'Mes Projets', path: '/developer/projects' },
-        { icon: CheckSquare, label: 'Mes Tâches', path: '/developer/tasks' }
+        { icon: LayoutDashboard, label: 'Dashboard', path: '/reporting/dashboard' },
+        { icon: Users, label: 'Utilisateurs', path: '/reporting/users' },
+        { icon: UsersRound, label: 'Équipes', path: '/reporting/teams' },
+        { icon: FolderKanban, label: 'Projets avec EDB', path: '/reporting/projects' },
+        { icon: FileText, label: 'EDB', path: '/reporting/edb' }
     ];
 
     return (
-        <div style={{ display: 'flex', minHeight: '100vh', backgroundColor: '#f5f5f5' }}>
+        <>
             {/* TOP HEADER - FIXED */}
             <header style={{
                 position: 'fixed',
                 top: 0,
                 left: 0,
                 right: 0,
-                width: '100vw',
+                width: '100%',
                 height: '70px',
                 background: 'linear-gradient(135deg, #00A651 0%, #004D29 100%)',
                 color: 'white',
@@ -49,7 +54,8 @@ const DeveloperLayout = ({ children }) => {
                 alignItems: 'center',
                 padding: '0 30px',
                 boxShadow: '0 4px 12px rgba(0, 0, 0, 0.15)',
-                zIndex: 1001
+                zIndex: 1001,
+                boxSizing: 'border-box'
             }}>
                 <div style={{ display: 'flex', alignItems: 'center', gap: '20px' }}>
                     <button
@@ -77,7 +83,7 @@ const DeveloperLayout = ({ children }) => {
                         textTransform: 'uppercase',
                         letterSpacing: '2px'
                     }}>
-                        DEVELOPER DASHBOARD
+                        REPORTING DASHBOARD
                     </h1>
                 </div>
 
@@ -146,13 +152,13 @@ const DeveloperLayout = ({ children }) => {
                             marginBottom: '15px',
                             boxShadow: '0 4px 8px rgba(0, 0, 0, 0.1)'
                         }}>
-                            👨‍💻
+                            📊
                         </div>
                         <p style={{ margin: '0 0 5px 0', fontSize: '0.85rem', opacity: 0.9 }}>
                             Connecté en tant que
                         </p>
                         <p style={{ margin: 0, fontWeight: '700', fontSize: '1.1rem' }}>
-                            {user?.username || 'Developer'}
+                            {user?.username || 'Reporting'}
                         </p>
                     </div>
                 )}
@@ -174,7 +180,7 @@ const DeveloperLayout = ({ children }) => {
                             justifyContent: 'center',
                             fontSize: '20px'
                         }}>
-                            👨‍💻
+                            📊
                         </div>
                     </div>
                 )}
@@ -240,7 +246,7 @@ const DeveloperLayout = ({ children }) => {
                     })}
                 </nav>
 
-                {/* LOGOUT - FIXED VERSION */}
+                {/* LOGOUT */}
                 <div style={{
                     padding: '20px 10px',
                     borderTop: '1px solid rgba(255, 255, 255, 0.2)',
@@ -283,18 +289,22 @@ const DeveloperLayout = ({ children }) => {
                 </div>
             </aside>
 
-            {/* MAIN CONTENT */}
+            {/* MAIN CONTENT - ABSOLUTE FINAL FIX */}
             <main style={{
-                marginLeft: sidebarOpen ? '280px' : '80px',
-                marginTop: '70px',
-                width: `calc(100% - ${sidebarOpen ? '280px' : '80px'})`,
-                minHeight: 'calc(100vh - 70px)',
-                transition: 'margin-left 0.3s ease, width 0.3s ease'
+                position: 'fixed',
+                left: sidebarOpen ? '280px' : '80px',
+                right: 0,
+                top: '70px',
+                bottom: 0,
+                transition: 'left 0.3s ease',
+                backgroundColor: '#f5f5f5',
+                overflowY: 'auto',
+                overflowX: 'hidden'
             }}>
                 {children}
             </main>
-        </div>
+        </>
     );
 };
 
-export default DeveloperLayout;
+export default ReportingLayout;

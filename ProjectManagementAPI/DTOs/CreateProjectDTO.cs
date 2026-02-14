@@ -11,24 +11,22 @@ namespace ProjectManagementAPI.DTOs
         [StringLength(1000, ErrorMessage = "Description max 1000 caractères")]
         public string? Description { get; set; }
 
-        [Required(ErrorMessage = "Date de début requise")]
-        public DateTime StartDate { get; set; }
+        // ✅ CHANGÉ: DateTime? au lieu de DateTime (nullable)
+        public DateTime? StartDate { get; set; }
 
-        [Required(ErrorMessage = "Date de fin requise")]
-        public DateTime EndDate { get; set; }
+        // ✅ CHANGÉ: DateTime? au lieu de DateTime (nullable)
+        public DateTime? EndDate { get; set; }
 
-        [Required(ErrorMessage = "Statut requis")]
-        public int ProjectStatusId { get; set; }
+        // ✅ CHANGÉ: int? au lieu de int (nullable, removed [Required])
+        public int? ProjectStatusId { get; set; }
 
-        [Required(ErrorMessage = "Priorité requise")]
-        public int PriorityId { get; set; }
+        // ✅ CHANGÉ: int? au lieu de int (nullable, removed [Required])
+        public int? PriorityId { get; set; }
 
-        [Required(ErrorMessage = "Équipe requise")]
-     
-        public int TeamId { get; set; }
+        // ✅ CHANGÉ: int? au lieu de int (nullable, removed [Required])
+        public int? TeamId { get; set; }
 
         public int? ProjectManagerId { get; set; }
         public int? CreatedByUserId { get; set; }
-
     }
 }

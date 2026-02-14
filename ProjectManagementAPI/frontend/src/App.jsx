@@ -7,6 +7,12 @@ import ChangePassword from './pages/ChangePassword';
 import DeveloperProjects from './pages/developer/DeveloperProjects';  
 import DeveloperDashboard from './pages/dashboards/DeveloperDashboard';
 import DeveloperTasks from './pages/developer/DeveloperTasks';
+import ReportingDashboard from "./pages/dashboards/ReportingDashboard"; 
+import UsersManagement from './pages/reporting/UsersManagement';
+import TeamsManagement from './pages/reporting/TeamsManagement';
+import ProjectsManagement from './pages/reporting/ProjectsManagement';
+import EDBManagement from './pages/reporting/EDBManagement';
+
 
 
 
@@ -26,6 +32,11 @@ function App() {
                     <Route path="/developer/dashboard" element={<DeveloperDashboard />} />
                     <Route path="/developer/projects" element={<DeveloperProjects />} />
                     <Route path="/developer/tasks" element={<DeveloperTasks />} />
+                    <Route path="/reporting/dashboard" element={<ReportingDashboard />} />
+                    <Route path="/reporting/users" element={<UsersManagement />} />
+                    <Route path="/reporting/teams" element={<TeamsManagement />} />
+                    <Route path="/reporting/projects" element={<ProjectsManagement />} />
+                    <Route path="/reporting/edb" element={<EDBManagement />} />
 
 
                     <Route

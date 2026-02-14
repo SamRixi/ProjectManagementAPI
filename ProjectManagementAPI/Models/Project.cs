@@ -4,35 +4,39 @@ namespace ProjectManagementAPI.Models
 {
     public class Project
     {
-        public int ProjectId { get; set; } // Primary key
-        public string ProjectName { get; set; } // Name of the project
-        public string Description { get; set; } // Description of the project
-        public DateTime StartDate { get; set; } // Start date of the project
-        public DateTime EndDate { get; set; } // End date of the project
-        public DateTime CreatedAt { get; set; } = DateTime.UtcNow;
+        public int ProjectId { get; set; }
+
         [Required]
-        public int? CreatedByUserId { get; set; }
+        [StringLength(200)]
+        public string ProjectName { get; set; }
 
-        // Progression du projet en pourcentage (0-100)
+        public string? Description { get; set; }  // ✅ Nullable
+
+        public DateTime? StartDate { get; set; }  // ✅ Nullable
+        public DateTime? EndDate { get; set; }    // ✅ Nullable
+
+        public DateTime CreatedAt { get; set; } = DateTime.UtcNow;
+
+        public int? CreatedByUserId { get; set; }  // ✅ Nullable (déjà bon)
+
         [Range(0, 100, ErrorMessage = "Progress must be between 0 and 100.")]
-        public int Progress { get; set; } = 0; // Progress percentage of the project
+        public int Progress { get; set; } = 0;
 
-        public int TeamId { get; set; } // Foreign key to Team
-        public int ProjectStatusId { get; set; } // Foreign key to ProjectStatus
-        public int PriorityId { get; set; } // Foreign key to Priority
-        public int ProjectManagerId { get; set; }
-        public User CreatedByUser { get; set; }
+        // ✅ Tous les FK deviennent nullable
+        public int? TeamId { get; set; }
+        public int? ProjectStatusId { get; set; }
+        public int? PriorityId { get; set; }
+        public int? ProjectManagerId { get; set; }
 
-        // Relations
-        public ProjectStatus ProjectStatus { get; set; } // Navigation property to ProjectStatus
-        public Team Team { get; set; } // Navigation property to Team
-        public Priority Priority { get; set; } // Navigation property to Priority
-        public User ProjectManager { get; set; }
-        public ICollection<EDB> EDBs { get; set; } = new List<EDB>(); // Relation to EDBs
+        // Navigation properties
+        public User? CreatedByUser { get; set; }
+        public ProjectStatus? ProjectStatus { get; set; }
+        public Team? Team { get; set; }
+        public Priority? Priority { get; set; }
+        public User? ProjectManager { get; set; }
+
+        public ICollection<EDB> EDBs { get; set; } = new List<EDB>();
         public ICollection<ProjectTask> ProjectTasks { get; set; } = new List<ProjectTask>();
-        public ICollection<Notification> Notifications { get; set; }
-
-
-
+        public ICollection<Notification> Notifications { get; set; } = new List<Notification>();
     }
 }

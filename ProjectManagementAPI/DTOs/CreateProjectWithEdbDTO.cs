@@ -35,7 +35,7 @@ namespace ProjectManagementAPI.DTOs
         [Required(ErrorMessage = "Fichier EDB requis")]
         [PdfOnly]
         public IFormFile EdbFile { get; set; }  // ✅ FIXED: Upload file, not ID
-        
+        public int? ProjectManagerId { get; set; }
         public int? CreatedByUserId { get; set; }
      
 

@@ -1,4 +1,5 @@
-﻿import axios from 'axios';
+﻿// src/services/userService.js
+import axios from 'axios';
 
 const API_URL = 'https://localhost:7013/api';
 
@@ -6,13 +7,25 @@ const userService = {
     // ============= GET ALL USERS =============
     getAllUsers: async () => {
         try {
+            console.log('📥 Fetching all users...');
             const token = localStorage.getItem('token');
-            const response = await axios.get(`${API_URL}/user`, {
+            const response = await axios.get(`${API_URL}/users`, {  // ✅ /users
                 headers: { Authorization: `Bearer ${token}` }
             });
-            return response.data;
+            console.log('✅ Get all users response:', response.data);
+
+            return {
+                success: response.data.success !== false,
+                data: Array.isArray(response.data.data) ? response.data.data : [],
+                message: response.data.message
+            };
         } catch (error) {
-            throw error.response?.data || { message: 'Erreur lors de la récupération' };
+            console.error('❌ Get all users error:', error);
+            return {
+                success: false,
+                data: [],
+                message: error.response?.data?.message || 'Erreur lors de la récupération'
+            };
         }
     },
 
@@ -20,7 +33,7 @@ const userService = {
     getUserById: async (userId) => {
         try {
             const token = localStorage.getItem('token');
-            const response = await axios.get(`${API_URL}/user/${userId}`, {
+            const response = await axios.get(`${API_URL}/users/${userId}`, {  // ✅ /users
                 headers: { Authorization: `Bearer ${token}` }
             });
             return response.data;
@@ -33,7 +46,7 @@ const userService = {
     createUser: async (userData) => {
         try {
             const token = localStorage.getItem('token');
-            const response = await axios.post(`${API_URL}/user`, userData, {
+            const response = await axios.post(`${API_URL}/users`, userData, {  // ✅ /users
                 headers: { Authorization: `Bearer ${token}` }
             });
             return response.data;
@@ -46,7 +59,7 @@ const userService = {
     updateUser: async (userId, userData) => {
         try {
             const token = localStorage.getItem('token');
-            const response = await axios.put(`${API_URL}/user/${userId}`, userData, {
+            const response = await axios.put(`${API_URL}/users/${userId}`, userData, {  // ✅ /users
                 headers: { Authorization: `Bearer ${token}` }
             });
             return response.data;
@@ -55,12 +68,12 @@ const userService = {
         }
     },
 
-    // ✅ NEW: TOGGLE USER STATUS (ACTIVATE/DEACTIVATE)
+    // ============= TOGGLE USER STATUS (ACTIVATE/DEACTIVATE) =============
     toggleUserStatus: async (userId) => {
         try {
             const token = localStorage.getItem('token');
             const response = await axios.patch(
-                `${API_URL}/user/${userId}/toggle-status`,
+                `${API_URL}/users/${userId}/toggle-status`,  // ✅ /users
                 {},
                 {
                     headers: { Authorization: `Bearer ${token}` }
@@ -72,11 +85,11 @@ const userService = {
         }
     },
 
-    // ============= DELETE USER (KEEP FOR COMPATIBILITY) =============
+    // ============= DELETE USER (SOFT DELETE) =============
     deleteUser: async (userId) => {
         try {
             const token = localStorage.getItem('token');
-            const response = await axios.delete(`${API_URL}/user/${userId}`, {
+            const response = await axios.delete(`${API_URL}/users/${userId}`, {  // ✅ /users
                 headers: { Authorization: `Bearer ${token}` }
             });
             return response.data;
@@ -90,7 +103,7 @@ const userService = {
         try {
             const token = localStorage.getItem('token');
             const response = await axios.post(
-                `${API_URL}/user/${userId}/generate-temp-password`,
+                `${API_URL}/users/${userId}/generate-temp-password`,  // ✅ /users
                 {},
                 {
                     headers: { Authorization: `Bearer ${token}` }
@@ -107,7 +120,7 @@ const userService = {
         try {
             const token = localStorage.getItem('token');
             const response = await axios.post(
-                `${API_URL}/user/change-password`,
+                `${API_URL}/users/change-password`,  // ✅ /users
                 {
                     currentPassword,
                     newPassword,

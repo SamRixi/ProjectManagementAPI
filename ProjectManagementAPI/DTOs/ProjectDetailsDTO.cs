@@ -5,8 +5,8 @@
         public int ProjectId { get; set; }
         public string ProjectName { get; set; }
         public string? Description { get; set; }
-        public DateTime StartDate { get; set; }
-        public DateTime EndDate { get; set; }
+        public DateTime? StartDate { get; set; }  // ✅ Nullable
+        public DateTime? EndDate { get; set; }    // ✅ Nullable
         public int Progress { get; set; }
 
         public TeamDTO Team { get; set; }

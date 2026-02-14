@@ -106,7 +106,7 @@ const DeveloperProjects = () => {
                         <div style={{ display: 'flex', alignItems: 'center', gap: '15px' }}>
                             <Folder size={40} />
                             <div>
-                                <h2 style={{ margin: 0, color: 'white' }}>📁 Mes Projets</h2>
+                                <h2 style={{ margin: 0, color: 'white' }}> Mes Projets</h2>
                                 <p style={{ margin: '5px 0 0 0', opacity: 0.9 }}>
                                     Consultez tous vos projets assignés
                                 </p>
@@ -211,7 +211,7 @@ const DeveloperProjects = () => {
                                             marginBottom: '8px'
                                         }}>
                                             <span style={{ fontSize: '0.9rem', color: '#666', fontWeight: '500' }}>
-                                                📊 Progression
+                                                 Progression
                                             </span>
                                             <span style={{
                                                 fontSize: '0.95rem',

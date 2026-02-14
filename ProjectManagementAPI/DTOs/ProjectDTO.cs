@@ -5,8 +5,8 @@
         public int ProjectId { get; set; }
         public string ProjectName { get; set; }
         public string? Description { get; set; }  //  Make nullable
-        public DateTime StartDate { get; set; }
-        public DateTime EndDate { get; set; }
+        public DateTime? StartDate { get; set; }  // ✅ NULLABLE
+        public DateTime? EndDate { get; set; }    // ✅ NULLABLE
         public int Progress { get; set; }
 
         // Team info
@@ -31,5 +31,6 @@
         // Dates
         public DateTime CreatedAt { get; set; }
         public DateTime? UpdatedAt { get; set; }  //  ADDED (optional)
+        public bool HasEdb { get; set; }  // ✅ AJOUTÉ ICI
     }
 }
