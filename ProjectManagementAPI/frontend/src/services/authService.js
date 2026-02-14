@@ -15,7 +15,7 @@ const authService = {
 
             console.log('Sending registration data:', payload);
 
-            const response = await api.post('/api/auth/register', payload);
+            const response = await api.post('/auth/register', payload);  // ✅ Sans /api
 
             console.log('Registration successful:', response.data);
 
@@ -48,7 +48,7 @@ const authService = {
 
             console.log('Sending login data:', payload);
 
-            const response = await api.post('/api/auth/login', payload);
+            const response = await api.post('/auth/login', payload);  // ✅ Sans /api
 
             console.log('Login successful:', response.data);
 
@@ -112,7 +112,7 @@ const authService = {
         }
     },
 
-    // ============= CHANGE PASSWORD (✅ AJOUTÉ) =============
+    // ============= CHANGE PASSWORD =============
     changePassword: async (userId, passwords) => {
         try {
             console.log('🔄 Changing password for userId:', userId);
@@ -122,7 +122,7 @@ const authService = {
                 confirmPassword: '***'
             });
 
-            const response = await api.post(`/api/auth/change-password/${userId}`, {
+            const response = await api.post(`/auth/change-password/${userId}`, {  // ✅ Sans /api
                 currentPassword: passwords.currentPassword,
                 newPassword: passwords.newPassword,
                 confirmPassword: passwords.confirmPassword

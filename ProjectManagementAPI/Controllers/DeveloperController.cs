@@ -166,6 +166,8 @@ namespace ProjectManagementAPI.Controllers
             }
         }
 
+
+
         // ============= MES TÂCHES =============
         [HttpGet("{userId}/tasks")]
         [ProducesResponseType(StatusCodes.Status200OK)]
@@ -420,6 +422,16 @@ namespace ProjectManagementAPI.Controllers
                 });
             }
         }
+
+
+
+
+
+
+
+
+
+
 
         // ============= TÂCHES EN RETARD =============
         [HttpGet("{userId}/tasks/overdue")]

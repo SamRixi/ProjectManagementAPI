@@ -5,11 +5,20 @@ const getUserId = () => {
     return user?.userId;
 };
 
-// Récupérer les données du dashboard
+// ============= GET DASHBOARD DATA =============
 const getDashboardData = async () => {
     try {
         const userId = getUserId();
-        const response = await api.get(`/api/developer/${userId}/dashboard`);
+
+        if (!userId) {
+            return {
+                success: false,
+                message: 'Utilisateur non authentifié'
+            };
+        }
+
+        // ✅ CORRECTION : Enlever /api (déjà dans baseURL)
+        const response = await api.get(`/developer/${userId}/dashboard`);
         return response.data;
     } catch (error) {
         console.error('❌ Error fetching dashboard data:', error);
@@ -20,11 +29,14 @@ const getDashboardData = async () => {
     }
 };
 
-// Mettre à jour une tâche (statut + progression)
+// ============= UPDATE TASK =============
 const updateTask = async (taskId, updateData) => {
     try {
         console.log('📤 Sending update request:', { taskId, updateData });
-        const response = await api.put(`/api/developer/tasks/${taskId}`, updateData);
+
+        // ✅ CORRECTION : Enlever /api
+        const response = await api.put(`/developer/tasks/${taskId}`, updateData);
+
         console.log('✅ Update successful:', response.data);
         return response.data;
     } catch (error) {
@@ -37,11 +49,20 @@ const updateTask = async (taskId, updateData) => {
     }
 };
 
-// Récupérer toutes les tâches
+// ============= GET ALL TASKS =============
 const getAllTasks = async () => {
     try {
         const userId = getUserId();
-        const response = await api.get(`/api/developer/${userId}/tasks`);
+
+        if (!userId) {
+            return {
+                success: false,
+                message: 'Utilisateur non authentifié'
+            };
+        }
+
+        // ✅ CORRECTION : Enlever /api
+        const response = await api.get(`/developer/${userId}/tasks`);
         return response.data;
     } catch (error) {
         console.error('❌ Error fetching tasks:', error);
@@ -52,11 +73,20 @@ const getAllTasks = async () => {
     }
 };
 
-// Récupérer les projets
+// ============= GET PROJECTS =============
 const getProjects = async () => {
     try {
         const userId = getUserId();
-        const response = await api.get(`/api/developer/${userId}/projects`);
+
+        if (!userId) {
+            return {
+                success: false,
+                message: 'Utilisateur non authentifié'
+            };
+        }
+
+        // ✅ CORRECTION : Enlever /api
+        const response = await api.get(`/developer/${userId}/projects`);
         return response.data;
     } catch (error) {
         console.error('❌ Error fetching projects:', error);
@@ -67,9 +97,25 @@ const getProjects = async () => {
     }
 };
 
+// ============= GET PROJECT DETAILS =============
+const getProjectDetails = async (projectId) => {
+    try {
+        // ✅ CORRECTION : Enlever /api
+        const response = await api.get(`/developer/projects/${projectId}`);
+        return response.data;
+    } catch (error) {
+        console.error('❌ Error fetching project details:', error);
+        return {
+            success: false,
+            message: error.response?.data?.message || 'Erreur lors du chargement du projet'
+        };
+    }
+};
+
 export default {
     getDashboardData,
     updateTask,
     getAllTasks,
-    getProjects
+    getProjects,
+    getProjectDetails
 };

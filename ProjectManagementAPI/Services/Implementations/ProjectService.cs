@@ -33,11 +33,11 @@ public class ProjectService : IProjectService
             _context.Projects.Add(project);
             await _context.SaveChangesAsync();
 
-            // Recharger avec les relations
             var createdProject = await _context.Projects
                 .Include(p => p.Team)
                 .Include(p => p.ProjectStatus)
                 .Include(p => p.Priority)
+                .Include(p => p.ProjectManager)
                 .FirstOrDefaultAsync(p => p.ProjectId == project.ProjectId);
 
             return new ApiResponse<ProjectDTO>
@@ -61,7 +61,6 @@ public class ProjectService : IProjectService
     {
         try
         {
-            // Vérifier que l'EDB existe
             var edb = await _context.EDBs.FindAsync(dto.EdbId);
             if (edb == null)
             {
@@ -72,14 +71,12 @@ public class ProjectService : IProjectService
                 };
             }
 
-            // Créer le projet
             var project = new Project
             {
                 ProjectName = dto.ProjectName,
                 Description = dto.Description,
                 StartDate = dto.StartDate,
                 EndDate = dto.EndDate,
-
                 CreatedByUserId = dto.CreatedByUserId,
                 TeamId = dto.TeamId,
                 ProjectStatusId = dto.ProjectStatusId,
@@ -91,11 +88,9 @@ public class ProjectService : IProjectService
             _context.Projects.Add(project);
             await _context.SaveChangesAsync();
 
-            // Lier l'EDB au projet
             edb.ProjectId = project.ProjectId;
             await _context.SaveChangesAsync();
 
-            // Recharger avec relations
             var createdProject = await _context.Projects
                 .Include(p => p.Team)
                 .Include(p => p.ProjectStatus)
@@ -136,7 +131,6 @@ public class ProjectService : IProjectService
             }
 
             project.ProjectName = dto.ProjectName;
-
             project.Description = dto.Description;
             project.StartDate = dto.StartDate;
             project.EndDate = dto.EndDate;
@@ -145,11 +139,11 @@ public class ProjectService : IProjectService
 
             await _context.SaveChangesAsync();
 
-            // Recharger
             var updatedProject = await _context.Projects
                 .Include(p => p.Team)
                 .Include(p => p.ProjectStatus)
                 .Include(p => p.Priority)
+                .Include(p => p.ProjectManager)
                 .FirstOrDefaultAsync(p => p.ProjectId == dto.ProjectId);
 
             return new ApiResponse<ProjectDTO>
@@ -288,14 +282,16 @@ public class ProjectService : IProjectService
                 .Include(p => p.ProjectStatus)
                 .Include(p => p.Priority)
                 .Include(p => p.ProjectTasks)
-                .Select(p => MapToProjectDTO(p))
+                .Include(p => p.ProjectManager)
                 .ToListAsync();
+
+            var projectDTOs = projects.Select(p => MapToProjectDTO(p)).ToList();
 
             return new ApiResponse<List<ProjectDTO>>
             {
                 Success = true,
                 Message = "Projets récupérés",
-                Data = projects
+                Data = projectDTOs
             };
         }
         catch (Exception ex)
@@ -318,14 +314,16 @@ public class ProjectService : IProjectService
                 .Include(p => p.ProjectStatus)
                 .Include(p => p.Priority)
                 .Include(p => p.ProjectTasks)
-                .Select(p => MapToProjectDTO(p))
+                .Include(p => p.ProjectManager)
                 .ToListAsync();
+
+            var projectDTOs = projects.Select(p => MapToProjectDTO(p)).ToList();
 
             return new ApiResponse<List<ProjectDTO>>
             {
                 Success = true,
                 Message = "Projets de l'équipe récupérés",
-                Data = projects
+                Data = projectDTOs
             };
         }
         catch (Exception ex)
@@ -342,35 +340,83 @@ public class ProjectService : IProjectService
     {
         try
         {
-            // Récupérer les équipes de l'utilisateur
+            Console.WriteLine($"📥 GetUserProjectsAsync called for userId: {userId}");
+
             var userTeamIds = await _context.TeamMembers
-                .Where(tm => tm.UserId == userId)
+                .Where(tm => tm.UserId == userId && tm.IsActive)
                 .Select(tm => tm.TeamId)
                 .ToListAsync();
 
-            // Récupérer les projets de ces équipes
+            Console.WriteLine($"✅ Found {userTeamIds.Count} team(s) for user");
+            Console.WriteLine($"📋 Team IDs: {string.Join(", ", userTeamIds)}");
+
+            if (!userTeamIds.Any())
+            {
+                Console.WriteLine("⚠️ No teams found for this user");
+                return new ApiResponse<List<ProjectDTO>>
+                {
+                    Success = true,
+                    Message = "Aucune équipe trouvée pour cet utilisateur",
+                    Data = new List<ProjectDTO>()
+                };
+            }
+
             var projects = await _context.Projects
                 .Where(p => userTeamIds.Contains(p.TeamId))
                 .Include(p => p.Team)
                 .Include(p => p.ProjectStatus)
                 .Include(p => p.Priority)
                 .Include(p => p.ProjectTasks)
-                .Select(p => MapToProjectDTO(p))
+                .Include(p => p.ProjectManager)
                 .ToListAsync();
+
+            Console.WriteLine($"✅ Found {projects.Count} project(s)");
+
+            var projectDTOs = projects.Select(p => new ProjectDTO
+            {
+                ProjectId = p.ProjectId,
+                ProjectName = p.ProjectName ?? "Sans nom",
+                Description = p.Description ?? "",
+                StartDate = p.StartDate,
+                EndDate = p.EndDate,
+                Progress = p.Progress,
+                ProjectManagerId = p.ProjectManagerId,
+                ProjectManagerName = p.ProjectManager != null
+                    ? $"{p.ProjectManager.FirstName} {p.ProjectManager.LastName}"
+                    : "Non assigné",
+                TeamName = p.Team?.teamName ?? "N/A",
+                StatusName = p.ProjectStatus?.StatusName ?? "N/A",
+                StatusColor = p.ProjectStatus?.Color ?? "#000000",
+                PriorityName = p.Priority?.Name ?? "N/A",
+                TaskCount = p.ProjectTasks?.Count ?? 0,
+                CompletedTaskCount = p.ProjectTasks?.Count(t => t.Progress == 100) ?? 0,
+                CreatedAt = p.CreatedAt
+            }).ToList();
+
+            Console.WriteLine($"✅ Mapped {projectDTOs.Count} project DTOs successfully");
 
             return new ApiResponse<List<ProjectDTO>>
             {
                 Success = true,
-                Message = "Projets de l'utilisateur récupérés",
-                Data = projects
+                Message = $"{projectDTOs.Count} projet(s) trouvé(s)",
+                Data = projectDTOs
             };
         }
         catch (Exception ex)
         {
+            Console.WriteLine($"❌ ERROR in GetUserProjectsAsync");
+            Console.WriteLine($"❌ Message: {ex.Message}");
+            Console.WriteLine($"❌ Stack trace: {ex.StackTrace}");
+            if (ex.InnerException != null)
+            {
+                Console.WriteLine($"❌ Inner exception: {ex.InnerException.Message}");
+            }
+
             return new ApiResponse<List<ProjectDTO>>
             {
                 Success = false,
-                Message = $"Erreur: {ex.Message}"
+                Message = $"Erreur: {ex.Message}",
+                Data = new List<ProjectDTO>()
             };
         }
     }
@@ -426,32 +472,30 @@ public class ProjectService : IProjectService
         return new ProjectDTO
         {
             ProjectId = p.ProjectId,
-            ProjectName = p.ProjectName,
-            Description = p.Description,
+            ProjectName = p.ProjectName ?? "Sans nom",
+            Description = p.Description ?? "",
             StartDate = p.StartDate,
             EndDate = p.EndDate,
             Progress = p.Progress,
             ProjectManagerId = p.ProjectManagerId,
             ProjectManagerName = p.ProjectManager != null
-            ? $"{p.ProjectManager.FirstName} {p.ProjectManager.LastName}"
-            : "Non assigné",
-            TeamName = p.Team.teamName,
-            StatusName = p.ProjectStatus.StatusName,
-            StatusColor = p.ProjectStatus.Color,
-            PriorityName = p.Priority.Name,
-            TaskCount = p.ProjectTasks.Count,
-            CompletedTaskCount = p.ProjectTasks.Count(t => t.Progress == 100),
+                ? $"{p.ProjectManager.FirstName} {p.ProjectManager.LastName}"
+                : "Non assigné",
+            TeamName = p.Team?.teamName ?? "N/A",
+            StatusName = p.ProjectStatus?.StatusName ?? "N/A",
+            StatusColor = p.ProjectStatus?.Color ?? "#000000",
+            PriorityName = p.Priority?.Name ?? "N/A",
+            TaskCount = p.ProjectTasks?.Count ?? 0,
+            CompletedTaskCount = p.ProjectTasks?.Count(t => t.Progress == 100) ?? 0,
             CreatedAt = p.CreatedAt
         };
     }
 
-    // ========== ASSIGN TEAM TO PROJECT ==========
     public async Task<ApiResponse<bool>> AssignTeamToProjectAsync(int projectId, int teamId)
     {
         try
         {
             var project = await _context.Projects.FindAsync(projectId);
-
             if (project == null)
             {
                 return new ApiResponse<bool>
@@ -462,7 +506,6 @@ public class ProjectService : IProjectService
             }
 
             var team = await _context.Teams.FindAsync(teamId);
-
             if (team == null)
             {
                 return new ApiResponse<bool>
@@ -492,13 +535,11 @@ public class ProjectService : IProjectService
         }
     }
 
-    // ========== SET PROJECT MANAGER ==========
     public async Task<ApiResponse<bool>> SetProjectManagerAsync(int teamMemberId, bool isProjectManager)
     {
         try
         {
             var teamMember = await _context.TeamMembers.FindAsync(teamMemberId);
-
             if (teamMember == null)
             {
                 return new ApiResponse<bool>
@@ -514,9 +555,7 @@ public class ProjectService : IProjectService
             return new ApiResponse<bool>
             {
                 Success = true,
-                Message = isProjectManager
-                    ? "Chef de projet défini"
-                    : "Chef de projet retiré",
+                Message = isProjectManager ? "Chef de projet défini" : "Chef de projet retiré",
                 Data = true
             };
         }
@@ -530,7 +569,6 @@ public class ProjectService : IProjectService
         }
     }
 
-    // ========== GET PROJECT TEAM MEMBERS ==========
     public async Task<ApiResponse<List<TeamMemberDTO>>> GetProjectTeamMembersAsync(int projectId, string? search)
     {
         try
@@ -553,9 +591,8 @@ public class ProjectService : IProjectService
 
             var members = project.Team.TeamMembers
                 .Where(tm => tm.IsActive)
-                .AsEnumerable(); // Switch to client-side evaluation
+                .AsEnumerable();
 
-            // Apply search filter if provided
             if (!string.IsNullOrEmpty(search))
             {
                 search = search.ToLower();
@@ -601,13 +638,11 @@ public class ProjectService : IProjectService
         }
     }
 
-    // ========== ASSIGN PROJECT MANAGER ==========
     public async Task<ApiResponse<bool>> AssignProjectManagerAsync(int projectId, int userId)
     {
         try
         {
             var project = await _context.Projects.FindAsync(projectId);
-
             if (project == null)
             {
                 return new ApiResponse<bool>
@@ -618,7 +653,6 @@ public class ProjectService : IProjectService
             }
 
             var user = await _context.Users.FindAsync(userId);
-
             if (user == null)
             {
                 return new ApiResponse<bool>
@@ -628,7 +662,6 @@ public class ProjectService : IProjectService
                 };
             }
 
-            // Vérifier que l'utilisateur fait partie de l'équipe du projet
             var isTeamMember = await _context.TeamMembers
                 .AnyAsync(tm => tm.TeamId == project.TeamId && tm.UserId == userId && tm.IsActive);
 
@@ -644,7 +677,6 @@ public class ProjectService : IProjectService
             project.ProjectManagerId = userId;
             await _context.SaveChangesAsync();
 
-            // Mettre à jour le TeamMember comme chef de projet
             var teamMember = await _context.TeamMembers
                 .FirstOrDefaultAsync(tm => tm.TeamId == project.TeamId && tm.UserId == userId);
 
@@ -671,13 +703,11 @@ public class ProjectService : IProjectService
         }
     }
 
-    // ========== GET MANAGED PROJECTS ==========
     public async Task<ApiResponse<List<ProjectDTO>>> GetManagedProjectsAsync(int userId)
     {
         try
         {
             var user = await _context.Users.FindAsync(userId);
-
             if (user == null)
             {
                 return new ApiResponse<List<ProjectDTO>>

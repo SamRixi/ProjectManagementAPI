@@ -72,6 +72,12 @@
 
 /* Header */
 .dashboard-header {
+    position: fixed;
+    top: 0;
+    left: 0;
+    right: 0;
+    width: 100vw;
+    height: 70px;
     background: linear-gradient(135deg, var(--mobilis-green) 0%, var(--mobilis-dark) 100%);
     color: white;
     padding: 20px 50px;
@@ -79,10 +85,10 @@
     justify-content: space-between;
     align-items: center;
     box-shadow: 0 8px 30px rgba(0, 166, 81, 0.2);
-    position: relative;
-    z-index: 100;
+    z-index: 1001;
     backdrop-filter: blur(10px);
 }
+
 
     .dashboard-header::before {
         content: "";
@@ -334,13 +340,14 @@
     z-index: 2;
 }
 
-/* Responsive */
 @media (max-width: 768px) {
     .dashboard-header {
         padding: 15px 25px;
-        flex-direction: column;
-        gap: 15px;
+        height: 60px;
+        flex-direction: row;
+        gap: 10px;
     }
+
 
         .dashboard-header h1 {
             font-size: 22px;
