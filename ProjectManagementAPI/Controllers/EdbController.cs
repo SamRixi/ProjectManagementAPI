@@ -1,6 +1,7 @@
 ﻿using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using ProjectManagementAPI.Services.Interfaces;
+using System;
 
 [ApiController]
 [Route("api/[controller]")]
@@ -8,10 +9,13 @@ using ProjectManagementAPI.Services.Interfaces;
 public class EdbController : ControllerBase
 {
     private readonly IEdbService _edbService;
+    private readonly IWebHostEnvironment _environment;
+  
 
-    public EdbController(IEdbService edbService)
+    public EdbController(IEdbService edbService, IWebHostEnvironment environment)
     {
         _edbService = edbService;
+        _environment = environment;
     }
 
     // ============= Upload EDB (Reporting) =============
@@ -20,6 +24,8 @@ public class EdbController : ControllerBase
     [Authorize(Roles = "Reporting")]
     public async Task<IActionResult> UploadEdb([FromForm] IFormFile file, [FromForm] string? description)
     {
+        
+
         var result = await _edbService.UploadEdbAsync(file, description);
         return result.Success ? Ok(result) : BadRequest(result);
     }
@@ -59,8 +65,13 @@ public class EdbController : ControllerBase
         {
             return NotFound(result);
         }
+        // ✅ Extract filename from URL
+        var uri = new Uri(result.Data.FileUrl);
+        var fileName = Path.GetFileName(uri.LocalPath);
 
-        var filePath = result.Data.FileUrl;
+        // ✅ Build physical file path
+        var uploadsFolder = Path.Combine(_environment.ContentRootPath, "Uploads", "EDBs");
+        var filePath = Path.Combine(uploadsFolder, fileName);
 
         if (!System.IO.File.Exists(filePath))
         {
@@ -68,7 +79,7 @@ public class EdbController : ControllerBase
         }
 
         var fileBytes = await System.IO.File.ReadAllBytesAsync(filePath);
-        return File(fileBytes, "application/octet-stream", result.Data.FileName);
+        return File(fileBytes, "application/octet-stream", fileName);
     }
 
     // ============= Delete EDB (Reporting) =============

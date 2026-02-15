@@ -135,13 +135,18 @@ const ProjectManagement = () => {
 
         try {
             setSubmitting(true);
+            const currentUser = JSON.parse(localStorage.getItem('user'));
+            const createdByUserId = currentUser?.userId || 0;
 
+            console.log('👤 Current user creating project:', currentUser);
+            console.log('🆔 CreatedByUserId:', createdByUserId);
             const projectData = {
                 projectName: formData.projectName.trim(),
                 description: formData.description?.trim() || '',
                 startDate: new Date(formData.startDate).toISOString(),
                 endDate: new Date(formData.endDate).toISOString(),
-                projectManagerId: parseInt(formData.projectManagerId) || 0
+                projectManagerId: parseInt(formData.projectManagerId) || 0,
+                createdByUserId: createdByUserId
             };
 
             console.log('📤 Données envoyées:', projectData);

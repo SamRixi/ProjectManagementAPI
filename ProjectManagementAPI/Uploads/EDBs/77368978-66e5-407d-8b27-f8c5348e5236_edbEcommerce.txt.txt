@@ -1,0 +1,17 @@
+EXPRESSION DE BESOIN (EDB)
+Projet: Plateforme E-Commerce Mobilis
+Date: 15/02/2026
+
+1. Contexte
+   Développement d'une plateforme e-commerce moderne
+
+2. Objectifs
+   - Interface utilisateur moderne
+   - Système de paiement sécurisé
+   - Gestion des commandes
+
+3. Fonctionnalités
+   - Catalogue produits
+   - Panier d'achat
+   - Paiement en ligne
+   - Suivi des commandes

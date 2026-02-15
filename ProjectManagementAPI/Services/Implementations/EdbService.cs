@@ -58,7 +58,7 @@ namespace ProjectManagementAPI.Services.Implementations
                 var edb = new EDB
                 {
                     FileUrl = fileUrl,
-                    ProjectId = 0 // Pas encore lié à un projet
+                    ProjectId = null
                 };
 
                 _context.EDBs.Add(edb);
@@ -231,7 +231,7 @@ namespace ProjectManagementAPI.Services.Implementations
                 FileName = Path.GetFileName(new Uri(edb.FileUrl).LocalPath),
                 FileUrl = edb.FileUrl,
                 FileSize = 0, // Pas stocké dans le model
-                FileType = "", // Pas stocké dans le model
+                FileType = "", // Pas stocké sdans le model
                 ProjectId = edb.ProjectId,
                 ProjectName = edb.Project?.ProjectName ?? "Non assigné",
                 UploadedAt = DateTime.MinValue, // Pas stocké dans le model

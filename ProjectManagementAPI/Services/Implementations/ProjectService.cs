@@ -17,6 +17,11 @@ public class ProjectService : IProjectService
     {
         try
         {
+            // ✅ ADD THESE DEBUG LOGS:
+            Console.WriteLine($"📥 DTO received:");
+            Console.WriteLine($"  ProjectName: {dto.ProjectName}");
+            Console.WriteLine($"  ProjectManagerId: {dto.ProjectManagerId}");
+            Console.WriteLine($"  CreatedByUserId: {dto.CreatedByUserId}");  // ← What shows here?
             var project = new Project
             {
                 ProjectName = dto.ProjectName,
@@ -28,7 +33,8 @@ public class ProjectService : IProjectService
                 PriorityId = dto.PriorityId,
                 ProjectManagerId = dto.ProjectManagerId,
                 Progress = 0,
-                CreatedAt = DateTime.UtcNow
+                CreatedAt = DateTime.UtcNow,
+                CreatedByUserId = dto.CreatedByUserId,
             };
 
             _context.Projects.Add(project);
