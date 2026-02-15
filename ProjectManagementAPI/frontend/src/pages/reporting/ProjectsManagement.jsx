@@ -23,6 +23,7 @@ const ProjectManagement = () => {
     const [projects, setProjects] = useState([]);
     const [teams, setTeams] = useState([]);
     const [edbs, setEdbs] = useState([]);
+    const [projectManagers, setProjectManagers] = useState([]);
     const [loading, setLoading] = useState(true);
     const [searchTerm, setSearchTerm] = useState('');
     const [showCreateModal, setShowCreateModal] = useState(false);
@@ -37,7 +38,8 @@ const ProjectManagement = () => {
         startDate: '',
         endDate: '',
         teamId: 0,
-        edbId: 0
+        edbId: 0,
+        projectManagerId: 0
     });
 
     useEffect(() => {
@@ -61,6 +63,16 @@ const ProjectManagement = () => {
             }
             if (edbsResponse.success) {
                 setEdbs(edbsResponse.data || []);
+            }
+            const managersResponse = await teamService.getProjectManagers();
+            if (managersResponse.success) {
+                // Filter duplicates by userId
+                const uniqueManagers = managersResponse.data.filter(
+                    (manager, index, self) =>
+                        index === self.findIndex(m => m.userId === manager.userId)
+                );
+                setProjectManagers(uniqueManagers);
+                console.log('📊 Unique managers:', uniqueManagers);
             }
         } catch (error) {
             console.error('❌ Fetch data error:', error);
@@ -128,7 +140,8 @@ const ProjectManagement = () => {
                 projectName: formData.projectName.trim(),
                 description: formData.description?.trim() || '',
                 startDate: new Date(formData.startDate).toISOString(),
-                endDate: new Date(formData.endDate).toISOString()
+                endDate: new Date(formData.endDate).toISOString(),
+                projectManagerId: parseInt(formData.projectManagerId) || 0
             };
 
             console.log('📤 Données envoyées:', projectData);
@@ -553,7 +566,7 @@ const ProjectManagement = () => {
                                             onChange={handleInputChange}
                                             disabled={submitting}
                                         >
-                                            <option value="0">Aucune équipe</option>
+                                            <option key="no-team" value="0">Aucune équipe</option>
                                             {teams.map(team => (
                                                 <option key={team.teamId} value={team.teamId}>
                                                     {team.teamName}
@@ -561,6 +574,22 @@ const ProjectManagement = () => {
                                             ))}
                                         </select>
                                     </div>
+                                </div>
+                                <div className="form-group">
+                                    <label>Chef de projet</label>
+                                    <select
+                                        name="projectManagerId"
+                                        value={formData.projectManagerId}
+                                        onChange={handleInputChange}
+                                        disabled={submitting}
+                                    >
+                                        <option key="no-manager" value="0">Aucun chef de projet</option>
+                                        {projectManagers.map(manager => (
+                                            <option key={manager.userId} value={manager.userId}>
+                                                {manager.firstName} {manager.lastName}
+                                            </option>
+                                        ))}
+                                    </select>
                                 </div>
 
                                 <div className="form-group">
@@ -618,7 +647,7 @@ const ProjectManagement = () => {
                                         onChange={handleInputChange}
                                         disabled={submitting}
                                     >
-                                        <option value="0">Aucun EDB</option>
+                                        <option key="no-edb" value="0">Aucun EDB</option>
                                         {getAvailableEdbs().map(edb => (
                                             <option key={edb.edbId} value={edb.edbId}>
                                                 {edb.fileName}
@@ -693,6 +722,22 @@ const ProjectManagement = () => {
                                             ))}
                                         </select>
                                     </div>
+                                </div>
+                                <div className="form-group">
+                                    <label>Chef de projet</label>
+                                    <select
+                                        name="projectManagerId"
+                                        value={formData.projectManagerId}
+                                        onChange={handleInputChange}
+                                        disabled={submitting}
+                                    >
+                                        <option value="0">Aucun chef de projet</option>
+                                        {projectManagers.map(manager => (
+                                            <option key={manager.userId} value={manager.userId}>
+                                                 {manager.firstName} {manager.lastName}
+                                            </option>
+                                        ))}
+                                    </select>
                                 </div>
 
                                 <div className="form-group">

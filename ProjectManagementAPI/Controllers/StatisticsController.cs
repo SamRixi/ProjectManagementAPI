@@ -12,11 +12,11 @@ namespace ProjectManagementAPI.Controllers
     [Route("api/[controller]")]
     [Authorize] // Authentifié, rôles gérés par action
     [Produces("application/json")]
-    public class StatsController : ControllerBase
+    public class StatisticsController : ControllerBase
     {
         private readonly ApplicationDbContext _context;
 
-        public StatsController(ApplicationDbContext context)
+        public StatisticsController(ApplicationDbContext context)
         {
             _context = context;
         }

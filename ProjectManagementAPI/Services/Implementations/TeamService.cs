@@ -132,7 +132,7 @@ public class TeamService : ITeamService
             var team = await _context.Teams
                 .Include(t => t.TeamMembers)
                     .ThenInclude(tm => tm.User)
-                        .ThenInclude(u => u.Role) // ✅ FIXED: Include Role from User
+                        .ThenInclude(u => u.Role)
                 .Include(t => t.Projects)
                 .FirstOrDefaultAsync(t => t.teamId == teamId);
 
@@ -157,8 +157,8 @@ public class TeamService : ITeamService
                     UserName = tm.User.UserName,
                     FirstName = tm.User.FirstName,
                     LastName = tm.User.LastName,
-                    RoleId = tm.User.RoleId, // ✅ FIXED: Get from User, not TeamMember
-                    RoleName = tm.User.Role.RoleName, // ✅ FIXED: Get from User, not TeamMember
+                    RoleId = tm.User.RoleId,
+                    RoleName = tm.User.Role.RoleName,
                     IsProjectManager = tm.IsProjectManager,
                     JoinedDate = tm.JoinedDate
                 }).ToList(),
@@ -192,6 +192,7 @@ public class TeamService : ITeamService
         try
         {
             var teams = await _context.Teams
+                .Where(t => t.IsActive) // ✅ FIXED: Only show active teams
                 .Include(t => t.TeamMembers)
                 .Include(t => t.Projects)
                 .Select(t => new TeamDTO
@@ -225,9 +226,8 @@ public class TeamService : ITeamService
     {
         try
         {
-            // Vérifier si l'utilisateur existe
             var user = await _context.Users
-                .Include(u => u.Role) // ✅ FIXED: Include Role
+                .Include(u => u.Role)
                 .FirstOrDefaultAsync(u => u.UserId == dto.UserId);
 
             if (user == null)
@@ -239,7 +239,6 @@ public class TeamService : ITeamService
                 };
             }
 
-            // Vérifier si le membre existe déjà dans l'équipe
             var existingMember = await _context.TeamMembers
                 .FirstOrDefaultAsync(tm => tm.UserId == dto.UserId && tm.TeamId == dto.TeamId);
 
@@ -256,7 +255,6 @@ public class TeamService : ITeamService
             {
                 UserId = dto.UserId,
                 TeamId = dto.TeamId,
-                // ❌ REMOVED: RoleId = dto.RoleId, (TeamMember doesn't have RoleId)
                 IsProjectManager = dto.IsProjectManager,
                 JoinedDate = DateTime.UtcNow
             };
@@ -264,10 +262,9 @@ public class TeamService : ITeamService
             _context.TeamMembers.Add(teamMember);
             await _context.SaveChangesAsync();
 
-            // Recharger avec les relations
             var addedMember = await _context.TeamMembers
                 .Include(tm => tm.User)
-                    .ThenInclude(u => u.Role) // ✅ FIXED: Include Role from User
+                    .ThenInclude(u => u.Role)
                 .Include(tm => tm.Team)
                 .FirstOrDefaultAsync(tm => tm.TeamMemberId == teamMember.TeamMemberId);
 
@@ -284,8 +281,8 @@ public class TeamService : ITeamService
                     LastName = addedMember.User.LastName,
                     TeamId = addedMember.TeamId,
                     TeamName = addedMember.Team.teamName,
-                    RoleId = addedMember.User.RoleId, // ✅ FIXED: Get from User
-                    RoleName = addedMember.User.Role.RoleName, // ✅ FIXED: Get from User
+                    RoleId = addedMember.User.RoleId,
+                    RoleName = addedMember.User.Role.RoleName,
                     IsProjectManager = addedMember.IsProjectManager,
                     JoinedDate = addedMember.JoinedDate
                 }
@@ -336,7 +333,6 @@ public class TeamService : ITeamService
         }
     }
 
-    // ⭐ 1. Toggle Team Active (Activer/Désactiver équipe)
     public async Task<ApiResponse<bool>> ToggleTeamActiveAsync(int teamId, bool isActive)
     {
         try
@@ -372,7 +368,6 @@ public class TeamService : ITeamService
         }
     }
 
-    // ⭐ 2. Toggle Member Active (Activer/Désactiver membre)
     public async Task<ApiResponse<bool>> ToggleMemberActiveAsync(int memberId, bool isActive)
     {
         try
@@ -408,7 +403,6 @@ public class TeamService : ITeamService
         }
     }
 
-    // ⭐ 3. Get Team Members (Récupérer tous les membres d'une équipe)
     public async Task<ApiResponse<List<TeamMemberDTO>>> GetTeamMembersAsync(int teamId)
     {
         try
@@ -465,7 +459,6 @@ public class TeamService : ITeamService
         }
     }
 
-    // ⭐ 4. Remove Member (Retirer membre par TeamId + UserId)
     public async Task<ApiResponse<bool>> RemoveMemberAsync(int teamId, int userId)
     {
         try
@@ -502,5 +495,86 @@ public class TeamService : ITeamService
         }
     }
 
+    // ✅ NEW METHOD 1: Get Project Managers (for dropdown)
+    public async Task<ApiResponse<List<ProjectManagerDTO>>> GetProjectManagersAsync()
+    {
+        try
+        {
+            var projectManagers = await _context.TeamMembers
+                .Where(tm => tm.IsProjectManager && tm.IsActive)
+                .Include(tm => tm.User)
+                .Include(tm => tm.Team)
+                .Select(tm => new ProjectManagerDTO
+                {
+                    UserId = tm.User.UserId,
+                    FirstName = tm.User.FirstName,
+                    LastName = tm.User.LastName,
+                    Email = tm.User.Email,
+                    teamId = tm.Team.teamId,
+                    teamName = tm.Team.teamName
+                })
+                .Distinct()
+                .ToListAsync();
+
+            return new ApiResponse<List<ProjectManagerDTO>>
+            {
+                Success = true,
+                Data = projectManagers,
+                Message = $"{projectManagers.Count} chef(s) de projet disponible(s)"
+            };
+        }
+        catch (Exception ex)
+        {
+            return new ApiResponse<List<ProjectManagerDTO>>
+            {
+                Success = false,
+                Message = "Erreur lors de la récupération des chefs de projet",
+             
+            };
+        }
+    }
+
+    // ✅ NEW METHOD 2: Set Project Manager (mark member as project manager)
+    public async Task<ApiResponse<bool>> SetProjectManagerAsync(int teamMemberId, bool isProjectManager)
+    {
+        try
+        {
+            var teamMember = await _context.TeamMembers
+                .Include(tm => tm.User)
+                .FirstOrDefaultAsync(tm => tm.TeamMemberId == teamMemberId);
+
+            if (teamMember == null)
+            {
+                return new ApiResponse<bool>
+                {
+                    Success = false,
+                    Message = "Membre d'équipe introuvable"
+                };
+            }
+
+            teamMember.IsProjectManager = isProjectManager;
+            await _context.SaveChangesAsync();
+
+            var message = isProjectManager
+                ? $"{teamMember.User.FirstName} {teamMember.User.LastName} est maintenant chef de projet"
+                : $"{teamMember.User.FirstName} {teamMember.User.LastName} n'est plus chef de projet";
+
+            return new ApiResponse<bool>
+            {
+                Success = true,
+                Message = message,
+                Data = true
+            };
+        }
+        catch (Exception ex)
+        {
+            return new ApiResponse<bool>
+            {
+                Success = false,
+                Message = "Erreur lors de la mise à jour du statut chef de projet",
+                
+            };
+        }
+    }
 }
 

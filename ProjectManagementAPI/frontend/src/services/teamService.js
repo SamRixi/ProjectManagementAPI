@@ -382,6 +382,42 @@ const teamService = {
                 message: 'Erreur lors de l\'ajout des membres'
             };
         }
+    },  
+        
+// ============= GET PROJECT MANAGERS (for dropdown) =============
+    getProjectManagers: async () => {
+        try {
+            console.log('📥 Fetching project managers...');
+
+            const response = await api.get('/team/project-managers');
+
+            console.log('✅ Get project managers response:', response.data);
+
+            let managersArray = [];
+
+            if (response.data.success && response.data.data) {
+                managersArray = Array.isArray(response.data.data)
+                    ? response.data.data
+                    : [response.data.data];
+            } else if (Array.isArray(response.data)) {
+                managersArray = response.data;
+            }
+
+            return {
+                success: true,
+                data: managersArray,
+                message: response.data.message
+            };
+        } catch (error) {
+            console.error('❌ Get project managers error:', error);
+            return {
+                success: false,
+                data: [],
+                message: error.response?.data?.message ||
+                    error.response?.data?.Message ||
+                    'Erreur lors de la récupération des chefs de projet'
+            };
+        }
     }
 };
 

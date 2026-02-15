@@ -83,6 +83,7 @@ namespace ProjectManagementAPI.Controllers
                     .Include(t => t.ProjectTasksStatus)
                     .Include(t => t.Priority)
                     .Include(t => t.Project)
+        .ThenInclude(p => p.ProjectManager)
                     .Include(t => t.CreatedByUser)
                     .OrderByDescending(t => t.ProjectTaskId)
                     .Take(5)
@@ -96,9 +97,9 @@ namespace ProjectManagementAPI.Controllers
                         deadline = t.DueDate,
                         projectId = t.ProjectId,
                         projectName = t.Project.ProjectName,
-                        projectManagerName = t.CreatedByUser != null
-                            ? $"{t.CreatedByUser.FirstName} {t.CreatedByUser.LastName}"
-                            : "N/A",
+                        projectManagerName = t.Project.ProjectManager != null  
+    ? $"{t.Project.ProjectManager.FirstName} {t.Project.ProjectManager.LastName}"
+    : "Non assigné",
                         isOverdue = t.DueDate < now && t.TaskStatusId != 3,
                         isValidated = t.IsValidated,
                         progress = t.Progress
@@ -180,6 +181,7 @@ namespace ProjectManagementAPI.Controllers
                     .Include(t => t.ProjectTasksStatus)
                     .Include(t => t.Priority)
                     .Include(t => t.Project)
+    .ThenInclude(p => p.ProjectManager)
                     .Include(t => t.CreatedByUser)
                     .OrderByDescending(t => t.ProjectTaskId)
                     .Select(t => new
@@ -191,9 +193,9 @@ namespace ProjectManagementAPI.Controllers
                         priority = t.Priority.Name,
                         deadline = t.DueDate,
                         projectName = t.Project.ProjectName,
-                        projectManagerName = t.CreatedByUser != null
-                            ? $"{t.CreatedByUser.FirstName} {t.CreatedByUser.LastName}"
-                            : "N/A",
+                        projectManagerName = t.Project.ProjectManager != null  
+            ? $"{t.Project.ProjectManager.FirstName} {t.Project.ProjectManager.LastName}"
+            : "Non assigné",
                         isOverdue = t.DueDate < DateTime.Now && t.TaskStatusId != 3,
                         progress = t.Progress
                     })

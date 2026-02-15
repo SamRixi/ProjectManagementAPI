@@ -15,5 +15,8 @@ namespace ProjectManagementAPI.Services.Interfaces
         Task<ApiResponse<bool>> ToggleMemberActiveAsync(int memberId, bool isActive);
         Task<ApiResponse<List<TeamMemberDTO>>> GetTeamMembersAsync(int teamId);
         Task<ApiResponse<bool>> RemoveMemberAsync(int teamId, int userId);
+        Task<ApiResponse<List<ProjectManagerDTO>>> GetProjectManagersAsync();
+        Task<ApiResponse<bool>> SetProjectManagerAsync(int teamMemberId, bool isProjectManager);
+
     }
 }
