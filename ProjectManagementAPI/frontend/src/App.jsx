@@ -1,21 +1,29 @@
 ﻿import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom';
-import { AuthProvider, useAuth } from './context/AuthContext'; 
+import { AuthProvider, useAuth } from './context/AuthContext';
 import Login from './pages/Login';
 import Register from './pages/Register';
 import Dashboard from './pages/Dashboard';
 import ChangePassword from './pages/ChangePassword';
-import DeveloperProjects from './pages/developer/DeveloperProjects';  
+
+// ========== DEVELOPER ==========
+import DeveloperProjects from './pages/developer/DeveloperProjects';
 import DeveloperDashboard from './pages/dashboards/DeveloperDashboard';
 import DeveloperTasks from './pages/developer/DeveloperTasks';
-import ReportingDashboard from "./pages/dashboards/ReportingDashboard"; 
+import ProjectDetails from './pages/developer/ProjectDetails';
+
+// ========== REPORTING ==========
+import ReportingDashboard from "./pages/dashboards/ReportingDashboard";
 import UsersManagement from './pages/reporting/UsersManagement';
 import TeamsManagement from './pages/reporting/TeamsManagement';
 import ProjectsManagement from './pages/reporting/ProjectsManagement';
 import EDBManagement from './pages/reporting/EDBManagement';
-import ProjectDetails from './pages/developer/ProjectDetails';
 
-
-
+// ========== PROJECT MANAGER ==========
+import ProjectManagerDashboard from "./pages/dashboards/ProjectManagerDashboard";
+import ProjectManagerProjects from './pages/project-manager/ProjectManagerProjects';
+import ProjectManagerTasks from './pages/project-manager/ProjectManagerTasks';
+import ProjectManagerValidation from './pages/project-manager/ProjectManagerValidation';
+import ProjectStats from './pages/project-manager/ProjectStats';
 
 const ProtectedRoute = ({ children }) => {
     const { isAuthenticated } = useAuth();
@@ -27,20 +35,34 @@ function App() {
         <AuthProvider>
             <BrowserRouter>
                 <Routes>
+                    {/* ========== PUBLIC ROUTES ========== */}
                     <Route path="/login" element={<Login />} />
                     <Route path="/register" element={<Register />} />
                     <Route path="/change-password" element={<ChangePassword />} />
+
+                    {/* ========== DEVELOPER ROUTES ========== */}
                     <Route path="/developer/dashboard" element={<DeveloperDashboard />} />
+                    <Route path="/developer/projects/:projectId" element={<ProjectDetails />} />
                     <Route path="/developer/projects" element={<DeveloperProjects />} />
                     <Route path="/developer/tasks" element={<DeveloperTasks />} />
+
+                    {/* ========== REPORTING ROUTES ========== */}
                     <Route path="/reporting/dashboard" element={<ReportingDashboard />} />
                     <Route path="/reporting/users" element={<UsersManagement />} />
                     <Route path="/reporting/teams" element={<TeamsManagement />} />
                     <Route path="/reporting/projects" element={<ProjectsManagement />} />
                     <Route path="/reporting/edb" element={<EDBManagement />} />
-                    <Route path="/developer/projects/:projectId" element={<ProjectDetails />} /> 
+
+                    {/* ========== PROJECT MANAGER ROUTES ========== */}
+                    <Route path="/project-manager/dashboard" element={<ProjectManagerDashboard />} />
+                    <Route path="/project-manager/projects" element={<ProjectManagerProjects />} />
+                    <Route path="/project-manager/projects/:projectId/stats" element={<ProjectStats />} /> 
+                    <Route path="/project-manager/tasks" element={<ProjectManagerTasks />} />
+                    <Route path="/project-manager/validation" element={<ProjectManagerValidation />} />
+                  
 
 
+                    {/* ========== PROTECTED DASHBOARD ========== */}
                     <Route
                         path="/dashboard"
                         element={
@@ -50,6 +72,7 @@ function App() {
                         }
                     />
 
+                    {/* ========== DEFAULT REDIRECT ========== */}
                     <Route path="/" element={<Navigate to="/login" />} />
                 </Routes>
             </BrowserRouter>

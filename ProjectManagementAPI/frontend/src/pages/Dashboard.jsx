@@ -4,6 +4,7 @@ import { LogOut } from 'lucide-react';
 import '../styles/Dashboard.css';
 import ReportingDashboard from './dashboards/ReportingDashboard';
 import DeveloperDashboard from './dashboards/DeveloperDashboard';
+import ProjectManagerDashboard from './dashboards/ProjectManagerDashboard'; 
 
 
 const Dashboard = () => {
@@ -27,6 +28,9 @@ const Dashboard = () => {
     // ✅ Developer Dashboard
     if (hasRole('Developer')) {
         return <DeveloperDashboard />;
+    }
+    if (hasRole('Project Manager')) {
+        return <ProjectManagerDashboard />;
     }
 
     // 📊 Manager Dashboard (à créer)
