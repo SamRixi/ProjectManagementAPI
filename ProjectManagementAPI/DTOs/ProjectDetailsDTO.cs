@@ -7,6 +7,9 @@
         public string? Description { get; set; }
         public DateTime? StartDate { get; set; }  // ✅ Nullable
         public DateTime? EndDate { get; set; }    // ✅ Nullable
+        public int? ProjectManagerId { get; set; }
+        public string? ProjectManagerName { get; set; }
+        public string? TeamName { get; set; }
         public int Progress { get; set; }
 
         public TeamDTO Team { get; set; }

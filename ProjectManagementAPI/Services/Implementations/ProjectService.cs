@@ -217,6 +217,7 @@ public class ProjectService : IProjectService
                 .Include(p => p.Team)
                 .Include(p => p.ProjectStatus)
                 .Include(p => p.Priority)
+                .Include(p => p.ProjectManager)
                 .Include(p => p.ProjectTasks)
                     .ThenInclude(t => t.ProjectTasksStatus)
                 .Include(p => p.ProjectTasks)
@@ -235,6 +236,10 @@ public class ProjectService : IProjectService
 
             var details = new ProjectDetailsDTO
             {
+                ProjectManagerId = project.ProjectManagerId,
+                ProjectManagerName = project.ProjectManager != null  // ✅ AJOUTE CETTE LIGNE
+        ? $"{project.ProjectManager.FirstName} {project.ProjectManager.LastName}"
+        : "Non assigné",
                 ProjectId = project.ProjectId,
                 ProjectName = project.ProjectName,
                 Description = project.Description,
@@ -246,6 +251,7 @@ public class ProjectService : IProjectService
                     TeamId = project.Team.teamId,
                     TeamName = project.Team.teamName
                 } : null,
+                TeamName = project.Team?.teamName ?? "Non assignée",
                 Status = project.ProjectStatus != null ? new ProjectStatusDTO
                 {
                     ProjectStatusId = project.ProjectStatus.ProjectStatusId,

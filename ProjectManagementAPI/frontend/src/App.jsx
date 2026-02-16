@@ -12,6 +12,7 @@ import UsersManagement from './pages/reporting/UsersManagement';
 import TeamsManagement from './pages/reporting/TeamsManagement';
 import ProjectsManagement from './pages/reporting/ProjectsManagement';
 import EDBManagement from './pages/reporting/EDBManagement';
+import ProjectDetails from './pages/developer/ProjectDetails';
 
 
 
@@ -37,6 +38,7 @@ function App() {
                     <Route path="/reporting/teams" element={<TeamsManagement />} />
                     <Route path="/reporting/projects" element={<ProjectsManagement />} />
                     <Route path="/reporting/edb" element={<EDBManagement />} />
+                    <Route path="/developer/projects/:projectId" element={<ProjectDetails />} /> 
 
 
                     <Route
