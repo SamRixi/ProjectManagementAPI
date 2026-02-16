@@ -65,10 +65,9 @@ namespace ProjectManagementAPI.Controllers
 
                 var stats = new
                 {
-                    activeProjects = await _context.TeamMembers
-                        .Where(tm => tm.UserId == userId)
-                        .Select(tm => tm.TeamId)
-                        .Distinct()
+                    // ✅ CORRIGÉ: Compte les PROJETS (pas les équipes)
+                    activeProjects = await _context.Projects
+                        .Where(p => p.Team.TeamMembers.Any(tm => tm.UserId == userId))
                         .CountAsync(),
 
                     tasksInProgress = tasks.Count(t => t.TaskStatusId == 2),
@@ -83,7 +82,7 @@ namespace ProjectManagementAPI.Controllers
                     .Include(t => t.ProjectTasksStatus)
                     .Include(t => t.Priority)
                     .Include(t => t.Project)
-        .ThenInclude(p => p.ProjectManager)
+                        .ThenInclude(p => p.ProjectManager)
                     .Include(t => t.CreatedByUser)
                     .OrderByDescending(t => t.ProjectTaskId)
                     .Take(5)
@@ -97,9 +96,9 @@ namespace ProjectManagementAPI.Controllers
                         deadline = t.DueDate,
                         projectId = t.ProjectId,
                         projectName = t.Project.ProjectName,
-                        projectManagerName = t.Project.ProjectManager != null  
-    ? $"{t.Project.ProjectManager.FirstName} {t.Project.ProjectManager.LastName}"
-    : "Non assigné",
+                        projectManagerName = t.Project.ProjectManager != null
+                            ? $"{t.Project.ProjectManager.FirstName} {t.Project.ProjectManager.LastName}"
+                            : "Non assigné",
                         isOverdue = t.DueDate < now && t.TaskStatusId != 3,
                         isValidated = t.IsValidated,
                         progress = t.Progress
@@ -167,8 +166,6 @@ namespace ProjectManagementAPI.Controllers
             }
         }
 
-
-
         // ============= MES TÂCHES =============
         [HttpGet("{userId}/tasks")]
         [ProducesResponseType(StatusCodes.Status200OK)]
@@ -181,7 +178,7 @@ namespace ProjectManagementAPI.Controllers
                     .Include(t => t.ProjectTasksStatus)
                     .Include(t => t.Priority)
                     .Include(t => t.Project)
-    .ThenInclude(p => p.ProjectManager)
+                        .ThenInclude(p => p.ProjectManager)
                     .Include(t => t.CreatedByUser)
                     .OrderByDescending(t => t.ProjectTaskId)
                     .Select(t => new
@@ -193,9 +190,9 @@ namespace ProjectManagementAPI.Controllers
                         priority = t.Priority.Name,
                         deadline = t.DueDate,
                         projectName = t.Project.ProjectName,
-                        projectManagerName = t.Project.ProjectManager != null  
-            ? $"{t.Project.ProjectManager.FirstName} {t.Project.ProjectManager.LastName}"
-            : "Non assigné",
+                        projectManagerName = t.Project.ProjectManager != null
+                            ? $"{t.Project.ProjectManager.FirstName} {t.Project.ProjectManager.LastName}"
+                            : "Non assigné",
                         isOverdue = t.DueDate < DateTime.Now && t.TaskStatusId != 3,
                         progress = t.Progress
                     })
@@ -424,16 +421,6 @@ namespace ProjectManagementAPI.Controllers
                 });
             }
         }
-
-
-
-
-
-
-
-
-
-
 
         // ============= TÂCHES EN RETARD =============
         [HttpGet("{userId}/tasks/overdue")]

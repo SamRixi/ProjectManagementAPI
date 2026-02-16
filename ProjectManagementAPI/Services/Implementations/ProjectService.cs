@@ -293,6 +293,7 @@ public class ProjectService : IProjectService
                 .Include(p => p.ProjectStatus)
                 .Include(p => p.Priority)
                 .Include(p => p.ProjectTasks)
+                 .Include(p => p.EDBs)
                 .Include(p => p.ProjectManager)
                 .ToListAsync();
 
@@ -325,6 +326,7 @@ public class ProjectService : IProjectService
                 .Include(p => p.ProjectStatus)
                 .Include(p => p.Priority)
                 .Include(p => p.ProjectTasks)
+                .Include(p => p.EDBs)
                 .Include(p => p.ProjectManager)
                 .ToListAsync();
 
@@ -377,6 +379,7 @@ public class ProjectService : IProjectService
                 .Include(p => p.ProjectStatus)
                 .Include(p => p.Priority)
                 .Include(p => p.ProjectTasks)
+                .Include(p => p.EDBs)
                 .Include(p => p.ProjectManager)
                 .ToListAsync();
 
@@ -717,6 +720,7 @@ public class ProjectService : IProjectService
                 .Include(p => p.ProjectStatus)
                 .Include(p => p.Priority)
                 .Include(p => p.ProjectTasks)
+                 .Include(p => p.EDBs)
                 .Include(p => p.ProjectManager)
                 .ToListAsync();
 

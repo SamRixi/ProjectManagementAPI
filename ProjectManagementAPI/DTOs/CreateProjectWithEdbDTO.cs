@@ -5,17 +5,16 @@ namespace ProjectManagementAPI.DTOs
 {
     public class CreateProjectWithEdbDTO
     {
-
-        [Required]
-        public int EdbId { get; set; } 
+        [Required(ErrorMessage = "EDB ID requis")]
+        public int EdbId { get; set; }
 
         [Required(ErrorMessage = "Nom du projet requis")]
         [StringLength(200, MinimumLength = 3)]
         public string ProjectName { get; set; }
 
-        [Required(ErrorMessage = "Description requise")]
+        // ✅ ENLEVÉ [Required]
         [StringLength(1000)]
-        public string Description { get; set; }
+        public string? Description { get; set; }
 
         [Required(ErrorMessage = "Date de début requise")]
         public DateTime StartDate { get; set; }
@@ -23,21 +22,20 @@ namespace ProjectManagementAPI.DTOs
         [Required(ErrorMessage = "Date de fin requise")]
         public DateTime EndDate { get; set; }
 
-        [Required(ErrorMessage = "Équipe requise")]
-        public int TeamId { get; set; }
+        // ✅ CHANGÉ EN OPTIONNEL
+        public int? TeamId { get; set; }
 
-        [Required(ErrorMessage = "Statut requis")]
-        public int ProjectStatusId { get; set; }
+        // ✅ ENLEVÉ [Required] et ajouté valeur par défaut
+        public int ProjectStatusId { get; set; } = 1;
 
-        [Required(ErrorMessage = "Priorité requise")]
-        public int PriorityId { get; set; }
+        // ✅ ENLEVÉ [Required] et ajouté valeur par défaut
+        public int PriorityId { get; set; } = 2;
 
-        [Required(ErrorMessage = "Fichier EDB requis")]
-        [PdfOnly]
-        public IFormFile EdbFile { get; set; }  // ✅ FIXED: Upload file, not ID
+        // ✅ ENLEVÉ [Required] et [PdfOnly] - on utilise EdbId
+        public IFormFile? EdbFile { get; set; }
+
         public int? ProjectManagerId { get; set; }
-        public int? CreatedByUserId { get; set; }
-     
 
+        public int? CreatedByUserId { get; set; }
     }
 }

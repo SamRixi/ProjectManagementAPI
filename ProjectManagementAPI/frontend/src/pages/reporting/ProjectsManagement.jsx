@@ -17,6 +17,7 @@ import projectService from '../../services/projectService';
 import teamService from '../../services/teamService';
 import edbService from '../../services/edbService';
 import ReportingLayout from '../../components/layout/ReportingLayout';
+import userService from '../../services/userService';
 import '../../styles/Dashboard.css';
 
 const ProjectManagement = () => {
@@ -64,7 +65,7 @@ const ProjectManagement = () => {
             if (edbsResponse.success) {
                 setEdbs(edbsResponse.data || []);
             }
-            const managersResponse = await teamService.getProjectManagers();
+            const managersResponse = await userService.getUsersByRole(2);
             if (managersResponse.success) {
                 // Filter duplicates by userId
                 const uniqueManagers = managersResponse.data.filter(
@@ -252,9 +253,13 @@ const ProjectManagement = () => {
             setSubmitting(true);
 
             const projectData = {
+                projectId: selectedProject.projectId,
                 projectName: formData.projectName.trim(),
                 description: formData.description?.trim() || '',
                 startDate: new Date(formData.startDate).toISOString(),
+                projectStatusId: selectedProject.projectStatusId || 1,
+                priorityId: selectedProject.priorityId || 2,
+                projectManagerId: parseInt(formData.projectManagerId) || null,
                 endDate: new Date(formData.endDate).toISOString()
             };
 
@@ -298,6 +303,7 @@ const ProjectManagement = () => {
     const openEditModal = (project) => {
         setSelectedProject(project);
         setFormData({
+            projectManagerId: project.projectManagerId || 0,
             projectName: project.projectName || '',
             description: project.description || '',
             startDate: project.startDate ? project.startDate.split('T')[0] : '',

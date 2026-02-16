@@ -232,7 +232,7 @@ namespace ProjectManagementAPI.Services.Implementations
                 FileUrl = edb.FileUrl,
                 FileSize = 0, // Pas stocké dans le model
                 FileType = "", // Pas stocké sdans le model
-                ProjectId = edb.ProjectId,
+                ProjectId = edb.ProjectId ?? 0,
                 ProjectName = edb.Project?.ProjectName ?? "Non assigné",
                 UploadedAt = DateTime.MinValue, // Pas stocké dans le model
                 UploadedByUserName = null // Pas stocké dans le model

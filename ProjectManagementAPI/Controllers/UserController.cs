@@ -1,5 +1,7 @@
 ﻿using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
+using Microsoft.EntityFrameworkCore;
+using ProjectManagementAPI.Data;
 using ProjectManagementAPI.DTOs;
 using ProjectManagementAPI.Models;
 using ProjectManagementAPI.Services.Interfaces;
@@ -12,10 +14,12 @@ namespace ProjectManagementAPI.Controllers
     public class UserController : ControllerBase
     {
         private readonly IUserService _userService;
+        private readonly ApplicationDbContext _context; // ✅ AJOUTÉ
 
-        public UserController(IUserService userService)
+        public UserController(IUserService userService, ApplicationDbContext context) // ✅ MODIFIÉ
         {
             _userService = userService;
+            _context = context; // ✅ AJOUTÉ
         }
 
         // ============= CRUD (Reporting uniquement) =============
@@ -51,6 +55,84 @@ namespace ProjectManagementAPI.Controllers
         {
             var result = await _userService.GetUserByIdAsync(userId);
             return result.Success ? Ok(result) : NotFound(result);
+        }
+
+        // ============= GET USERS BY ROLE ID ============= ✅ NOUVEAU
+        [HttpGet("by-role/{roleId}")]
+        [Authorize]
+        public async Task<IActionResult> GetUsersByRole(int roleId)
+        {
+            try
+            {
+                var users = await _context.Users
+                    .Include(u => u.Role)
+                    .Where(u => u.RoleId == roleId && u.IsActive)
+                    .Select(u => new
+                    {
+                        u.UserId,
+                        u.UserName,
+                        u.Email,
+                        u.FirstName,
+                        u.LastName,
+                        RoleName = u.Role.RoleName
+                    })
+                    .ToListAsync();
+
+                return Ok(new
+                {
+                    success = true,
+                    data = users,
+                    message = $"{users.Count} utilisateur(s) trouvé(s)"
+                });
+            }
+            catch (Exception ex)
+            {
+                return StatusCode(500, new
+                {
+                    success = false,
+                    message = "Erreur lors de la récupération des utilisateurs",
+                    error = ex.Message
+                });
+            }
+        }
+
+        // ============= GET USERS BY ROLE NAME ============= ✅ NOUVEAU
+        [HttpGet("by-role-name/{roleName}")]
+        [Authorize]
+        public async Task<IActionResult> GetUsersByRoleName(string roleName)
+        {
+            try
+            {
+                var users = await _context.Users
+                    .Include(u => u.Role)
+                    .Where(u => u.Role.RoleName == roleName && u.IsActive)
+                    .Select(u => new
+                    {
+                        u.UserId,
+                        u.UserName,
+                        u.Email,
+                        u.FirstName,
+                        u.LastName,
+                        RoleName = u.Role.RoleName
+                    })
+                    .ToListAsync();
+
+                return Ok(new
+                {
+                    success = true,
+                    data = users,
+                    message = $"{users.Count} utilisateur(s) trouvé(s)"
+                });
+            }
+            catch (Exception ex)
+            {
+                return StatusCode(500, new
+                {
+                    success = false,
+                    message = "Erreur lors de la récupération des utilisateurs",
+                    error = ex.Message
+                });
+            }
         }
 
         [HttpGet("search")]
@@ -279,7 +361,7 @@ namespace ProjectManagementAPI.Controllers
             }
         }
 
-        // ============= DELETE USER (Permanent Delete) ============= ✅ AJOUTÉ
+        // ============= DELETE USER (Permanent Delete) =============
 
         /// <summary>
         /// Supprime définitivement un utilisateur (seulement si inactif)
