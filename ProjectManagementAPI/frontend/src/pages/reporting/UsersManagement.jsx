@@ -1,6 +1,6 @@
 ﻿// src/pages/reporting/UsersManagement.jsx
 import { useState, useEffect } from 'react';
-import { UserPlus, Edit, Key, Search, X, Lock, Unlock } from 'lucide-react';
+import { UserPlus, Edit, Key, Search, X, Lock, Unlock, Check, Trash2, UserCheck, UserX } from 'lucide-react';
 import userService from '../../services/userService';
 import ReportingLayout from '../../components/layout/ReportingLayout';
 import '../../styles/UsersManagement.css';
@@ -125,18 +125,81 @@ const UsersManagement = () => {
         }
     };
 
+    // ============= APPROVE USER (for pending registrations) =============
+    const handleApprove = async (userId, username) => {
+        if (!window.confirm(`Approuver l'inscription de "${username}" ?`)) return;
+
+        try {
+            const response = await userService.approveUser(userId);
+
+            if (response.success) {
+                alert(`✅ ${response.message}`);
+                fetchUsers();
+            } else {
+                alert(`❌ ${response.message}`);
+            }
+        } catch (error) {
+            console.error('❌ Approve error:', error);
+            alert('Erreur lors de l\'approbation');
+        }
+    };
+
+    // ============= REJECT USER (for pending registrations) =============
+    const handleReject = async (userId, username) => {
+        if (!window.confirm(`Rejeter l'inscription de "${username}" ?\n\nCette action est irréversible.`)) return;
+
+        try {
+            const response = await userService.rejectUser(userId);
+
+            if (response.success) {
+                alert(`✅ ${response.message}`);
+                fetchUsers();
+            } else {
+                alert(`❌ ${response.message}`);
+            }
+        } catch (error) {
+            console.error('❌ Reject error:', error);
+            alert('Erreur lors du rejet');
+        }
+    };
+
+    // ============= TOGGLE ACTIVE/INACTIVE (for existing users) ============= ✅ CORRIGÉ
     const handleToggleUserStatus = async (userId, userName, isActive) => {
         const action = isActive ? 'désactiver' : 'activer';
         if (!window.confirm(`Voulez-vous ${action} "${userName}" ?`)) return;
+
         try {
-            const response = await userService.toggleUserStatus(userId);
+            // ✅ FIX: Utilise toggleUserActive au lieu de toggleUserStatus
+            const response = await userService.toggleUserActive(userId);
+
             if (response.success) {
-                alert(response.message || `Utilisateur ${action} avec succès !`);
+                alert(`✅ ${response.message}`);
                 fetchUsers();
+            } else {
+                alert(`❌ ${response.message}`);
             }
         } catch (error) {
-            console.error('❌ TOGGLE ERROR:', error);
-            alert(error.message || 'Erreur lors du changement de statut');
+            console.error('❌ Toggle status error:', error);
+            alert('Erreur lors du changement de statut');
+        }
+    };
+
+    // ============= DELETE USER (for inactive users) =============
+    const handleDelete = async (userId, username) => {
+        if (!window.confirm(`⚠️ ATTENTION ⚠️\n\nSupprimer définitivement l'utilisateur "${username}" ?\n\nCette action est IRRÉVERSIBLE.`)) return;
+
+        try {
+            const response = await userService.deleteUser(userId);
+
+            if (response.success) {
+                alert(`✅ ${response.message}`);
+                fetchUsers();
+            } else {
+                alert(`❌ ${response.message}`);
+            }
+        } catch (error) {
+            console.error('❌ Delete error:', error);
+            alert('Erreur lors de la suppression');
         }
     };
 
@@ -221,54 +284,114 @@ const UsersManagement = () => {
                             </thead>
                             <tbody>
                                 {filteredUsers.length > 0 ? (
-                                    filteredUsers.map((u) => (
-                                        <tr key={u.userId}>
-                                            <td>{`${u.firstName || ''} ${u.lastName || ''}`.trim() || 'N/A'}</td>
-                                            <td>{u.userName || 'N/A'}</td>
-                                            <td>{u.email || 'N/A'}</td>
-                                            <td>
-                                                <span className={`role-badge ${getRoleBadgeClass(u.roleId)}`}>
-                                                    {u.roleName || getRoleName(u.roleId)}
-                                                </span>
-                                            </td>
-                                            <td>
-                                                <span className={`status-badge ${u.isActive ? 'active' : 'inactive'}`}>
-                                                    {u.isActive ? 'Actif' : 'Inactif'}
-                                                </span>
-                                            </td>
-                                            <td>
-                                                <div className="action-buttons">
-                                                    <button
-                                                        className="btn-icon btn-edit"
-                                                        onClick={() => handleEditUser(u)}
-                                                        title="Modifier"
-                                                    >
-                                                        <Edit size={16} />
-                                                    </button>
-                                                    <button
-                                                        className="btn-icon btn-key"
-                                                        onClick={() => handleGenerateTempPassword(u.userId, u.userName)}
-                                                        title="Générer mot de passe"
-                                                    >
-                                                        <Key size={16} />
-                                                    </button>
-                                                    <button
-                                                        className={`btn-icon ${u.isActive ? 'btn-deactivate' : 'btn-activate'}`}
-                                                        onClick={() => handleToggleUserStatus(u.userId, u.userName || 'N/A', u.isActive)}
-                                                        title={u.isActive ? 'Désactiver' : 'Activer'}
-                                                        style={{
-                                                            backgroundColor: u.isActive ? '#ff6b6b' : '#51cf66',
-                                                            color: 'white',
-                                                            border: 'none',
-                                                            cursor: 'pointer'
-                                                        }}
-                                                    >
-                                                        {u.isActive ? <Lock size={16} /> : <Unlock size={16} />}
-                                                    </button>
-                                                </div>
-                                            </td>
-                                        </tr>
-                                    ))
+                                    filteredUsers.map((u) => {
+                                        // ✅ Determine if user is pending (never logged in + inactive)
+                                        const isPending = !u.isActive && !u.lastLoginAt;
+
+                                        return (
+                                            <tr key={u.userId}>
+                                                <td>{`${u.firstName || ''} ${u.lastName || ''}`.trim() || 'N/A'}</td>
+                                                <td>{u.userName || 'N/A'}</td>
+                                                <td>{u.email || 'N/A'}</td>
+                                                <td>
+                                                    <span className={`role-badge ${getRoleBadgeClass(u.roleId)}`}>
+                                                        {u.roleName || getRoleName(u.roleId)}
+                                                    </span>
+                                                </td>
+                                                <td>
+                                                    {isPending ? (
+                                                        <span className="status-badge pending">
+                                                            ⏳ En attente
+                                                        </span>
+                                                    ) : (
+                                                        <span className={`status-badge ${u.isActive ? 'active' : 'inactive'}`}>
+                                                            {u.isActive ? 'Actif' : 'Désactivé'}
+                                                        </span>
+                                                    )}
+                                                </td>
+                                                <td>
+                                                    <div className="action-buttons">
+                                                        {isPending ? (
+                                                            /* PENDING USER: Show Approve/Reject */
+                                                            <>
+                                                                <button
+                                                                    className="btn-icon btn-approve"
+                                                                    onClick={() => handleApprove(u.userId, u.userName)}
+                                                                    title="Approuver"
+                                                                >
+                                                                    <Check size={16} />
+                                                                </button>
+                                                                <button
+                                                                    className="btn-icon btn-reject"
+                                                                    onClick={() => handleReject(u.userId, u.userName)}
+                                                                    title="Rejeter"
+                                                                >
+                                                                    <X size={16} />
+                                                                </button>
+                                                            </>
+                                                        ) : !u.isActive ? (
+                                                            /* INACTIVE USER: Show Edit, Key, Activate, Delete */
+                                                            <>
+                                                                <button
+                                                                    className="btn-icon btn-edit"
+                                                                    onClick={() => handleEditUser(u)}
+                                                                    title="Modifier"
+                                                                >
+                                                                    <Edit size={16} />
+                                                                </button>
+                                                                <button
+                                                                    className="btn-icon btn-key"
+                                                                    onClick={() => handleGenerateTempPassword(u.userId, u.userName)}
+                                                                    title="Générer mot de passe"
+                                                                >
+                                                                    <Key size={16} />
+                                                                </button>
+                                                                <button
+                                                                    className="btn-icon btn-activate"
+                                                                    onClick={() => handleToggleUserStatus(u.userId, u.userName, false)}
+                                                                    title="Activer"
+                                                                >
+                                                                    <UserCheck size={16} />
+                                                                </button>
+                                                                <button
+                                                                    className="btn-icon btn-delete"
+                                                                    onClick={() => handleDelete(u.userId, u.userName)}
+                                                                    title="Supprimer"
+                                                                >
+                                                                    <Trash2 size={16} />
+                                                                </button>
+                                                            </>
+                                                        ) : (
+                                                            /* ACTIVE USER: Show Edit, Key, Deactivate */
+                                                            <>
+                                                                <button
+                                                                    className="btn-icon btn-edit"
+                                                                    onClick={() => handleEditUser(u)}
+                                                                    title="Modifier"
+                                                                >
+                                                                    <Edit size={16} />
+                                                                </button>
+                                                                <button
+                                                                    className="btn-icon btn-key"
+                                                                    onClick={() => handleGenerateTempPassword(u.userId, u.userName)}
+                                                                    title="Générer mot de passe"
+                                                                >
+                                                                    <Key size={16} />
+                                                                </button>
+                                                                <button
+                                                                    className="btn-icon btn-deactivate"
+                                                                    onClick={() => handleToggleUserStatus(u.userId, u.userName, true)}
+                                                                    title="Désactiver"
+                                                                >
+                                                                    <UserX size={16} />
+                                                                </button>
+                                                            </>
+                                                        )}
+                                                    </div>
+                                                </td>
+                                            </tr>
+                                        );
+                                    })
                                 ) : (
                                     <tr>
                                         <td colSpan="6" className="no-data">

@@ -470,3 +470,36 @@ body {
         grid-template-columns: 1fr;
     }
 }
+/* Status Badge Pending */
+.status-badge.pending {
+    background: linear-gradient(135deg, #FFF3E0 0%, #FFE0B2 100%);
+    color: #F57C00;
+    font-weight: 600;
+    border: 2px solid #FFB74D;
+}
+
+/* Action Buttons */
+.btn-icon.btn-approve {
+    background: linear-gradient(135deg, #E8F5E9 0%, #C8E6C9 100%);
+    color: #388E3C;
+}
+
+.btn-icon.btn-reject {
+    background: linear-gradient(135deg, #FFEBEE 0%, #FFCDD2 100%);
+    color: #D32F2F;
+}
+
+.btn-icon.btn-activate {
+    background: linear-gradient(135deg, #E8F5E9 0%, #C8E6C9 100%);
+    color: #388E3C;
+}
+
+.btn-icon.btn-delete {
+    background: linear-gradient(135deg, #FFEBEE 0%, #EF9A9A 100%);
+    color: #C62828;
+}
+
+.btn-icon:hover {
+    transform: scale(1.1);
+    transition: all 0.3s ease;
+}

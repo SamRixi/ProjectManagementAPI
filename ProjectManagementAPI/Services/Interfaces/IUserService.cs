@@ -24,5 +24,7 @@ namespace ProjectManagementAPI.Services.Interfaces
         // Login helpers
         Task<ApiResponse<bool>> CheckAccountValidityAsync(int userId);
         Task UpdateLastLoginAsync(int userId);
+        Task<ApiResponse<bool>> DeleteUserAsync(int userId);
+
     }
 }

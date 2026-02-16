@@ -40,12 +40,18 @@ namespace ProjectManagementAPI.Services.Implementations
                     };
                 }
 
+                // ✅ AMÉLIORATION: Distinguer "en attente" vs "désactivé"
                 if (!user.IsActive)
                 {
+                    // Check if it's a new registration (never logged in)
+                    bool isNewRegistration = !user.LastLoginAt.HasValue;
+
                     return new ApiResponse<LoginResponse>
                     {
                         Success = false,
-                        Message = "Votre compte a été désactivé. Contactez l'administrateur."
+                        Message = isNewRegistration
+                            ? "Votre compte est en attente d'approbation par un administrateur."
+                            : "Votre compte a été désactivé. Contactez l'administrateur."
                     };
                 }
 
@@ -109,12 +115,12 @@ namespace ProjectManagementAPI.Services.Implementations
             }
         }
 
-        // ============= REGISTER ============= ✅ UPDATED TO USE "Developer"
+        // ============= REGISTER ============= ✅ FIXED WITH APPROVAL SYSTEM
         public async Task<ApiResponse<UserDTO>> RegisterAsync(RegisterRequest request)
         {
             try
             {
-                // ✅ Validate passwords match (if confirmPassword provided)
+                // Validate passwords match
                 if (!string.IsNullOrEmpty(request.ConfirmPassword) &&
                     request.Password != request.ConfirmPassword)
                 {
@@ -151,48 +157,23 @@ namespace ProjectManagementAPI.Services.Implementations
                     };
                 }
 
-                // ✅ SMART ROLE ASSIGNMENT
-                int assignedRoleId;
-                Role assignedRole;
+                // ✅ Get Developer role (default for public registration)
+                var developerRole = await _context.Roles
+                    .FirstOrDefaultAsync(r => r.RoleName == "Developer");
 
-                if (request.RoleId.HasValue && request.RoleId.Value > 0)
+                if (developerRole == null)
                 {
-                    // ✅ Admin specified a role via Swagger
-                    assignedRole = await _context.Roles.FindAsync(request.RoleId.Value);
-
-                    if (assignedRole == null)
+                    return new ApiResponse<UserDTO>
                     {
-                        return new ApiResponse<UserDTO>
-                        {
-                            Success = false,
-                            Message = "Rôle invalide"
-                        };
-                    }
-
-                    assignedRoleId = request.RoleId.Value;
-                }
-                else
-                {
-                    // ✅ UPDATED: No role specified → Auto-assign "Developer"
-                    assignedRole = await _context.Roles
-                        .FirstOrDefaultAsync(r => r.RoleName == "Developer");
-
-                    if (assignedRole == null)
-                    {
-                        return new ApiResponse<UserDTO>
-                        {
-                            Success = false,
-                            Message = "Erreur de configuration: Rôle par défaut introuvable"
-                        };
-                    }
-
-                    assignedRoleId = assignedRole.RoleId;
+                        Success = false,
+                        Message = "Erreur de configuration: Rôle Developer introuvable"
+                    };
                 }
 
                 // Hash password
                 string hashedPassword = BC.HashPassword(request.Password);
 
-                // Create new user
+                // ✅ FIXED: Create new user (INACTIVE - requires approval)
                 var newUser = new User
                 {
                     UserName = request.Username,
@@ -200,8 +181,8 @@ namespace ProjectManagementAPI.Services.Implementations
                     PasswordHash = hashedPassword,
                     FirstName = request.FirstName,
                     LastName = request.LastName,
-                    RoleId = assignedRoleId,  // ✅ Use assigned role
-                    IsActive = true,
+                    RoleId = developerRole.RoleId,
+                    IsActive = false,  // ✅ CORRIGÉ - Désactivé par défaut (requires approval)
                     MustChangePassword = false,
                     CreatedAt = DateTime.UtcNow
                 };
@@ -209,6 +190,8 @@ namespace ProjectManagementAPI.Services.Implementations
                 // Save to database
                 _context.Users.Add(newUser);
                 await _context.SaveChangesAsync();
+
+                Console.WriteLine($"✅ New user registered: {newUser.UserName} (ID: {newUser.UserId}) - Pending approval");
 
                 // Return UserDTO
                 var userDto = new UserDTO
@@ -218,7 +201,7 @@ namespace ProjectManagementAPI.Services.Implementations
                     Email = newUser.Email,
                     FirstName = newUser.FirstName,
                     LastName = newUser.LastName,
-                    RoleName = assignedRole.RoleName,  // ✅ Include role name
+                    RoleName = developerRole.RoleName,
                     IsActive = newUser.IsActive,
                     MustChangePassword = newUser.MustChangePassword,
                     CreatedAt = newUser.CreatedAt
@@ -227,12 +210,13 @@ namespace ProjectManagementAPI.Services.Implementations
                 return new ApiResponse<UserDTO>
                 {
                     Success = true,
-                    Message = "Inscription réussie",
+                    Message = "Inscription réussie! Votre compte sera activé après approbation par un administrateur.",  // ✅ Message mis à jour
                     Data = userDto
                 };
             }
             catch (Exception ex)
             {
+                Console.WriteLine($"❌ Registration error: {ex.Message}");
                 return new ApiResponse<UserDTO>
                 {
                     Success = false,

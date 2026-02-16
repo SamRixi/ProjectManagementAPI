@@ -40,7 +40,7 @@ namespace ProjectManagementAPI.Services.Implementations
                     FirstName = dto.FirstName,
                     LastName = dto.LastName,
                     PasswordHash = BC.HashPassword(dto.Password),
-                    RoleId = dto.RoleId, //   Set the RoleId from DTO
+                    RoleId = dto.RoleId,
                     IsActive = true,
                     MustChangePassword = true,
                     AccountDeadline = dto.AccountDeadline,
@@ -86,7 +86,7 @@ namespace ProjectManagementAPI.Services.Implementations
                 if (dto.Email != null) user.Email = dto.Email;
                 if (dto.FirstName != null) user.FirstName = dto.FirstName;
                 if (dto.LastName != null) user.LastName = dto.LastName;
-                if (dto.RoleId.HasValue) user.RoleId = dto.RoleId.Value; // important to  change roles 
+                if (dto.RoleId.HasValue) user.RoleId = dto.RoleId.Value;
                 if (dto.AccountDeadline.HasValue) user.AccountDeadline = dto.AccountDeadline;
 
                 user.UpdatedAt = DateTime.UtcNow;
@@ -115,9 +115,9 @@ namespace ProjectManagementAPI.Services.Implementations
             try
             {
                 var user = await _context.Users
-                    .Include(u => u.Role) // ✅ FIXED: Include Role directly from User
+                    .Include(u => u.Role)
                     .Include(u => u.TeamMembers)
-                        .ThenInclude(tm => tm.Team) // ✅ FIXED: Include Team info
+                        .ThenInclude(tm => tm.Team)
                     .FirstOrDefaultAsync(u => u.UserId == userId);
 
                 if (user == null)
@@ -150,9 +150,9 @@ namespace ProjectManagementAPI.Services.Implementations
             try
             {
                 var users = await _context.Users
-                    .Include(u => u.Role) // ✅ FIXED: Include Role from User
+                    .Include(u => u.Role)
                     .Include(u => u.TeamMembers)
-                        .ThenInclude(tm => tm.Team) // ✅ FIXED: Include Team info
+                        .ThenInclude(tm => tm.Team)
                     .ToListAsync();
 
                 var userDTOs = users.Select(u => MapToUserDTO(u)).ToList();
@@ -178,9 +178,9 @@ namespace ProjectManagementAPI.Services.Implementations
             try
             {
                 var query = _context.Users
-                    .Include(u => u.Role) // ✅ FIXED: Include Role from User
+                    .Include(u => u.Role)
                     .Include(u => u.TeamMembers)
-                        .ThenInclude(tm => tm.Team) // ✅ FIXED: Include Team info
+                        .ThenInclude(tm => tm.Team)
                     .AsQueryable();
 
                 if (!string.IsNullOrEmpty(dto.SearchTerm))
@@ -199,7 +199,7 @@ namespace ProjectManagementAPI.Services.Implementations
 
                 if (dto.RoleId.HasValue)
                 {
-                    query = query.Where(u => u.RoleId == dto.RoleId.Value); // ✅ FIXED: Check User.RoleId directly
+                    query = query.Where(u => u.RoleId == dto.RoleId.Value);
                 }
 
                 var users = await query.ToListAsync();
@@ -310,7 +310,6 @@ namespace ProjectManagementAPI.Services.Implementations
                     };
                 }
 
-                // Vérifier ancien mot de passe
                 if (!BC.Verify(dto.CurrentPassword, user.PasswordHash))
                 {
                     return new ApiResponse<bool>
@@ -320,7 +319,6 @@ namespace ProjectManagementAPI.Services.Implementations
                     };
                 }
 
-                // Mettre à jour mot de passe
                 user.PasswordHash = BC.HashPassword(dto.NewPassword);
                 user.MustChangePassword = false;
                 user.UpdatedAt = DateTime.UtcNow;
@@ -351,7 +349,6 @@ namespace ProjectManagementAPI.Services.Implementations
                 var user = await _context.Users.FirstOrDefaultAsync(u => u.Email == email);
 
                 if (user == null)
-              
                 {
                     return new ApiResponse<bool>
                     {
@@ -533,6 +530,55 @@ namespace ProjectManagementAPI.Services.Implementations
             }
         }
 
+        // ============= DELETE USER ============= ✅ IMPLÉMENTÉ
+        public async Task<ApiResponse<bool>> DeleteUserAsync(int userId)
+        {
+            try
+            {
+                var user = await _context.Users
+                    .Include(u => u.TeamMembers)
+                    .FirstOrDefaultAsync(u => u.UserId == userId);
+
+                if (user == null)
+                {
+                    return new ApiResponse<bool>
+                    {
+                        Success = false,
+                        Message = "Utilisateur introuvable"
+                    };
+                }
+
+                // Optional: Remove user from teams first
+                if (user.TeamMembers != null && user.TeamMembers.Any())
+                {
+                    _context.TeamMembers.RemoveRange(user.TeamMembers);
+                }
+
+                // Delete the user
+                _context.Users.Remove(user);
+                await _context.SaveChangesAsync();
+
+                Console.WriteLine($"🗑️ User deleted: {user.UserName} (ID: {userId})");
+
+                return new ApiResponse<bool>
+                {
+                    Success = true,
+                    Message = "Utilisateur supprimé avec succès",
+                    Data = true
+                };
+            }
+            catch (Exception ex)
+            {
+                Console.WriteLine($"❌ Delete user error: {ex.Message}");
+                return new ApiResponse<bool>
+                {
+                    Success = false,
+                    Message = $"Erreur lors de la suppression: {ex.Message}",
+                    Data = false
+                };
+            }
+        }
+
         private string GenerateRandomPassword()
         {
             const string chars = "ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789";
@@ -555,7 +601,7 @@ namespace ProjectManagementAPI.Services.Implementations
                 AccountDeadline = user.AccountDeadline,
                 CreatedAt = user.CreatedAt,
                 LastLoginAt = user.LastLoginAt,
-                RoleId = user.RoleId, 
+                RoleId = user.RoleId,
                 RoleName = user.Role?.RoleName ?? "N/A",
             };
         }
