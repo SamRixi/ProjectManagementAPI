@@ -34,7 +34,7 @@ const ProjectManagerValidation = () => {
             setLoading(true);
 
             console.log('📥 Fetching tasks awaiting validation...');
-            const response = await api.get('/projectmanager/tasks/awaiting-validation');
+            const response = await api.get('/projectmanager/validation'); // ✅ CORRIGÉ: Enlevé /api/
             console.log('✅ Validation tasks response:', response.data);
 
             if (response.data.success) {
@@ -47,7 +47,7 @@ const ProjectManagerValidation = () => {
         }
     };
 
-    // Valider une tâche (placeholder - à implémenter selon ton backend)
+    // ✅ VALIDER UNE TÂCHE
     const handleValidateTask = async (taskId) => {
         const confirmed = window.confirm('Voulez-vous valider cette tâche ?');
         if (!confirmed) return;
@@ -55,33 +55,37 @@ const ProjectManagerValidation = () => {
         try {
             console.log(`✅ Validating task ${taskId}...`);
 
-            // TODO: Implémenter l'endpoint de validation
-            // const response = await api.put(`/projectmanager/tasks/${taskId}/validate`);
+            const response = await api.put(`/projectmanager/tasks/${taskId}/validate`); // ✅ CORRIGÉ
 
-            alert('✅ Tâche validée avec succès!');
-            fetchTasksAwaitingValidation();
+            if (response.data.success) {
+                alert('✅ Tâche validée avec succès!');
+                fetchTasksAwaitingValidation();
+            }
         } catch (err) {
             console.error('❌ Error validating task:', err);
-            alert('❌ Erreur lors de la validation de la tâche');
+            alert('❌ Erreur: ' + (err.response?.data?.message || err.message));
         }
     };
 
-    // Refuser une tâche (placeholder - à implémenter selon ton backend)
+    // ✅ REFUSER UNE TÂCHE
     const handleRejectTask = async (taskId) => {
         const reason = window.prompt('Raison du refus (optionnel):');
         if (reason === null) return; // Annulé
 
         try {
-            console.log(`❌ Rejecting task ${taskId}...`);
+            console.log(`❌ Rejecting task ${taskId} with reason: ${reason}`);
 
-            // TODO: Implémenter l'endpoint de refus
-            // const response = await api.put(`/projectmanager/tasks/${taskId}/reject`, { reason });
+            const response = await api.put(`/projectmanager/tasks/${taskId}/reject`, { // ✅ CORRIGÉ
+                reason: reason || 'Aucune raison fournie'
+            });
 
-            alert('❌ Tâche refusée');
-            fetchTasksAwaitingValidation();
+            if (response.data.success) {
+                alert('❌ Tâche refusée avec succès');
+                fetchTasksAwaitingValidation();
+            }
         } catch (err) {
             console.error('❌ Error rejecting task:', err);
-            alert('❌ Erreur lors du refus de la tâche');
+            alert('❌ Erreur: ' + (err.response?.data?.message || err.message));
         }
     };
 

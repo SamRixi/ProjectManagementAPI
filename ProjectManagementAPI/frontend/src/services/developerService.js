@@ -34,14 +34,12 @@ const updateTask = async (taskId, updateData) => {
     try {
         console.log('📤 Sending update request:', { taskId, updateData });
 
-        // ✅ CORRECTION : Enlever /api
+        // ✅ Appel direct à l'endpoint developer
         const response = await api.put(`/developer/tasks/${taskId}`, updateData);
-
         console.log('✅ Update successful:', response.data);
         return response.data;
     } catch (error) {
         console.error('❌ Error updating task:', error);
-        console.error('Response:', error.response?.data);
         return {
             success: false,
             message: error.response?.data?.message || 'Erreur lors de la mise à jour de la tâche'

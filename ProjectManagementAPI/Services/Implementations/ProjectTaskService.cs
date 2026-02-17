@@ -180,7 +180,20 @@ namespace ProjectManagementAPI.Services.Implementations
                     };
                 }
 
+                // statut demandé par le dev
                 task.TaskStatusId = statusId;
+
+                // ✅ RÈGLE MÉTIER AUTOMATIQUE
+                // 1 = À faire, 2 = En cours, 3 = Terminé, 4 = En attente de validation, 5 = Validé
+
+                // Si le dev met "Terminé" (3) → on force "En attente de validation" (4) + 100%
+                if (statusId == 3)
+                {
+                    task.Progress = 100;
+                    task.TaskStatusId = 4;   // En attente de validation
+                    task.IsValidated = false;
+                }
+
                 await _context.SaveChangesAsync();
 
                 return new ApiResponse<TaskDTO>
@@ -199,7 +212,6 @@ namespace ProjectManagementAPI.Services.Implementations
                 };
             }
         }
-
         // VALIDATE task (Chef de Projet only)
         public async Task<ApiResponse<TaskDTO>> ValidateTaskAsync(int taskId, int userId)
         {
@@ -229,20 +241,22 @@ namespace ProjectManagementAPI.Services.Implementations
                     };
                 }
 
-                if (task.TaskStatusId != 3) // 3 = Terminé
+                // ✅ La tâche doit être en attente de validation (4)
+                if (task.TaskStatusId != 4)
                 {
                     return new ApiResponse<TaskDTO>
                     {
                         Success = false,
-                        Message = "La tâche doit être terminée avant validation"
+                        Message = "La tâche doit être en attente de validation"
                     };
                 }
 
                 task.IsValidated = true;
+                task.TaskStatusId = 5;           // 5 = Validé
                 task.ValidatedByUserId = userId;
                 task.ValidatedAt = DateTime.UtcNow;
-                await _context.SaveChangesAsync();
 
+                await _context.SaveChangesAsync();
                 await RecalculateProjectProgressAsync(task.ProjectId);
 
                 return new ApiResponse<TaskDTO>
@@ -261,6 +275,7 @@ namespace ProjectManagementAPI.Services.Implementations
                 };
             }
         }
+
 
         // GET tasks by project
         public async Task<ApiResponse<List<TaskDTO>>> GetTasksByProjectAsync(int projectId)

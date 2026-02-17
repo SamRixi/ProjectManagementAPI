@@ -65,14 +65,13 @@ namespace ProjectManagementAPI.Controllers
 
                 var stats = new
                 {
-                    // ✅ CORRIGÉ: Compte les PROJETS (pas les équipes)
                     activeProjects = await _context.Projects
                         .Where(p => p.Team.TeamMembers.Any(tm => tm.UserId == userId))
                         .CountAsync(),
 
                     tasksInProgress = tasks.Count(t => t.TaskStatusId == 2),
-                    completedTasks = tasks.Count(t => t.TaskStatusId == 3 && t.DueDate >= startOfMonth),
-                    overdueTasks = tasks.Count(t => t.DueDate < now && t.TaskStatusId != 3),
+                    completedTasks = tasks.Count(t => t.TaskStatusId == 5 && t.DueDate >= startOfMonth), // ✅ Validé
+                    overdueTasks = tasks.Count(t => t.DueDate < now && t.TaskStatusId != 4 && t.TaskStatusId != 5), // ✅ Exclure en attente et validé
                     totalTasks = tasks.Count,
                     pendingTasks = tasks.Count(t => t.TaskStatusId == 1)
                 };
@@ -99,7 +98,7 @@ namespace ProjectManagementAPI.Controllers
                         projectManagerName = t.Project.ProjectManager != null
                             ? $"{t.Project.ProjectManager.FirstName} {t.Project.ProjectManager.LastName}"
                             : "Non assigné",
-                        isOverdue = t.DueDate < now && t.TaskStatusId != 3,
+                        isOverdue = t.DueDate < now && t.TaskStatusId != 4 && t.TaskStatusId != 5,
                         isValidated = t.IsValidated,
                         progress = t.Progress
                     })
@@ -193,7 +192,7 @@ namespace ProjectManagementAPI.Controllers
                         projectManagerName = t.Project.ProjectManager != null
                             ? $"{t.Project.ProjectManager.FirstName} {t.Project.ProjectManager.LastName}"
                             : "Non assigné",
-                        isOverdue = t.DueDate < DateTime.Now && t.TaskStatusId != 3,
+                        isOverdue = t.DueDate < DateTime.Now && t.TaskStatusId != 4 && t.TaskStatusId != 5,
                         progress = t.Progress
                     })
                     .ToListAsync();
@@ -258,92 +257,12 @@ namespace ProjectManagementAPI.Controllers
             }
         }
 
-        // ============= UPDATE STATUT =============
-        [HttpPut("tasks/{taskId}/status")]
-        [ProducesResponseType(StatusCodes.Status200OK)]
-        [ProducesResponseType(StatusCodes.Status400BadRequest)]
-        [ProducesResponseType(StatusCodes.Status403Forbidden)]
-        public async Task<IActionResult> UpdateTaskStatus(
-            int taskId,
-            [FromBody] UpdateTaskStatusDTO dto)
-        {
-            try
-            {
-                if (!ModelState.IsValid)
-                {
-                    return BadRequest(new
-                    {
-                        success = false,
-                        message = "Données invalides",
-                        errors = ModelState.Values
-                            .SelectMany(v => v.Errors.Select(e => e.ErrorMessage))
-                    });
-                }
-
-                var userIdClaim = User.FindFirst(ClaimTypes.NameIdentifier)?.Value;
-                if (string.IsNullOrEmpty(userIdClaim) || !int.TryParse(userIdClaim, out int userId))
-                {
-                    return Unauthorized(new { success = false, message = "Utilisateur non authentifié" });
-                }
-
-                var task = await _context.ProjectTasks.FindAsync(taskId);
-
-                if (task == null)
-                {
-                    return NotFound(new { success = false, message = "Tâche introuvable" });
-                }
-
-                if (task.AssignedToUserId != userId)
-                {
-                    return StatusCode(403, new
-                    {
-                        success = false,
-                        message = "Vous ne pouvez modifier que vos propres tâches"
-                    });
-                }
-
-                task.TaskStatusId = dto.ProjectTaskStatusId;
-
-                if (dto.ProjectTaskStatusId == 3)
-                {
-                    task.Progress = 100;
-                }
-
-                await _context.SaveChangesAsync();
-
-                string statusName = dto.ProjectTaskStatusId switch
-                {
-                    1 => "À faire",
-                    2 => "En cours",
-                    3 => "Terminé",
-                    _ => "Inconnu"
-                };
-
-                return Ok(new
-                {
-                    success = true,
-                    message = $"Statut de la tâche mis à jour : {statusName}"
-                });
-            }
-            catch (Exception ex)
-            {
-                return StatusCode(500, new
-                {
-                    success = false,
-                    message = "Erreur lors de la mise à jour du statut",
-                    error = ex.Message
-                });
-            }
-        }
-
         // ============= UPDATE TÂCHE (STATUT + PROGRESSION) =============
         [HttpPut("tasks/{taskId}")]
         [ProducesResponseType(StatusCodes.Status200OK)]
         [ProducesResponseType(StatusCodes.Status400BadRequest)]
         [ProducesResponseType(StatusCodes.Status403Forbidden)]
-        public async Task<IActionResult> UpdateTask(
-            int taskId,
-            [FromBody] UpdateTaskDTO dto)
+        public async Task<IActionResult> UpdateTask(int taskId, [FromBody] UpdateTaskDTO dto)
         {
             try
             {
@@ -367,32 +286,30 @@ namespace ProjectManagementAPI.Controllers
                 var task = await _context.ProjectTasks.FindAsync(taskId);
 
                 if (task == null)
-                {
                     return NotFound(new { success = false, message = "Tâche introuvable" });
-                }
 
                 if (task.AssignedToUserId != userId)
-                {
-                    return StatusCode(403, new
-                    {
-                        success = false,
-                        message = "Vous ne pouvez modifier que vos propres tâches"
-                    });
-                }
+                    return StatusCode(403, new { success = false, message = "Vous ne pouvez modifier que vos propres tâches" });
 
+                // ✅ RÈGLE MÉTIER: Si statut = Terminé (3) → passer en En attente de validation (4)
                 if (dto.TaskStatusId.HasValue)
                 {
-                    task.TaskStatusId = dto.TaskStatusId.Value;
+                    if (dto.TaskStatusId.Value == 3)
+                    {
+                        task.TaskStatusId = 4; // En attente de validation
+                        task.Progress = 100;
+                        task.IsValidated = false;
+                    }
+                    else
+                    {
+                        task.TaskStatusId = dto.TaskStatusId.Value;
+                    }
                 }
 
-                if (dto.Progress.HasValue)
+                // ✅ Mise à jour progression (sauf si en attente de validation ou validé)
+                if (dto.Progress.HasValue && task.TaskStatusId != 4 && task.TaskStatusId != 5)
                 {
                     task.Progress = dto.Progress.Value;
-                }
-
-                if (dto.TaskStatusId == 3)
-                {
-                    task.Progress = 100;
                 }
 
                 await _context.SaveChangesAsync();
@@ -401,7 +318,8 @@ namespace ProjectManagementAPI.Controllers
                 {
                     1 => "À faire",
                     2 => "En cours",
-                    3 => "Terminé",
+                    4 => "En attente de validation",
+                    5 => "Validé",
                     _ => "Inconnu"
                 };
 
@@ -434,7 +352,8 @@ namespace ProjectManagementAPI.Controllers
                 var tasks = await _context.ProjectTasks
                     .Where(t => t.AssignedToUserId == userId
                              && t.DueDate < now
-                             && t.TaskStatusId != 3)
+                             && t.TaskStatusId != 4
+                             && t.TaskStatusId != 5)
                     .Include(t => t.ProjectTasksStatus)
                     .Include(t => t.Priority)
                     .Include(t => t.Project)

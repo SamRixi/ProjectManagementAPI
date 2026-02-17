@@ -8,7 +8,8 @@ const UpdateTaskModalContent = ({ task, onUpdate, onClose }) => {
         const statusMap = {
             'À faire': 1,
             'En cours': 2,
-            'Terminé': 3
+            'Terminé': 3,
+            'En attente de validation': 4
         };
         return statusMap[statusText] || 1;
     }
@@ -25,8 +26,7 @@ const UpdateTaskModalContent = ({ task, onUpdate, onClose }) => {
         setLoading(true);
 
         const updateData = {
-            taskId: formData.taskId,
-            taskStatusId: formData.taskStatusId,
+            TaskStatusId: formData.taskStatusId,
             progress: parseInt(formData.progress)
         };
 
@@ -74,6 +74,7 @@ const UpdateTaskModalContent = ({ task, onUpdate, onClose }) => {
                                 setFormData({
                                     ...formData,
                                     taskStatusId: newStatus,
+                                    // ✅ Si "Terminé" → force 100%
                                     progress: newStatus === 3 ? 100 : formData.progress
                                 });
                             }}
@@ -94,22 +95,35 @@ const UpdateTaskModalContent = ({ task, onUpdate, onClose }) => {
                             max="100"
                             step="5"
                             value={formData.progress}
-                            onChange={(e) => setFormData({ ...formData, progress: parseInt(e.target.value) })}
+                            onChange={(e) => {
+                                const newProgress = parseInt(e.target.value);
+                                setFormData({
+                                    ...formData,
+                                    progress: newProgress,
+                                    // ✅ Si progression = 100% → force statut "Terminé"
+                                    taskStatusId: newProgress === 100 ? 3 : formData.taskStatusId
+                                });
+                            }}
                             className="progress-slider"
-                            disabled={formData.taskStatusId === 3}
+                            disabled={formData.taskStatusId === 4}
                         />
                         <div className="progress-bar-preview">
                             <div
                                 className={`progress-fill-preview ${formData.progress === 100 ? 'completed' :
-                                        formData.progress >= 60 ? 'high' :
-                                            formData.progress >= 30 ? 'medium' : 'low'
+                                    formData.progress >= 60 ? 'high' :
+                                        formData.progress >= 30 ? 'medium' : 'low'
                                     }`}
                                 style={{ width: `${formData.progress}%` }}
                             ></div>
                         </div>
-                        {formData.taskStatusId === 3 && (
+                        {formData.progress === 100 && (
+                            <p className="help-text" style={{ color: '#00A651', fontWeight: '600' }}>
+                                ✅ Tâche terminée ! Elle sera envoyée au chef de projet pour validation.
+                            </p>
+                        )}
+                        {formData.taskStatusId === 4 && (
                             <p className="help-text">
-                                ✅ Progression automatiquement définie à 100% pour les tâches terminées
+                                ⏳ En attente de validation par le chef de projet
                             </p>
                         )}
                     </div>

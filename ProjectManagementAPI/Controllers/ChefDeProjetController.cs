@@ -59,20 +59,19 @@ namespace ProjectManagementAPI.Controllers
                 var projects = await _context.Projects
                     .Where(p => p.ProjectManagerId == userId)
                     .Include(p => p.ProjectTasks)
-                        .ThenInclude(pt => pt.ProjectTasksStatus)
                     .Include(p => p.ProjectStatus)
                     .Include(p => p.Team)
                         .ThenInclude(t => t.TeamMembers)
                     .ToListAsync();
 
                 var totalProjects = projects.Count;
-                var totalTasks = projects.Sum(p => p.ProjectTasks.Count);
-                var completedTasks = projects.Sum(p => p.ProjectTasks.Count(t =>
-                    t.ProjectTasksStatus.StatusName.ToLower() == "terminé" ||
-                    t.ProjectTasksStatus.StatusName.ToLower() == "validé"));
+                var totalTasks = projects.Sum(p => p.ProjectTasks?.Count ?? 0);
+
+                // ✅ Utilise TaskStatusId au lieu de comparer du texte
+                var completedTasks = projects.Sum(p => p.ProjectTasks?.Count(t => t.TaskStatusId == 5) ?? 0);
                 var pendingTasks = totalTasks - completedTasks;
-                var tasksAwaitingValidation = projects.Sum(p => p.ProjectTasks.Count(t =>
-                    t.ProjectTasksStatus.StatusName.ToLower() == "en attente de validation"));
+                var tasksAwaitingValidation = projects.Sum(p => p.ProjectTasks?.Count(t => t.TaskStatusId == 4) ?? 0);
+
                 var activeMembers = projects
                     .SelectMany(p => p.Team?.TeamMembers ?? new List<TeamMember>())
                     .Select(tm => tm.UserId)
@@ -83,23 +82,19 @@ namespace ProjectManagementAPI.Controllers
                 {
                     projectId = p.ProjectId,
                     projectName = p.ProjectName,
-                    totalTasks = p.ProjectTasks.Count,
-                    completedTasks = p.ProjectTasks.Count(t =>
-                        t.ProjectTasksStatus.StatusName.ToLower() == "terminé" ||
-                        t.ProjectTasksStatus.StatusName.ToLower() == "validé"),
-                    inProgressTasks = p.ProjectTasks.Count(t =>
-                        t.ProjectTasksStatus.StatusName.ToLower() == "en cours"),
-                    todoTasks = p.ProjectTasks.Count(t =>
-                        t.ProjectTasksStatus.StatusName.ToLower() == "à faire" ||
-                        t.ProjectTasksStatus.StatusName.ToLower() == "todo"),
-                    progress = p.ProjectTasks.Count > 0
-                        ? (int)((p.ProjectTasks.Count(t =>
-                            t.ProjectTasksStatus.StatusName.ToLower() == "terminé" ||
-                            t.ProjectTasksStatus.StatusName.ToLower() == "validé") * 100.0) / p.ProjectTasks.Count)
+                    totalTasks = p.ProjectTasks?.Count ?? 0,
+                    completedTasks = p.ProjectTasks?.Count(t => t.TaskStatusId == 5) ?? 0,
+                    inProgressTasks = p.ProjectTasks?.Count(t => t.TaskStatusId == 2) ?? 0,
+                    todoTasks = p.ProjectTasks?.Count(t => t.TaskStatusId == 1) ?? 0,
+                    pendingValidationTasks = p.ProjectTasks?.Count(t => t.TaskStatusId == 4) ?? 0,
+
+                    progress = (p.ProjectTasks?.Count ?? 0) > 0
+                        ? (int)((p.ProjectTasks.Count(t => t.TaskStatusId == 5) * 100.0) / p.ProjectTasks.Count)
                         : 0,
+
                     isDelayed = p.EndDate.HasValue && p.EndDate.Value < DateTime.UtcNow &&
-                        (p.ProjectTasks.Count == 0 ||
-                         (p.ProjectTasks.Count(t => t.ProjectTasksStatus.StatusName.ToLower() == "terminé") * 100.0 / p.ProjectTasks.Count) < 100)
+                        ((p.ProjectTasks?.Count ?? 0) == 0 ||
+                         (p.ProjectTasks.Count(t => t.TaskStatusId == 5) * 100.0 / p.ProjectTasks.Count) < 100)
                 }).ToList();
 
                 var stats = new
@@ -142,33 +137,32 @@ namespace ProjectManagementAPI.Controllers
                 var projects = await _context.Projects
                     .Where(p => p.ProjectManagerId == userId)
                     .Include(p => p.ProjectTasks)
-                        .ThenInclude(pt => pt.ProjectTasksStatus)
                     .Include(p => p.ProjectStatus)
                     .Include(p => p.Team)
                     .Select(p => new
                     {
                         projectId = p.ProjectId,
                         projectName = p.ProjectName,
-                        description = p.Description,
-                        statusName = p.ProjectStatus.StatusName,
-                        statusColor = p.ProjectStatus.Color,
+                        description = p.Description ?? "",
+                        statusName = p.ProjectStatus != null ? p.ProjectStatus.StatusName : "N/A",
+                        statusColor = p.ProjectStatus != null ? p.ProjectStatus.Color : "#999",
                         teamName = p.Team != null ? p.Team.teamName : "Aucune équipe",
-                        totalTasks = p.ProjectTasks.Count,
-                        completedTasks = p.ProjectTasks.Count(t =>
-                            t.ProjectTasksStatus.StatusName.ToLower() == "terminé" ||
-                            t.ProjectTasksStatus.StatusName.ToLower() == "validé"),
-                        inProgressTasks = p.ProjectTasks.Count(t =>
-                            t.ProjectTasksStatus.StatusName.ToLower() == "en cours"),
-                        todoTasks = p.ProjectTasks.Count(t =>
-                            t.ProjectTasksStatus.StatusName.ToLower() == "à faire"),
-                        progress = p.ProjectTasks.Count > 0
-                            ? (int)((p.ProjectTasks.Count(t =>
-                                t.ProjectTasksStatus.StatusName.ToLower() == "terminé" ||
-                                t.ProjectTasksStatus.StatusName.ToLower() == "validé") * 100.0) / p.ProjectTasks.Count)
+                        totalTasks = p.ProjectTasks != null ? p.ProjectTasks.Count : 0,
+
+                        // ✅ Utilise TaskStatusId
+                        completedTasks = p.ProjectTasks != null ? p.ProjectTasks.Count(t => t.TaskStatusId == 5) : 0,
+                        inProgressTasks = p.ProjectTasks != null ? p.ProjectTasks.Count(t => t.TaskStatusId == 2) : 0,
+                        todoTasks = p.ProjectTasks != null ? p.ProjectTasks.Count(t => t.TaskStatusId == 1) : 0,
+                        pendingValidationTasks = p.ProjectTasks != null ? p.ProjectTasks.Count(t => t.TaskStatusId == 4) : 0,
+
+                        progress = p.ProjectTasks != null && p.ProjectTasks.Count > 0
+                            ? (int)((p.ProjectTasks.Count(t => t.TaskStatusId == 5) * 100.0) / p.ProjectTasks.Count)
                             : 0,
+
                         isDelayed = p.EndDate.HasValue && p.EndDate.Value < DateTime.UtcNow &&
-                            (p.ProjectTasks.Count == 0 ||
-                             (p.ProjectTasks.Count(t => t.ProjectTasksStatus.StatusName.ToLower() == "terminé") * 100.0 / p.ProjectTasks.Count) < 100),
+                            (p.ProjectTasks == null || p.ProjectTasks.Count == 0 ||
+                             (p.ProjectTasks.Count(t => t.TaskStatusId == 5) * 100.0 / p.ProjectTasks.Count) < 100),
+
                         startDate = p.StartDate,
                         endDate = p.EndDate
                     })
@@ -206,7 +200,6 @@ namespace ProjectManagementAPI.Controllers
                 var project = await _context.Projects
                     .Where(p => p.ProjectId == projectId)
                     .Include(p => p.ProjectTasks)
-                        .ThenInclude(pt => pt.ProjectTasksStatus)
                     .Include(p => p.ProjectStatus)
                     .Include(p => p.Team)
                     .FirstOrDefaultAsync();
@@ -229,26 +222,26 @@ namespace ProjectManagementAPI.Controllers
                 {
                     projectId = project.ProjectId,
                     projectName = project.ProjectName,
-                    description = project.Description,
-                    statusName = project.ProjectStatus.StatusName,
-                    statusColor = project.ProjectStatus.Color,
+                    description = project.Description ?? "",
+                    statusName = project.ProjectStatus?.StatusName ?? "N/A",
+                    statusColor = project.ProjectStatus?.Color ?? "#999",
                     teamName = project.Team?.teamName ?? "Aucune équipe",
-                    totalTasks = project.ProjectTasks.Count,
-                    completedTasks = project.ProjectTasks.Count(t =>
-                        t.ProjectTasksStatus.StatusName.ToLower() == "terminé" ||
-                        t.ProjectTasksStatus.StatusName.ToLower() == "validé"),
-                    inProgressTasks = project.ProjectTasks.Count(t =>
-                        t.ProjectTasksStatus.StatusName.ToLower() == "en cours"),
-                    todoTasks = project.ProjectTasks.Count(t =>
-                        t.ProjectTasksStatus.StatusName.ToLower() == "à faire"),
-                    progress = project.ProjectTasks.Count > 0
-                        ? (int)((project.ProjectTasks.Count(t =>
-                            t.ProjectTasksStatus.StatusName.ToLower() == "terminé" ||
-                            t.ProjectTasksStatus.StatusName.ToLower() == "validé") * 100.0) / project.ProjectTasks.Count)
+                    totalTasks = project.ProjectTasks?.Count ?? 0,
+                    completedTasks = project.ProjectTasks?.Count(t => t.TaskStatusId == 5) ?? 0,
+                    inProgressTasks = project.ProjectTasks?.Count(t => t.TaskStatusId == 2) ?? 0,
+                    todoTasks = project.ProjectTasks?.Count(t => t.TaskStatusId == 1) ?? 0,
+                    pendingValidationTasks = project.ProjectTasks?.Count(t => t.TaskStatusId == 4) ?? 0,
+
+                    progress = project.ProjectTasks != null && project.ProjectTasks.Count > 0
+                        ? (int)((project.ProjectTasks.Count(t => t.TaskStatusId == 5) * 100.0) / project.ProjectTasks.Count)
                         : 0,
-                    isDelayed = project.EndDate.HasValue && project.EndDate.Value < DateTime.UtcNow &&
-                        (project.ProjectTasks.Count == 0 ||
-                         (project.ProjectTasks.Count(t => t.ProjectTasksStatus.StatusName.ToLower() == "terminé") * 100.0 / project.ProjectTasks.Count) < 100),
+
+                    isDelayed = project.EndDate.HasValue &&
+                                project.EndDate.Value < DateTime.UtcNow &&
+                                (project.ProjectTasks == null ||
+                                 project.ProjectTasks.Count == 0 ||
+                                 (project.ProjectTasks.Count(t => t.TaskStatusId == 5) * 100.0 / project.ProjectTasks.Count) < 100),
+
                     startDate = project.StartDate,
                     endDate = project.EndDate
                 };
@@ -316,7 +309,8 @@ namespace ProjectManagementAPI.Controllers
                             ? t.AssignedToUser.FirstName + " " + t.AssignedToUser.LastName
                             : "Non assigné",
                         progress = t.Progress,
-                        isOverdue = t.DueDate < DateTime.Now && t.TaskStatusId != 3
+                        // ✅ Corrigé: Exclure statut 4 et 5 (en attente et validé)
+                        isOverdue = t.DueDate < DateTime.Now && t.TaskStatusId != 4 && t.TaskStatusId != 5
                     })
                     .ToListAsync();
 
@@ -556,8 +550,7 @@ namespace ProjectManagementAPI.Controllers
                 var userId = GetCurrentUserId();
 
                 var tasks = await _context.ProjectTasks
-                    .Where(t => t.Project.ProjectManagerId == userId &&
-                                t.ProjectTasksStatus.StatusName.ToLower() == "en attente de validation")
+                    .Where(t => t.Project.ProjectManagerId == userId && t.TaskStatusId == 4)
                     .Include(t => t.Project)
                     .Include(t => t.AssignedToUser)
                     .Include(t => t.ProjectTasksStatus)
@@ -597,6 +590,14 @@ namespace ProjectManagementAPI.Controllers
             }
         }
 
+        // ============= VALIDATION (ROUTE ALTERNATIVE) =============
+        [HttpGet("validation")]
+        [ProducesResponseType(StatusCodes.Status200OK)]
+        public async Task<IActionResult> GetValidationTasks()
+        {
+            return await GetTasksAwaitingValidation();
+        }
+
         // ============= VALIDER UNE TÂCHE =============
         [HttpPut("tasks/{taskId}/validate")]
         [ProducesResponseType(StatusCodes.Status200OK)]
@@ -627,16 +628,14 @@ namespace ProjectManagementAPI.Controllers
                     });
                 }
 
-                // Trouver le statut "Validé" ou "Terminé"
-                var validatedStatus = await _context.ProjectTaskStatuses
-                    .FirstOrDefaultAsync(s => s.StatusName.ToLower() == "validé" || s.StatusName.ToLower() == "terminé");
+                // ✅ Statut 5 = Validé
+                task.TaskStatusId = 5;
+                task.Progress = 100;
+                task.IsValidated = true;
 
-                if (validatedStatus != null)
-                {
-                    task.TaskStatusId = validatedStatus.ProjectTaskStatusId;
-                    task.Progress = 100;
-                    await _context.SaveChangesAsync();
-                }
+                Console.WriteLine($"✅ Validation: Tâche {taskId} '{task.TaskName}' → Statut ID = 5 (Validé)");
+
+                await _context.SaveChangesAsync();
 
                 return Ok(new
                 {
@@ -646,6 +645,7 @@ namespace ProjectManagementAPI.Controllers
             }
             catch (Exception ex)
             {
+                Console.WriteLine($"❌ Erreur validation: {ex.Message}");
                 return StatusCode(500, new
                 {
                     success = false,
@@ -685,27 +685,22 @@ namespace ProjectManagementAPI.Controllers
                     });
                 }
 
-                // Remettre en "En cours"
-                var inProgressStatus = await _context.ProjectTaskStatuses
-                    .FirstOrDefaultAsync(s => s.StatusName.ToLower() == "en cours");
+                // ✅ Remettre en "En cours" (statut 2)
+                task.TaskStatusId = 2;
+                task.IsValidated = false;
 
-                if (inProgressStatus != null)
+                // Ajouter la raison du refus
+                if (!string.IsNullOrEmpty(dto.Reason))
                 {
-                    task.TaskStatusId = inProgressStatus.ProjectTaskStatusId;
-
-                    // Ajouter la raison du refus
-                    if (!string.IsNullOrEmpty(dto.Reason))
-                    {
-                        task.Description += $"\n\n⚠️ Refusé: {dto.Reason}";
-                    }
-
-                    await _context.SaveChangesAsync();
+                    task.Description += $"\n\n⚠️ Refusé le {DateTime.Now:dd/MM/yyyy HH:mm}: {dto.Reason}";
                 }
+
+                await _context.SaveChangesAsync();
 
                 return Ok(new
                 {
                     success = true,
-                    message = $"Tâche '{task.TaskName}' refusée"
+                    message = $"Tâche '{task.TaskName}' refusée et remise en cours"
                 });
             }
             catch (Exception ex)

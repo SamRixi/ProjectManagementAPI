@@ -32,6 +32,12 @@ const DeveloperTasks = () => {
             const response = await developerService.getDashboardData();
 
             if (response.success) {
+                // ✅ DEBUG: Afficher les tâches reçues
+                console.log('📋 Tasks received:', response.data.tasks);
+                response.data.tasks.forEach(t => {
+                    console.log(`Task "${t.taskName}" - Priority: "${t.priority}" - Status: "${t.status}" - Progress: ${t.progress}%`);
+                });
+
                 setTasks(response.data.tasks || []);
             } else {
                 setError(response.message || 'Erreur lors du chargement des tâches');
@@ -47,6 +53,8 @@ const DeveloperTasks = () => {
     // Fonction pour mettre à jour une tâche
     const handleUpdateTask = async (taskId, updateData) => {
         try {
+            console.log('📤 Updating task:', taskId, updateData); // ✅ DEBUG
+
             const result = await developerService.updateTask(taskId, updateData);
 
             if (result.success) {
@@ -67,7 +75,8 @@ const DeveloperTasks = () => {
         const statusMap = {
             'À faire': 'pending',
             'En cours': 'in-progress',
-            'Terminé': 'completed'
+            'Terminé': 'completed',
+            'En attente de validation': 'pending-validation' // ✅ Ajouté
         };
         return statusMap[status] || 'pending';
     };
@@ -103,7 +112,7 @@ const DeveloperTasks = () => {
 
     // Fonction pour vérifier si une tâche est en retard
     const isTaskOverdue = (deadline, status) => {
-        if (!deadline || status === 'Terminé') return false;
+        if (!deadline || status === 'Terminé' || status === 'En attente de validation') return false;
         return new Date(deadline) < new Date();
     };
 
@@ -170,7 +179,7 @@ const DeveloperTasks = () => {
 
                                             <div className="task-meta">
                                                 <span className="task-deadline">
-                                                    {task.status === 'Terminé'
+                                                    {task.status === 'Terminé' || task.status === 'En attente de validation'
                                                         ? `Complété: ${formatDate(task.completedDate)}`
                                                         : `Deadline: ${formatDate(task.deadline)}`}
                                                 </span>
@@ -198,20 +207,23 @@ const DeveloperTasks = () => {
                                                 <button
                                                     className="btn-update-task"
                                                     onClick={() => setSelectedTask(task)}
+                                                    disabled={task.status === 'En attente de validation'}
                                                     style={{
                                                         marginTop: '1rem',
                                                         padding: '8px 16px',
-                                                        background: '#00A651',
+                                                        background: task.status === 'En attente de validation' ? '#ccc' : '#00A651',
                                                         color: 'white',
                                                         border: 'none',
                                                         borderRadius: '6px',
-                                                        cursor: 'pointer',
+                                                        cursor: task.status === 'En attente de validation' ? 'not-allowed' : 'pointer',
                                                         fontSize: '0.9rem',
                                                         fontWeight: '600',
-                                                        transition: 'all 0.3s'
+                                                        transition: 'all 0.3s',
+                                                        opacity: task.status === 'En attente de validation' ? 0.6 : 1
                                                     }}
+                                                    title={task.status === 'En attente de validation' ? 'En attente de validation par le chef de projet' : ''}
                                                 >
-                                                    ✏️ Mettre à jour
+                                                    {task.status === 'En attente de validation' ? '⏳ En attente' : '✏️ Mettre à jour'}
                                                 </button>
                                             </div>
                                         </div>
