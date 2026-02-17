@@ -1,6 +1,6 @@
 ﻿import { useState, useEffect } from 'react';
 import { useAuth } from '../../context/AuthContext';
-import { CheckSquare } from 'lucide-react';
+import { CheckSquare, CheckCircle, Clock } from 'lucide-react';
 import developerService from '../../services/developerService';
 import UpdateTaskModal from '../../components/modals/UpdateTaskModal';
 import DeveloperLayout from '../../components/layout/DeveloperLayout';
@@ -32,10 +32,9 @@ const DeveloperTasks = () => {
             const response = await developerService.getDashboardData();
 
             if (response.success) {
-                // ✅ DEBUG: Afficher les tâches reçues
                 console.log('📋 Tasks received:', response.data.tasks);
                 response.data.tasks.forEach(t => {
-                    console.log(`Task "${t.taskName}" - Priority: "${t.priority}" - Status: "${t.status}" - Progress: ${t.progress}%`);
+                    console.log(`Task "${t.taskName}" - Status: "${t.status}" - Progress: ${t.progress}%`);
                 });
 
                 setTasks(response.data.tasks || []);
@@ -53,7 +52,7 @@ const DeveloperTasks = () => {
     // Fonction pour mettre à jour une tâche
     const handleUpdateTask = async (taskId, updateData) => {
         try {
-            console.log('📤 Updating task:', taskId, updateData); // ✅ DEBUG
+            console.log('📤 Updating task:', taskId, updateData);
 
             const result = await developerService.updateTask(taskId, updateData);
 
@@ -70,15 +69,39 @@ const DeveloperTasks = () => {
         }
     };
 
+    // ✅ FONCTION POUR VÉRIFIER SI LA TÂCHE EST VALIDÉE (statut 5)
+    const isTaskValidated = (status) => {
+        const validatedStatuses = [
+            'Validée',
+            'Validé',
+            'Terminé et validé',
+            'Complété'
+        ];
+        return validatedStatuses.some(s => status?.toLowerCase().includes(s.toLowerCase()));
+    };
+
+    // ✅ FONCTION POUR VÉRIFIER SI LA TÂCHE EST EN ATTENTE (statut 4)
+    const isTaskPending = (status) => {
+        return status?.toLowerCase().includes('attente');
+    };
+
     // Fonction pour obtenir la classe CSS du statut
     const getStatusClass = (status) => {
-        const statusMap = {
-            'À faire': 'pending',
-            'En cours': 'in-progress',
-            'Terminé': 'completed',
-            'En attente de validation': 'pending-validation' // ✅ Ajouté
-        };
-        return statusMap[status] || 'pending';
+        const statusLower = status?.toLowerCase() || '';
+
+        if (statusLower.includes('validé') || statusLower.includes('complété')) {
+            return 'completed';
+        }
+        if (statusLower.includes('attente')) {
+            return 'pending-validation';
+        }
+        if (statusLower.includes('cours')) {
+            return 'in-progress';
+        }
+        if (statusLower.includes('terminé')) {
+            return 'completed';
+        }
+        return 'pending';
     };
 
     // Fonction pour obtenir la classe CSS de la priorité
@@ -112,7 +135,7 @@ const DeveloperTasks = () => {
 
     // Fonction pour vérifier si une tâche est en retard
     const isTaskOverdue = (deadline, status) => {
-        if (!deadline || status === 'Terminé' || status === 'En attente de validation') return false;
+        if (!deadline || isTaskValidated(status) || isTaskPending(status)) return false;
         return new Date(deadline) < new Date();
     };
 
@@ -159,75 +182,132 @@ const DeveloperTasks = () => {
 
                             {tasks.length > 0 ? (
                                 <div className="task-list">
-                                    {tasks.map((task) => (
-                                        <div
-                                            className={`task-item ${isTaskOverdue(task.deadline, task.status) ? 'overdue' : ''}`}
-                                            key={task.taskId}
-                                        >
-                                            <div className={`task-status ${getStatusClass(task.status)}`}></div>
+                                    {tasks.map((task) => {
+                                        const isValidated = isTaskValidated(task.status);
+                                        const isPending = isTaskPending(task.status);
+                                        const isLocked = isValidated || isPending;
 
-                                            <div className="task-details">
-                                                <h4>{task.taskName || 'Sans titre'}</h4>
-                                                <p>Projet: {task.projectName || 'N/A'}</p>
-                                                <p style={{ fontSize: '0.85rem', color: '#666', marginTop: '0.25rem' }}>
-                                                    Chef de projet: {task.projectManagerName || 'N/A'}
-                                                </p>
-                                                <span className={`task-priority ${getPriorityClass(task.priority)}`}>
-                                                    {task.priority || 'Moyenne'} Priorité
-                                                </span>
-                                            </div>
+                                        return (
+                                            <div
+                                                className={`task-item ${isTaskOverdue(task.deadline, task.status) ? 'overdue' : ''} ${isLocked ? 'locked' : ''}`}
+                                                key={task.taskId}
+                                            >
+                                                <div className={`task-status ${getStatusClass(task.status)}`}></div>
 
-                                            <div className="task-meta">
-                                                <span className="task-deadline">
-                                                    {task.status === 'Terminé' || task.status === 'En attente de validation'
-                                                        ? `Complété: ${formatDate(task.completedDate)}`
-                                                        : `Deadline: ${formatDate(task.deadline)}`}
-                                                </span>
+                                                <div className="task-details">
+                                                    <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+                                                        <h4 style={{ margin: 0 }}>{task.taskName || 'Sans titre'}</h4>
 
-                                                {isTaskOverdue(task.deadline, task.status) && (
-                                                    <span className="overdue-badge">
-                                                        ⚠️ EN RETARD
-                                                    </span>
-                                                )}
+                                                        {/* ✅ BADGE VALIDÉE (vert) */}
+                                                        {isValidated && (
+                                                            <span style={{
+                                                                display: 'inline-flex',
+                                                                alignItems: 'center',
+                                                                gap: '5px',
+                                                                padding: '4px 12px',
+                                                                background: '#10b981',
+                                                                color: 'white',
+                                                                borderRadius: '12px',
+                                                                fontSize: '0.75rem',
+                                                                fontWeight: '700',
+                                                                textTransform: 'uppercase'
+                                                            }}>
+                                                                <CheckCircle size={14} />
+                                                                Validée
+                                                            </span>
+                                                        )}
 
-                                                {task.progress !== undefined && (
-                                                    <div className="progress-wrapper">
-                                                        <div className="progress-container">
-                                                            <div
-                                                                className={`progress-fill ${getProgressClass(task.progress)}`}
-                                                                style={{ width: `${task.progress}%` }}
-                                                            ></div>
-                                                        </div>
-                                                        <span className="progress-text">
-                                                            {task.progress}% complété
-                                                        </span>
+                                                        {/* ⏳ BADGE EN ATTENTE (orange) */}
+                                                        {isPending && (
+                                                            <span style={{
+                                                                display: 'inline-flex',
+                                                                alignItems: 'center',
+                                                                gap: '5px',
+                                                                padding: '4px 12px',
+                                                                background: '#f59e0b',
+                                                                color: 'white',
+                                                                borderRadius: '12px',
+                                                                fontSize: '0.75rem',
+                                                                fontWeight: '700',
+                                                                textTransform: 'uppercase'
+                                                            }}>
+                                                                <Clock size={14} />
+                                                                En attente
+                                                            </span>
+                                                        )}
                                                     </div>
-                                                )}
+                                                    <p>Projet: {task.projectName || 'N/A'}</p>
+                                                    <p style={{ fontSize: '0.85rem', color: '#666', marginTop: '0.25rem' }}>
+                                                        Chef de projet: {task.projectManagerName || 'N/A'}
+                                                    </p>
+                                                    <span className={`task-priority ${getPriorityClass(task.priority)}`}>
+                                                        {task.priority || 'Moyenne'} Priorité
+                                                    </span>
+                                                </div>
 
-                                                <button
-                                                    className="btn-update-task"
-                                                    onClick={() => setSelectedTask(task)}
-                                                    disabled={task.status === 'En attente de validation'}
-                                                    style={{
-                                                        marginTop: '1rem',
-                                                        padding: '8px 16px',
-                                                        background: task.status === 'En attente de validation' ? '#ccc' : '#00A651',
-                                                        color: 'white',
-                                                        border: 'none',
-                                                        borderRadius: '6px',
-                                                        cursor: task.status === 'En attente de validation' ? 'not-allowed' : 'pointer',
-                                                        fontSize: '0.9rem',
-                                                        fontWeight: '600',
-                                                        transition: 'all 0.3s',
-                                                        opacity: task.status === 'En attente de validation' ? 0.6 : 1
-                                                    }}
-                                                    title={task.status === 'En attente de validation' ? 'En attente de validation par le chef de projet' : ''}
-                                                >
-                                                    {task.status === 'En attente de validation' ? '⏳ En attente' : '✏️ Mettre à jour'}
-                                                </button>
+                                                <div className="task-meta">
+                                                    <span className="task-deadline">
+                                                        {isValidated
+                                                            ? `Complété: ${formatDate(task.completedDate)}`
+                                                            : `Deadline: ${formatDate(task.deadline)}`}
+                                                    </span>
+
+                                                    {isTaskOverdue(task.deadline, task.status) && (
+                                                        <span className="overdue-badge">
+                                                            ⚠️ EN RETARD
+                                                        </span>
+                                                    )}
+
+                                                    {task.progress !== undefined && (
+                                                        <div className="progress-wrapper">
+                                                            <div className="progress-container">
+                                                                <div
+                                                                    className={`progress-fill ${getProgressClass(task.progress)}`}
+                                                                    style={{ width: `${task.progress}%` }}
+                                                                ></div>
+                                                            </div>
+                                                            <span className="progress-text">
+                                                                {task.progress}% complété
+                                                            </span>
+                                                        </div>
+                                                    )}
+
+                                                    {/* ✅ BOUTON AVEC MESSAGES DIFFÉRENTS */}
+                                                    <button
+                                                        className="btn-update-task"
+                                                        onClick={() => !isLocked && setSelectedTask(task)}
+                                                        disabled={isLocked}
+                                                        style={{
+                                                            marginTop: '1rem',
+                                                            padding: '8px 16px',
+                                                            background: isLocked ? '#d1d5db' : '#00A651',
+                                                            color: isLocked ? '#6b7280' : 'white',
+                                                            border: 'none',
+                                                            borderRadius: '6px',
+                                                            cursor: isLocked ? 'not-allowed' : 'pointer',
+                                                            fontSize: '0.9rem',
+                                                            fontWeight: '600',
+                                                            transition: 'all 0.3s',
+                                                            opacity: isLocked ? 0.6 : 1
+                                                        }}
+                                                        title={
+                                                            isValidated
+                                                                ? '✅ Tâche validée par le chef de projet - Modification impossible'
+                                                                : isPending
+                                                                    ? '⏳ Tâche en attente de validation par le chef de projet'
+                                                                    : 'Mettre à jour la tâche'
+                                                        }
+                                                    >
+                                                        {isValidated
+                                                            ? '🔒 Validée'
+                                                            : isPending
+                                                                ? '⏳ En attente'
+                                                                : '✏️ Mettre à jour'}
+                                                    </button>
+                                                </div>
                                             </div>
-                                        </div>
-                                    ))}
+                                        );
+                                    })}
                                 </div>
                             ) : (
                                 <div className="no-data">

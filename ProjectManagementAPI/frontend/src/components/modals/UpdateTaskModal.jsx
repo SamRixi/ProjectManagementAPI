@@ -9,7 +9,8 @@ const UpdateTaskModalContent = ({ task, onUpdate, onClose }) => {
             'À faire': 1,
             'En cours': 2,
             'Terminé': 3,
-            'En attente de validation': 4
+            'En attente de validation': 4,
+            'Validée': 5
         };
         return statusMap[statusText] || 1;
     }
@@ -25,10 +26,15 @@ const UpdateTaskModalContent = ({ task, onUpdate, onClose }) => {
         e.preventDefault();
         setLoading(true);
 
+        // ✅ SI PROGRESSION = 100%, FORCE "EN ATTENTE DE VALIDATION" (4)
+        const finalStatus = formData.progress === 100 ? 4 : formData.taskStatusId;
+
         const updateData = {
-            TaskStatusId: formData.taskStatusId,
+            TaskStatusId: finalStatus,
             progress: parseInt(formData.progress)
         };
+
+        console.log('📤 Envoi:', updateData);
 
         await onUpdate(task.taskId, updateData);
         setLoading(false);
@@ -74,17 +80,23 @@ const UpdateTaskModalContent = ({ task, onUpdate, onClose }) => {
                                 setFormData({
                                     ...formData,
                                     taskStatusId: newStatus,
-                                    // ✅ Si "Terminé" → force 100%
-                                    progress: newStatus === 3 ? 100 : formData.progress
+                                    // ✅ SUPPRIMÉ : Ne force plus 100% automatiquement
+                                    progress: formData.progress
                                 });
                             }}
                             required
                             className="form-select"
+                            disabled={formData.progress === 100}
                         >
                             <option value={1}>À faire</option>
                             <option value={2}>En cours</option>
                             <option value={3}>Terminé</option>
                         </select>
+                        {formData.progress === 100 && (
+                            <p className="help-text" style={{ fontSize: '0.85rem', color: '#6b7280', marginTop: '0.5rem' }}>
+                                ℹ️ Le statut sera automatiquement "En attente de validation"
+                            </p>
+                        )}
                     </div>
 
                     <div className="form-group">
@@ -99,13 +111,12 @@ const UpdateTaskModalContent = ({ task, onUpdate, onClose }) => {
                                 const newProgress = parseInt(e.target.value);
                                 setFormData({
                                     ...formData,
-                                    progress: newProgress,
-                                    // ✅ Si progression = 100% → force statut "Terminé"
-                                    taskStatusId: newProgress === 100 ? 3 : formData.taskStatusId
+                                    progress: newProgress
+                                    // ✅ SUPPRIMÉ : Ne change plus automatiquement le statut
                                 });
                             }}
                             className="progress-slider"
-                            disabled={formData.taskStatusId === 4}
+                            disabled={formData.taskStatusId === 4 || formData.taskStatusId === 5}
                         />
                         <div className="progress-bar-preview">
                             <div
@@ -118,12 +129,17 @@ const UpdateTaskModalContent = ({ task, onUpdate, onClose }) => {
                         </div>
                         {formData.progress === 100 && (
                             <p className="help-text" style={{ color: '#00A651', fontWeight: '600' }}>
-                                ✅ Tâche terminée ! Elle sera envoyée au chef de projet pour validation.
+                                ✅ Tâche à 100% ! Elle sera envoyée au chef de projet pour validation.
                             </p>
                         )}
                         {formData.taskStatusId === 4 && (
-                            <p className="help-text">
+                            <p className="help-text" style={{ color: '#f59e0b', fontWeight: '600' }}>
                                 ⏳ En attente de validation par le chef de projet
+                            </p>
+                        )}
+                        {formData.taskStatusId === 5 && (
+                            <p className="help-text" style={{ color: '#10b981', fontWeight: '600' }}>
+                                ✅ Tâche validée par le chef de projet
                             </p>
                         )}
                     </div>

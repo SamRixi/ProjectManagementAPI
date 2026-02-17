@@ -78,23 +78,29 @@ namespace ProjectManagementAPI.Controllers
                     .Distinct()
                     .Count();
 
-                var projectsList = projects.Select(p => new
+                var projectsList = projects.Select(p =>
                 {
-                    projectId = p.ProjectId,
-                    projectName = p.ProjectName,
-                    totalTasks = p.ProjectTasks?.Count ?? 0,
-                    completedTasks = p.ProjectTasks?.Count(t => t.TaskStatusId == 5) ?? 0,
-                    inProgressTasks = p.ProjectTasks?.Count(t => t.TaskStatusId == 2) ?? 0,
-                    todoTasks = p.ProjectTasks?.Count(t => t.TaskStatusId == 1) ?? 0,
-                    pendingValidationTasks = p.ProjectTasks?.Count(t => t.TaskStatusId == 4) ?? 0,
+                    var tasks = p.ProjectTasks ?? new List<ProjectTask>();
+                    var totalTasksCount = tasks.Count;
+                    var completed = tasks.Count(t => t.TaskStatusId == 5);
 
-                    progress = (p.ProjectTasks?.Count ?? 0) > 0
-                        ? (int)((p.ProjectTasks.Count(t => t.TaskStatusId == 5) * 100.0) / p.ProjectTasks.Count)
-                        : 0,
+                    return new
+                    {
+                        projectId = p.ProjectId,
+                        projectName = p.ProjectName,
+                        totalTasks = totalTasksCount,
+                        completedTasks = completed,
+                        inProgressTasks = tasks.Count(t => t.TaskStatusId == 2),
+                        todoTasks = tasks.Count(t => t.TaskStatusId == 1),
+                        pendingValidationTasks = tasks.Count(t => t.TaskStatusId == 4),
 
-                    isDelayed = p.EndDate.HasValue && p.EndDate.Value < DateTime.UtcNow &&
-                        ((p.ProjectTasks?.Count ?? 0) == 0 ||
-                         (p.ProjectTasks.Count(t => t.TaskStatusId == 5) * 100.0 / p.ProjectTasks.Count) < 100)
+                        progress = totalTasksCount > 0
+                            ? (int)Math.Round((completed * 100.0) / totalTasksCount)
+                            : 0,
+
+                        isDelayed = p.EndDate.HasValue && p.EndDate.Value < DateTime.UtcNow &&
+                            (totalTasksCount == 0 || (completed * 100.0 / totalTasksCount) < 100)
+                    };
                 }).ToList();
 
                 var stats = new
@@ -116,6 +122,7 @@ namespace ProjectManagementAPI.Controllers
             }
             catch (Exception ex)
             {
+                Console.WriteLine($"❌ Erreur Dashboard: {ex.Message}");
                 return StatusCode(500, new
                 {
                     success = false,
@@ -125,7 +132,7 @@ namespace ProjectManagementAPI.Controllers
             }
         }
 
-        // ============= MES PROJETS =============
+        // ============= MES PROJETS ============= ✅ CORRIGÉ
         [HttpGet("my-projects")]
         [ProducesResponseType(StatusCodes.Status200OK)]
         public async Task<IActionResult> GetMyProjects()
@@ -134,49 +141,80 @@ namespace ProjectManagementAPI.Controllers
             {
                 var userId = GetCurrentUserId();
 
+                Console.WriteLine($"🔍 Récupération des projets pour userId={userId}");
+
                 var projects = await _context.Projects
                     .Where(p => p.ProjectManagerId == userId)
                     .Include(p => p.ProjectTasks)
                     .Include(p => p.ProjectStatus)
                     .Include(p => p.Team)
-                    .Select(p => new
+                    .ToListAsync();
+
+                Console.WriteLine($"📋 {projects.Count} projets trouvés");
+
+                var projectsList = projects.Select(p =>
+                {
+                    // ✅ PROTECTION CONTRE NULL
+                    var tasks = p.ProjectTasks ?? new List<ProjectTask>();
+                    var totalTasks = tasks.Count;
+                    var completedTasks = tasks.Count(t => t.TaskStatusId == 5);
+                    var inProgressTasks = tasks.Count(t => t.TaskStatusId == 2);
+                    var todoTasks = tasks.Count(t => t.TaskStatusId == 1);
+                    var pendingValidationTasks = tasks.Count(t => t.TaskStatusId == 4);
+
+                    // ✅ CALCUL SÉCURISÉ DE LA PROGRESSION
+                    int progress = 0;
+                    if (totalTasks > 0)
+                    {
+                        progress = (int)Math.Round((completedTasks * 100.0) / totalTasks);
+                    }
+
+                    // ✅ CALCUL DU RETARD
+                    bool isDelayed = false;
+                    if (p.EndDate.HasValue && p.EndDate.Value < DateTime.UtcNow)
+                    {
+                        if (totalTasks == 0 || progress < 100)
+                        {
+                            isDelayed = true;
+                        }
+                    }
+
+                    Console.WriteLine($"📊 Projet '{p.ProjectName}': {totalTasks} tâches, {progress}% complété");
+
+                    return new
                     {
                         projectId = p.ProjectId,
                         projectName = p.ProjectName,
                         description = p.Description ?? "",
-                        statusName = p.ProjectStatus != null ? p.ProjectStatus.StatusName : "N/A",
-                        statusColor = p.ProjectStatus != null ? p.ProjectStatus.Color : "#999",
-                        teamName = p.Team != null ? p.Team.teamName : "Aucune équipe",
-                        totalTasks = p.ProjectTasks != null ? p.ProjectTasks.Count : 0,
-
-                        // ✅ Utilise TaskStatusId
-                        completedTasks = p.ProjectTasks != null ? p.ProjectTasks.Count(t => t.TaskStatusId == 5) : 0,
-                        inProgressTasks = p.ProjectTasks != null ? p.ProjectTasks.Count(t => t.TaskStatusId == 2) : 0,
-                        todoTasks = p.ProjectTasks != null ? p.ProjectTasks.Count(t => t.TaskStatusId == 1) : 0,
-                        pendingValidationTasks = p.ProjectTasks != null ? p.ProjectTasks.Count(t => t.TaskStatusId == 4) : 0,
-
-                        progress = p.ProjectTasks != null && p.ProjectTasks.Count > 0
-                            ? (int)((p.ProjectTasks.Count(t => t.TaskStatusId == 5) * 100.0) / p.ProjectTasks.Count)
-                            : 0,
-
-                        isDelayed = p.EndDate.HasValue && p.EndDate.Value < DateTime.UtcNow &&
-                            (p.ProjectTasks == null || p.ProjectTasks.Count == 0 ||
-                             (p.ProjectTasks.Count(t => t.TaskStatusId == 5) * 100.0 / p.ProjectTasks.Count) < 100),
-
+                        statusName = p.ProjectStatus?.StatusName ?? "N/A",
+                        statusColor = p.ProjectStatus?.Color ?? "#999",
+                        teamName = p.Team?.teamName ?? "Aucune équipe",
+                        totalTasks = totalTasks,
+                        completedTasks = completedTasks,
+                        inProgressTasks = inProgressTasks,
+                        todoTasks = todoTasks,
+                        pendingValidationTasks = pendingValidationTasks,
+                        progress = progress,
+                        isDelayed = isDelayed,
                         startDate = p.StartDate,
                         endDate = p.EndDate
-                    })
-                    .ToListAsync();
+                    };
+                }).ToList();
+
+                Console.WriteLine($"✅ Projets traités avec succès");
 
                 return Ok(new
                 {
                     success = true,
                     message = "Projets récupérés avec succès",
-                    data = projects
+                    data = projectsList
                 });
             }
             catch (Exception ex)
             {
+                Console.WriteLine($"❌ ERREUR GetMyProjects: {ex.Message}");
+                Console.WriteLine($"❌ STACK: {ex.StackTrace}");
+
                 return StatusCode(500, new
                 {
                     success = false,
@@ -218,6 +256,26 @@ namespace ProjectManagementAPI.Controllers
                     });
                 }
 
+                // ✅ PROTECTION CONTRE NULL
+                var tasks = project.ProjectTasks ?? new List<ProjectTask>();
+                var totalTasks = tasks.Count;
+                var completedTasks = tasks.Count(t => t.TaskStatusId == 5);
+
+                int progress = 0;
+                if (totalTasks > 0)
+                {
+                    progress = (int)Math.Round((completedTasks * 100.0) / totalTasks);
+                }
+
+                bool isDelayed = false;
+                if (project.EndDate.HasValue && project.EndDate.Value < DateTime.UtcNow)
+                {
+                    if (totalTasks == 0 || progress < 100)
+                    {
+                        isDelayed = true;
+                    }
+                }
+
                 var stats = new
                 {
                     projectId = project.ProjectId,
@@ -226,22 +284,13 @@ namespace ProjectManagementAPI.Controllers
                     statusName = project.ProjectStatus?.StatusName ?? "N/A",
                     statusColor = project.ProjectStatus?.Color ?? "#999",
                     teamName = project.Team?.teamName ?? "Aucune équipe",
-                    totalTasks = project.ProjectTasks?.Count ?? 0,
-                    completedTasks = project.ProjectTasks?.Count(t => t.TaskStatusId == 5) ?? 0,
-                    inProgressTasks = project.ProjectTasks?.Count(t => t.TaskStatusId == 2) ?? 0,
-                    todoTasks = project.ProjectTasks?.Count(t => t.TaskStatusId == 1) ?? 0,
-                    pendingValidationTasks = project.ProjectTasks?.Count(t => t.TaskStatusId == 4) ?? 0,
-
-                    progress = project.ProjectTasks != null && project.ProjectTasks.Count > 0
-                        ? (int)((project.ProjectTasks.Count(t => t.TaskStatusId == 5) * 100.0) / project.ProjectTasks.Count)
-                        : 0,
-
-                    isDelayed = project.EndDate.HasValue &&
-                                project.EndDate.Value < DateTime.UtcNow &&
-                                (project.ProjectTasks == null ||
-                                 project.ProjectTasks.Count == 0 ||
-                                 (project.ProjectTasks.Count(t => t.TaskStatusId == 5) * 100.0 / project.ProjectTasks.Count) < 100),
-
+                    totalTasks = totalTasks,
+                    completedTasks = completedTasks,
+                    inProgressTasks = tasks.Count(t => t.TaskStatusId == 2),
+                    todoTasks = tasks.Count(t => t.TaskStatusId == 1),
+                    pendingValidationTasks = tasks.Count(t => t.TaskStatusId == 4),
+                    progress = progress,
+                    isDelayed = isDelayed,
                     startDate = project.StartDate,
                     endDate = project.EndDate
                 };
@@ -255,6 +304,7 @@ namespace ProjectManagementAPI.Controllers
             }
             catch (Exception ex)
             {
+                Console.WriteLine($"❌ Erreur Stats: {ex.Message}");
                 return StatusCode(500, new
                 {
                     success = false,
@@ -309,7 +359,6 @@ namespace ProjectManagementAPI.Controllers
                             ? t.AssignedToUser.FirstName + " " + t.AssignedToUser.LastName
                             : "Non assigné",
                         progress = t.Progress,
-                        // ✅ Corrigé: Exclure statut 4 et 5 (en attente et validé)
                         isOverdue = t.DueDate < DateTime.Now && t.TaskStatusId != 4 && t.TaskStatusId != 5
                     })
                     .ToListAsync();
@@ -628,19 +677,26 @@ namespace ProjectManagementAPI.Controllers
                     });
                 }
 
-                // ✅ Statut 5 = Validé
                 task.TaskStatusId = 5;
                 task.Progress = 100;
                 task.IsValidated = true;
+                task.ValidatedByUserId = userId;
+                task.ValidatedAt = DateTime.UtcNow;
 
-                Console.WriteLine($"✅ Validation: Tâche {taskId} '{task.TaskName}' → Statut ID = 5 (Validé)");
+                Console.WriteLine($"✅ Validation: Tâche {taskId} '{task.TaskName}' validée par userId={userId} le {task.ValidatedAt}");
 
                 await _context.SaveChangesAsync();
 
                 return Ok(new
                 {
                     success = true,
-                    message = $"Tâche '{task.TaskName}' validée avec succès"
+                    message = $"Tâche '{task.TaskName}' validée avec succès",
+                    data = new
+                    {
+                        taskId = task.ProjectTaskId,
+                        validatedBy = userId,
+                        validatedAt = task.ValidatedAt
+                    }
                 });
             }
             catch (Exception ex)
@@ -685,11 +741,9 @@ namespace ProjectManagementAPI.Controllers
                     });
                 }
 
-                // ✅ Remettre en "En cours" (statut 2)
                 task.TaskStatusId = 2;
                 task.IsValidated = false;
 
-                // Ajouter la raison du refus
                 if (!string.IsNullOrEmpty(dto.Reason))
                 {
                     task.Description += $"\n\n⚠️ Refusé le {DateTime.Now:dd/MM/yyyy HH:mm}: {dto.Reason}";

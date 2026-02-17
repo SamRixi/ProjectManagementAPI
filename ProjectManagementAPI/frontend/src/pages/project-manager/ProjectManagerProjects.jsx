@@ -4,9 +4,6 @@ import {
     FolderKanban,
     BarChart3,
     Clock,
-    Users,
-    TrendingUp,
-    X,
     AlertCircle
 } from 'lucide-react';
 import api from '../../services/api';
@@ -39,6 +36,13 @@ const ProjectManagerProjects = () => {
             setLoading(true);
             setError(null);
 
+            // ✅ DEBUG - INFORMATIONS UTILISATEUR
+            const token = localStorage.getItem('token');
+            console.log('🔑 Token exists:', !!token);
+            console.log('👤 User:', user);
+            console.log('👤 User Role:', user?.role);
+            console.log('👤 User ID:', user?.userId);
+
             console.log('📥 Fetching projects...');
             const response = await api.get('/projectmanager/my-projects');
             console.log('✅ Projects response:', response.data);
@@ -50,7 +54,12 @@ const ProjectManagerProjects = () => {
             }
         } catch (err) {
             console.error('❌ Error loading projects:', err);
-            setError('Erreur lors de la connexion au serveur');
+            console.error('❌ Error response:', err.response);
+            console.error('❌ Error data:', err.response?.data);
+            console.error('❌ Error status:', err.response?.status);
+            console.error('❌ Error message:', err.response?.data?.message);
+
+            setError(err.response?.data?.message || 'Erreur lors de la connexion au serveur');
         } finally {
             setLoading(false);
         }
@@ -70,6 +79,7 @@ const ProjectManagerProjects = () => {
             }
         } catch (err) {
             console.error('❌ Error loading stats:', err);
+            console.error('❌ Stats error data:', err.response?.data);
         } finally {
             setStatsLoading(false);
         }
@@ -111,9 +121,29 @@ const ProjectManagerProjects = () => {
 
                     {/* Error Message */}
                     {error && (
-                        <div className="error-message">
-                            <p>⚠️ {error}</p>
-                            <button onClick={fetchProjects}>
+                        <div className="error-message" style={{
+                            background: '#fee2e2',
+                            border: '2px solid #dc2626',
+                            borderRadius: '12px',
+                            padding: '1rem',
+                            marginBottom: '1.5rem',
+                            display: 'flex',
+                            alignItems: 'center',
+                            justifyContent: 'space-between'
+                        }}>
+                            <p style={{ margin: 0, color: '#dc2626', fontWeight: '600' }}>⚠️ {error}</p>
+                            <button
+                                onClick={fetchProjects}
+                                style={{
+                                    padding: '0.5rem 1rem',
+                                    background: '#dc2626',
+                                    color: 'white',
+                                    border: 'none',
+                                    borderRadius: '8px',
+                                    cursor: 'pointer',
+                                    fontWeight: '600'
+                                }}
+                            >
                                 Réessayer
                             </button>
                         </div>
@@ -142,16 +172,7 @@ const ProjectManagerProjects = () => {
                                                 borderRadius: '16px',
                                                 padding: '1.5rem',
                                                 boxShadow: '0 4px 12px rgba(0, 0, 0, 0.08)',
-                                                transition: 'all 0.3s',
                                                 border: '1px solid #e5e7eb'
-                                            }}
-                                            onMouseEnter={(e) => {
-                                                e.currentTarget.style.transform = 'translateY(-5px)';
-                                                e.currentTarget.style.boxShadow = '0 8px 24px rgba(0, 166, 81, 0.15)';
-                                            }}
-                                            onMouseLeave={(e) => {
-                                                e.currentTarget.style.transform = 'translateY(0)';
-                                                e.currentTarget.style.boxShadow = '0 4px 12px rgba(0, 0, 0, 0.08)';
                                             }}
                                         >
                                             {/* Header */}
@@ -259,25 +280,23 @@ const ProjectManagerProjects = () => {
                                                 style={{
                                                     width: '100%',
                                                     marginTop: '1rem',
-                                                    padding: '0.75rem',
-                                                    background: 'var(--mobilis-green)',
+                                                    padding: '0.85rem 1rem',
+                                                    background: 'linear-gradient(135deg, var(--mobilis-green) 0%, #008f3f 100%)',
                                                     color: 'white',
                                                     border: 'none',
-                                                    borderRadius: '10px',
+                                                    borderRadius: '12px',
                                                     fontWeight: '600',
                                                     cursor: 'pointer',
-                                                    transition: 'all 0.3s',
                                                     display: 'flex',
                                                     alignItems: 'center',
                                                     justifyContent: 'center',
                                                     gap: '0.5rem',
-                                                    fontSize: '0.95rem'
+                                                    fontSize: '0.95rem',
+                                                    boxShadow: '0 4px 12px rgba(0, 166, 81, 0.25)'
                                                 }}
-                                                onMouseEnter={(e) => e.target.style.background = 'var(--mobilis-dark)'}
-                                                onMouseLeave={(e) => e.target.style.background = 'var(--mobilis-green)'}
                                             >
-                                                <BarChart3 size={18} />
-                                                Voir Statistiques Détaillées
+                                                <BarChart3 size={20} />
+                                                Statistiques Détaillées
                                             </button>
                                         </div>
                                     ))}
@@ -299,60 +318,69 @@ const ProjectManagerProjects = () => {
 
             {/* Stats Modal */}
             {showStatsModal && (
-                <div style={{
-                    position: 'fixed',
-                    top: 0,
-                    left: 0,
-                    right: 0,
-                    bottom: 0,
-                    background: 'rgba(0, 0, 0, 0.5)',
-                    display: 'flex',
-                    alignItems: 'center',
-                    justifyContent: 'center',
-                    zIndex: 9999,
-                    padding: '20px'
-                }}>
-                    <div style={{
-                        background: 'white',
-                        borderRadius: '20px',
-                        padding: '2rem',
-                        maxWidth: '600px',
-                        width: '100%',
-                        maxHeight: '80vh',
-                        overflowY: 'auto',
-                        position: 'relative',
-                        boxShadow: '0 20px 60px rgba(0, 0, 0, 0.3)'
-                    }}>
-                        {/* Close Button */}
+                <div
+                    onClick={closeStatsModal}
+                    style={{
+                        position: 'fixed',
+                        top: 0,
+                        left: 0,
+                        right: 0,
+                        bottom: 0,
+                        background: 'rgba(0, 0, 0, 0.5)',
+                        display: 'flex',
+                        alignItems: 'center',
+                        justifyContent: 'center',
+                        zIndex: 9999,
+                        padding: '20px'
+                    }}
+                >
+                    <div
+                        onClick={(e) => e.stopPropagation()}
+                        style={{
+                            background: 'white',
+                            borderRadius: '20px',
+                            padding: '2rem',
+                            maxWidth: '600px',
+                            width: '100%',
+                            maxHeight: '80vh',
+                            overflowY: 'auto',
+                            position: 'relative',
+                            boxShadow: '0 20px 60px rgba(0, 0, 0, 0.3)'
+                        }}
+                    >
                         <button
                             onClick={closeStatsModal}
                             style={{
                                 position: 'absolute',
                                 top: '1rem',
                                 right: '1rem',
-                                background: '#f3f4f6',
-                                border: 'none',
-                                borderRadius: '50%',
                                 width: '40px',
                                 height: '40px',
+                                background: 'var(--mobilis-green)',
+                                border: 'none',
+                                borderRadius: '50%',
+                                cursor: 'pointer',
                                 display: 'flex',
                                 alignItems: 'center',
                                 justifyContent: 'center',
-                                cursor: 'pointer',
-                                transition: 'all 0.3s'
+                                boxShadow: '0 2px 8px rgba(0, 166, 81, 0.3)',
+                                zIndex: 10,
+                                color: 'white',
+                                fontSize: '28px',
+                                fontWeight: 'bold',
+                                lineHeight: '1',
+                                padding: 0
                             }}
-                            onMouseEnter={(e) => e.target.style.background = '#e5e7eb'}
-                            onMouseLeave={(e) => e.target.style.background = '#f3f4f6'}
                         >
-                            <X size={20} />
+                            ×
                         </button>
 
-                        {/* Modal Header */}
                         <h2 style={{
                             color: 'var(--mobilis-green)',
                             marginBottom: '1.5rem',
                             fontSize: '1.8rem',
-                            fontWeight: '700'
+                            fontWeight: '700',
+                            paddingRight: '50px'
                         }}>
                             📊 {selectedProject?.projectName}
                         </h2>
@@ -364,7 +392,6 @@ const ProjectManagerProjects = () => {
                             </div>
                         ) : projectStats ? (
                             <>
-                                {/* Stats Grid */}
                                 <div style={{
                                     display: 'grid',
                                     gridTemplateColumns: 'repeat(2, 1fr)',
@@ -425,7 +452,6 @@ const ProjectManagerProjects = () => {
                                     </div>
                                 </div>
 
-                                {/* Progress Bar */}
                                 <div style={{ marginBottom: '2rem' }}>
                                     <div style={{
                                         display: 'flex',
@@ -433,7 +459,7 @@ const ProjectManagerProjects = () => {
                                         marginBottom: '0.5rem'
                                     }}>
                                         <span style={{ fontWeight: '600', color: '#374151' }}>Progression globale</span>
-                                        <span style={{ fontWeight: '700', color: 'var(--mobilis-green)' }}>
+                                        <span style={{ fontWeight: '700', color: 'var(--mobilis-green)', fontSize: '1.2rem' }}>
                                             {projectStats.progress}%
                                         </span>
                                     </div>
@@ -447,7 +473,6 @@ const ProjectManagerProjects = () => {
                                     </div>
                                 </div>
 
-                                {/* Status */}
                                 {projectStats.isDelayed && (
                                     <div style={{
                                         background: '#fee2e2',
@@ -459,7 +484,7 @@ const ProjectManagerProjects = () => {
                                         gap: '0.8rem',
                                         marginBottom: '1.5rem'
                                     }}>
-                                        <AlertCircle size={24} style={{ color: '#dc2626' }} />
+                                        <AlertCircle size={24} style={{ color: '#dc2626', flexShrink: 0 }} />
                                         <div>
                                             <p style={{ margin: 0, fontWeight: '700', color: '#dc2626' }}>
                                                 Projet en retard
@@ -471,7 +496,6 @@ const ProjectManagerProjects = () => {
                                     </div>
                                 )}
 
-                                {/* Dates */}
                                 {(projectStats.startDate || projectStats.endDate) && (
                                     <div style={{
                                         background: '#f9fafb',

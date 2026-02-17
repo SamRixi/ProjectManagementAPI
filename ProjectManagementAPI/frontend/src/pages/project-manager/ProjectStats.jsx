@@ -48,7 +48,7 @@ const ProjectStats = () => {
             <ProjectManagerLayout>
                 <div style={{ padding: '20px' }}>
                     <button
-                        onClick={() => navigate('/project-manager/dashboard')}
+                        onClick={() => navigate(-1)}
                         style={{
                             display: 'flex',
                             alignItems: 'center',
@@ -76,28 +76,39 @@ const ProjectStats = () => {
     return (
         <ProjectManagerLayout>
             <div style={{ padding: '20px' }}>
-                {/* HEADER */}
+                {/* ✅ BOUTON RETOUR EN HAUT */}
                 <button
-                    onClick={() => navigate('/project-manager/dashboard')}
+                    onClick={() => navigate(-1)}
                     style={{
                         display: 'flex',
                         alignItems: 'center',
-                        gap: '8px',
-                        padding: '10px 16px',
+                        gap: '10px',
+                        padding: '12px 20px',
                         background: '#00B050',
                         color: 'white',
                         border: 'none',
-                        borderRadius: '8px',
+                        borderRadius: '10px',
                         cursor: 'pointer',
-                        marginBottom: '20px',
-                        fontSize: '14px',
-                        fontWeight: '600'
+                        marginBottom: '24px',
+                        fontSize: '15px',
+                        fontWeight: '600',
+                        transition: 'all 0.3s',
+                        boxShadow: '0 2px 8px rgba(0, 176, 80, 0.3)'
+                    }}
+                    onMouseEnter={(e) => {
+                        e.target.style.background = '#008040';
+                        e.target.style.transform = 'translateX(-5px)';
+                    }}
+                    onMouseLeave={(e) => {
+                        e.target.style.background = '#00B050';
+                        e.target.style.transform = 'translateX(0)';
                     }}
                 >
                     <ArrowLeft size={20} />
-                    Retour au Dashboard
+                    Retour
                 </button>
 
+                {/* INFO PROJET */}
                 <div style={{
                     background: 'white',
                     padding: '24px',
@@ -105,13 +116,18 @@ const ProjectStats = () => {
                     boxShadow: '0 2px 8px rgba(0,0,0,0.1)',
                     marginBottom: '30px'
                 }}>
-                    <h1 style={{ fontSize: '28px', fontWeight: '700', marginBottom: '8px', color: '#1a1a1a' }}>
-                        {stats.projectName}
+                    <h1 style={{
+                        fontSize: '28px',
+                        fontWeight: '700',
+                        marginBottom: '8px',
+                        color: '#00B050'
+                    }}>
+                        📊 {stats.projectName}
                     </h1>
                     <p style={{ fontSize: '14px', color: '#666', marginBottom: '16px' }}>
-                        {stats.description}
+                        {stats.description || 'Aucune description'}
                     </p>
-                    <div style={{ display: 'flex', gap: '16px', alignItems: 'center' }}>
+                    <div style={{ display: 'flex', gap: '16px', alignItems: 'center', flexWrap: 'wrap' }}>
                         <span style={{
                             padding: '6px 14px',
                             borderRadius: '6px',
@@ -126,7 +142,14 @@ const ProjectStats = () => {
                             👥 {stats.teamName}
                         </span>
                         {stats.isDelayed && (
-                            <span style={{ fontSize: '14px', color: '#ef4444', fontWeight: '600' }}>
+                            <span style={{
+                                fontSize: '14px',
+                                color: '#ef4444',
+                                fontWeight: '600',
+                                padding: '6px 12px',
+                                background: '#fee2e2',
+                                borderRadius: '6px'
+                            }}>
                                 ⚠️ En retard
                             </span>
                         )}
@@ -143,24 +166,27 @@ const ProjectStats = () => {
                 }}>
                     <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '12px' }}>
                         <span style={{ fontSize: '16px', fontWeight: '600', color: '#1a1a1a' }}>
-                            Progression globale
+                            📈 Progression globale
                         </span>
-                        <span style={{ fontSize: '24px', fontWeight: '700', color: '#00B050' }}>
+                        <span style={{ fontSize: '28px', fontWeight: '700', color: '#00B050' }}>
                             {stats.progress}%
                         </span>
                     </div>
                     <div style={{
                         width: '100%',
-                        height: '12px',
+                        height: '14px',
                         background: '#e5e7eb',
-                        borderRadius: '6px',
-                        overflow: 'hidden'
+                        borderRadius: '8px',
+                        overflow: 'hidden',
+                        boxShadow: 'inset 0 2px 4px rgba(0,0,0,0.1)'
                     }}>
                         <div style={{
                             width: `${stats.progress}%`,
                             height: '100%',
-                            background: stats.progress === 100 ? '#10b981' : '#00B050',
-                            transition: 'width 0.3s'
+                            background: stats.progress === 100
+                                ? 'linear-gradient(90deg, #10b981 0%, #059669 100%)'
+                                : 'linear-gradient(90deg, #00B050 0%, #34d399 100%)',
+                            transition: 'width 0.5s ease'
                         }} />
                     </div>
                     <div style={{
@@ -178,8 +204,9 @@ const ProjectStats = () => {
                 {/* STATS CARDS */}
                 <div style={{
                     display: 'grid',
-                    gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))',
-                    gap: '20px'
+                    gridTemplateColumns: 'repeat(auto-fit, minmax(220px, 1fr))',
+                    gap: '20px',
+                    marginBottom: '30px'
                 }}>
                     <StatCard
                         icon={<CheckCircle size={32} />}
@@ -203,9 +230,44 @@ const ProjectStats = () => {
                         icon={<AlertTriangle size={32} />}
                         title="À faire"
                         value={stats.todoTasks}
-                        color="#ef4444"
+                        color="#6b7280"
                     />
                 </div>
+
+                {/* ✅ BOUTON RETOUR EN BAS */}
+                <button
+                    onClick={() => navigate(-1)}
+                    style={{
+                        display: 'flex',
+                        alignItems: 'center',
+                        justifyContent: 'center',
+                        gap: '10px',
+                        padding: '14px 28px',
+                        background: '#00B050',
+                        color: 'white',
+                        border: 'none',
+                        borderRadius: '12px',
+                        cursor: 'pointer',
+                        fontSize: '16px',
+                        fontWeight: '600',
+                        width: '100%',
+                        maxWidth: '300px',
+                        margin: '0 auto',
+                        boxShadow: '0 4px 12px rgba(0, 176, 80, 0.3)',
+                        transition: 'all 0.3s'
+                    }}
+                    onMouseEnter={(e) => {
+                        e.target.style.background = '#008040';
+                        e.target.style.transform = 'translateY(-2px)';
+                    }}
+                    onMouseLeave={(e) => {
+                        e.target.style.background = '#00B050';
+                        e.target.style.transform = 'translateY(0)';
+                    }}
+                >
+                    <ArrowLeft size={22} />
+                    Retour au Dashboard
+                </button>
             </div>
         </ProjectManagerLayout>
     );
@@ -219,23 +281,35 @@ const StatCard = ({ icon, title, value, color }) => (
         boxShadow: '0 2px 8px rgba(0,0,0,0.1)',
         display: 'flex',
         alignItems: 'center',
-        gap: '16px'
-    }}>
+        gap: '18px',
+        transition: 'all 0.3s',
+        border: '1px solid #f3f4f6'
+    }}
+        onMouseEnter={(e) => {
+            e.currentTarget.style.transform = 'translateY(-4px)';
+            e.currentTarget.style.boxShadow = '0 8px 20px rgba(0,0,0,0.12)';
+        }}
+        onMouseLeave={(e) => {
+            e.currentTarget.style.transform = 'translateY(0)';
+            e.currentTarget.style.boxShadow = '0 2px 8px rgba(0,0,0,0.1)';
+        }}
+    >
         <div style={{
-            width: '60px',
-            height: '60px',
+            width: '64px',
+            height: '64px',
             background: `${color}20`,
             color: color,
             borderRadius: '12px',
             display: 'flex',
             alignItems: 'center',
-            justifyContent: 'center'
+            justifyContent: 'center',
+            flexShrink: 0
         }}>
             {icon}
         </div>
         <div>
-            <p style={{ fontSize: '14px', color: '#666', margin: 0 }}>{title}</p>
-            <p style={{ fontSize: '32px', fontWeight: '700', color: '#1a1a1a', margin: 0 }}>{value}</p>
+            <p style={{ fontSize: '14px', color: '#666', margin: '0 0 4px 0' }}>{title}</p>
+            <p style={{ fontSize: '36px', fontWeight: '700', color: '#1a1a1a', margin: 0 }}>{value}</p>
         </div>
     </div>
 );

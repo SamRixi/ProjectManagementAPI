@@ -9,20 +9,18 @@ import {
     Menu,
     RefreshCw
 } from 'lucide-react';
-import api from '../../services/api';  // ✅ AJOUTÉ
+import api from '../../services/api';
 
 const ProjectManagerLayout = ({ children }) => {
     const navigate = useNavigate();
     const location = useLocation();
-    const [sidebarOpen, setSidebarOpen] = useState(true);
-    const [awaitingCount, setAwaitingCount] = useState(0);
+    const [sidebarOpen, setSidebarOpen] = useState(false); // ← CHANGÉ À false
 
     const user = JSON.parse(localStorage.getItem('user'));
 
     useEffect(() => {
         const fetchAwaitingValidationCount = async () => {
             try {
-                // ✅ UTILISE api AU LIEU DE fetch()
                 const response = await api.get('/projectmanager/tasks/awaiting-validation');
 
                 if (response.data.success) {
@@ -30,7 +28,6 @@ const ProjectManagerLayout = ({ children }) => {
                 }
             } catch (error) {
                 console.error('Erreur lors de la récupération des tâches en attente:', error);
-                // Ne pas bloquer l'interface
             }
         };
 
@@ -38,6 +35,8 @@ const ProjectManagerLayout = ({ children }) => {
         const interval = setInterval(fetchAwaitingValidationCount, 30000);
         return () => clearInterval(interval);
     }, []);
+
+    const [awaitingCount, setAwaitingCount] = useState(0);
 
     const handleLogout = () => {
         localStorage.removeItem('token');
@@ -75,7 +74,7 @@ const ProjectManagerLayout = ({ children }) => {
 
     return (
         <div style={{ display: 'flex', minHeight: '100vh', backgroundColor: '#f5f5f5' }}>
-            {/* TOP HEADER - FIXED - VERT MOBILIS */}
+            {/* TOP HEADER - FIXED */}
             <header style={{
                 position: 'fixed',
                 top: 0,
@@ -153,7 +152,7 @@ const ProjectManagerLayout = ({ children }) => {
                 </button>
             </header>
 
-            {/* SIDEBAR - VERT MOBILIS */}
+            {/* SIDEBAR - GREEN */}
             <aside style={{
                 width: sidebarOpen ? '280px' : '80px',
                 background: 'linear-gradient(180deg, #00B050 0%, #008f3f 100%)',
@@ -278,7 +277,7 @@ const ProjectManagerLayout = ({ children }) => {
                                 </div>
                                 {sidebarOpen && <span>{item.label}</span>}
 
-                                {/* BADGE NOTIFICATION */}
+                                {/* BADGE */}
                                 {item.badge > 0 && (
                                     <span style={{
                                         position: 'absolute',
@@ -293,8 +292,7 @@ const ProjectManagerLayout = ({ children }) => {
                                         borderRadius: '12px',
                                         minWidth: '20px',
                                         textAlign: 'center',
-                                        boxShadow: '0 2px 4px rgba(0, 0, 0, 0.2)',
-                                        animation: 'pulse 2s infinite'
+                                        boxShadow: '0 2px 4px rgba(0, 0, 0, 0.2)'
                                     }}>
                                         {item.badge}
                                     </span>
@@ -353,23 +351,10 @@ const ProjectManagerLayout = ({ children }) => {
                 marginTop: '70px',
                 width: `calc(100% - ${sidebarOpen ? '280px' : '80px'})`,
                 minHeight: 'calc(100vh - 70px)',
-                transition: 'margin-left 0.3s ease, width 0.3s ease',
-                padding: '20px'
+                transition: 'margin-left 0.3s ease, width 0.3s ease'
             }}>
                 {children}
             </main>
-
-            {/* ANIMATION PULSE POUR BADGE */}
-            <style>{`
-                @keyframes pulse {
-                    0%, 100% {
-                        opacity: 1;
-                    }
-                    50% {
-                        opacity: 0.7;
-                    }
-                }
-            `}</style>
         </div>
     );
 };
