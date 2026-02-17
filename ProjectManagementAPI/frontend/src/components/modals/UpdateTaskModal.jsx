@@ -15,6 +15,14 @@ const UpdateTaskModalContent = ({ task, onUpdate, onClose }) => {
         return statusMap[statusText] || 1;
     }
 
+    // ✅ Calcul du statut à partir de la progression
+    const computeStatusIdFromProgress = (progress) => {
+        if (progress === 0) return 1;                // À faire
+        if (progress > 0 && progress < 100) return 2; // En cours
+        if (progress === 100) return 4;              // En attente de validation
+        return 1;
+    };
+
     const [formData, setFormData] = useState({
         taskId: task.taskId,
         progress: task.progress || 0,
@@ -26,8 +34,8 @@ const UpdateTaskModalContent = ({ task, onUpdate, onClose }) => {
         e.preventDefault();
         setLoading(true);
 
-        // ✅ SI PROGRESSION = 100%, FORCE "EN ATTENTE DE VALIDATION" (4)
-        const finalStatus = formData.progress === 100 ? 4 : formData.taskStatusId;
+        // ✅ statut calculé automatiquement à l'enregistrement
+        const finalStatus = computeStatusIdFromProgress(formData.progress);
 
         const updateData = {
             TaskStatusId: finalStatus,
@@ -79,21 +87,22 @@ const UpdateTaskModalContent = ({ task, onUpdate, onClose }) => {
                                 const newStatus = parseInt(e.target.value);
                                 setFormData({
                                     ...formData,
-                                    taskStatusId: newStatus,
-                                    // ✅ SUPPRIMÉ : Ne force plus 100% automatiquement
-                                    progress: formData.progress
+                                    taskStatusId: newStatus
                                 });
                             }}
                             required
                             className="form-select"
-                            disabled={formData.progress === 100}
+                            disabled={formData.taskStatusId === 4 || formData.taskStatusId === 5}
                         >
                             <option value={1}>À faire</option>
                             <option value={2}>En cours</option>
                             <option value={3}>Terminé</option>
                         </select>
                         {formData.progress === 100 && (
-                            <p className="help-text" style={{ fontSize: '0.85rem', color: '#6b7280', marginTop: '0.5rem' }}>
+                            <p
+                                className="help-text"
+                                style={{ fontSize: '0.85rem', color: '#6b7280', marginTop: '0.5rem' }}
+                            >
                                 ℹ️ Le statut sera automatiquement "En attente de validation"
                             </p>
                         )}
@@ -111,8 +120,9 @@ const UpdateTaskModalContent = ({ task, onUpdate, onClose }) => {
                                 const newProgress = parseInt(e.target.value);
                                 setFormData({
                                     ...formData,
-                                    progress: newProgress
-                                    // ✅ SUPPRIMÉ : Ne change plus automatiquement le statut
+                                    progress: newProgress,
+                                    // ✅ met à jour le statut en direct quand on bouge le slider
+                                    taskStatusId: computeStatusIdFromProgress(newProgress)
                                 });
                             }}
                             className="progress-slider"
@@ -120,9 +130,13 @@ const UpdateTaskModalContent = ({ task, onUpdate, onClose }) => {
                         />
                         <div className="progress-bar-preview">
                             <div
-                                className={`progress-fill-preview ${formData.progress === 100 ? 'completed' :
-                                    formData.progress >= 60 ? 'high' :
-                                        formData.progress >= 30 ? 'medium' : 'low'
+                                className={`progress-fill-preview ${formData.progress === 100
+                                        ? 'completed'
+                                        : formData.progress >= 60
+                                            ? 'high'
+                                            : formData.progress >= 30
+                                                ? 'medium'
+                                                : 'low'
                                     }`}
                                 style={{ width: `${formData.progress}%` }}
                             ></div>
@@ -153,11 +167,7 @@ const UpdateTaskModalContent = ({ task, onUpdate, onClose }) => {
                         >
                             Annuler
                         </button>
-                        <button
-                            type="submit"
-                            className="btn-save"
-                            disabled={loading}
-                        >
+                        <button type="submit" className="btn-save" disabled={loading}>
                             <Save size={18} />
                             {loading ? 'Enregistrement...' : 'Enregistrer'}
                         </button>

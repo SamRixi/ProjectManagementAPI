@@ -284,30 +284,7 @@ const ProjectManagerDashboard = () => {
                                                     <span>📝 {project.todoTasks}</span>
                                                 </div>
 
-                                                <button
-                                                    onClick={() => viewProjectStats(project.projectId)}
-                                                    style={{
-                                                        width: '100%',
-                                                        marginTop: '1rem',
-                                                        padding: '0.7rem',
-                                                        background: 'var(--mobilis-green)',
-                                                        color: 'white',
-                                                        border: 'none',
-                                                        borderRadius: '10px',
-                                                        fontWeight: '600',
-                                                        cursor: 'pointer',
-                                                        transition: 'all 0.3s',
-                                                        display: 'flex',
-                                                        alignItems: 'center',
-                                                        justifyContent: 'center',
-                                                        gap: '0.5rem'
-                                                    }}
-                                                    onMouseEnter={(e) => e.target.style.background = 'var(--mobilis-dark)'}
-                                                    onMouseLeave={(e) => e.target.style.background = 'var(--mobilis-green)'}
-                                                >
-                                                    <BarChart3 size={18} />
-                                                    Voir Statistiques
-                                                </button>
+                                               
                                             </div>
                                         ))}
                                     </div>

@@ -1,5 +1,6 @@
 ﻿import { useState, useEffect } from 'react';
 import { useAuth } from '../../context/AuthContext';
+import commentService from '../../services/commentService';
 import {
     CheckCircle,
     XCircle,
@@ -9,7 +10,7 @@ import {
     FolderKanban,
     Calendar
 } from 'lucide-react';
-import api from '../../services/api'; 
+import api from '../../services/api';
 import ProjectManagerLayout from '../../components/layout/ProjectManagerLayout';
 import '../../styles/Dashboard.css';
 import '../../styles/DeveloperDashboard.css';
@@ -17,26 +18,19 @@ import '../../styles/DeveloperDashboard.css';
 const ProjectManagerValidation = () => {
     const { user } = useAuth();
 
-    // États
     const [tasks, setTasks] = useState([]);
     const [loading, setLoading] = useState(true);
 
-    // Charger les tâches au montage
     useEffect(() => {
         if (user?.userId) {
             fetchTasksAwaitingValidation();
         }
     }, [user]);
 
-    // Récupérer les tâches en attente de validation
     const fetchTasksAwaitingValidation = async () => {
         try {
             setLoading(true);
-
-            console.log('📥 Fetching tasks awaiting validation...');
-            const response = await api.get('/projectmanager/validation'); // ✅ CORRIGÉ: Enlevé /api/
-            console.log('✅ Validation tasks response:', response.data);
-
+            const response = await api.get('/projectmanager/validation');
             if (response.data.success) {
                 setTasks(response.data.data || []);
             }
@@ -47,19 +41,21 @@ const ProjectManagerValidation = () => {
         }
     };
 
-    // ✅ VALIDER UNE TÂCHE
+    // ✅ VALIDER UNE TÂCHE → badge vert + boutons disparaissent
     const handleValidateTask = async (taskId) => {
         const confirmed = window.confirm('Voulez-vous valider cette tâche ?');
         if (!confirmed) return;
 
         try {
-            console.log(`✅ Validating task ${taskId}...`);
-
-            const response = await api.put(`/projectmanager/tasks/${taskId}/validate`); // ✅ CORRIGÉ
-
+            const response = await api.put(`/projectmanager/tasks/${taskId}/validate`);
             if (response.data.success) {
-                alert('✅ Tâche validée avec succès!');
-                fetchTasksAwaitingValidation();
+                setTasks(prev =>
+                    prev.map(t =>
+                        t.taskId === taskId
+                            ? { ...t, isValidated: true, status: 'Validée' }
+                            : t
+                    )
+                );
             }
         } catch (err) {
             console.error('❌ Error validating task:', err);
@@ -67,21 +63,33 @@ const ProjectManagerValidation = () => {
         }
     };
 
-    // ✅ REFUSER UNE TÂCHE
+    // ❌ REFUSER UNE TÂCHE → renvoie en cours + ajoute un commentaire
     const handleRejectTask = async (taskId) => {
         const reason = window.prompt('Raison du refus (optionnel):');
-        if (reason === null) return; // Annulé
+        if (reason === null) return;
 
         try {
-            console.log(`❌ Rejecting task ${taskId} with reason: ${reason}`);
-
-            const response = await api.put(`/projectmanager/tasks/${taskId}/reject`, { // ✅ CORRIGÉ
+            // 1) Met à jour la tâche côté PM (statut, progression, etc.)
+            const response = await api.put(`/projectmanager/tasks/${taskId}/reject`, {
                 reason: reason || 'Aucune raison fournie'
             });
 
             if (response.data.success) {
-                alert('❌ Tâche refusée avec succès');
-                fetchTasksAwaitingValidation();
+                // 2) Ajoute un commentaire lié à la tâche pour le développeur
+                try {
+                    await commentService.addComment(
+                        taskId,
+                        reason || 'Aucune raison fournie'
+                    );
+                } catch (commentErr) {
+                    console.error('❌ Error adding comment:', commentErr);
+                    // On ne bloque pas le refus si le commentaire échoue
+                }
+
+                alert('❌ Tâche refusée - renvoyée en cours');
+
+                // 3) Retire la tâche de la liste de validation
+                setTasks(prev => prev.filter(t => t.taskId !== taskId));
             }
         } catch (err) {
             console.error('❌ Error rejecting task:', err);
@@ -89,7 +97,6 @@ const ProjectManagerValidation = () => {
         }
     };
 
-    // Obtenir la classe CSS selon la priorité
     const getPriorityClass = (priority) => {
         if (priority?.toLowerCase() === 'haute') return 'high';
         if (priority?.toLowerCase() === 'moyenne') return 'medium';
@@ -119,25 +126,20 @@ const ProjectManagerValidation = () => {
                             <div>
                                 <h2 style={{ margin: 0, marginBottom: '0.3rem' }}>🔔 Validation des Tâches</h2>
                                 <p className="welcome-text" style={{ margin: 0 }}>
-                                    {tasks.length} tâche{tasks.length !== 1 ? 's' : ''} en attente de validation
+                                    {tasks.filter(t => !t.isValidated).length} tâche(s) en attente · {tasks.filter(t => t.isValidated).length} validée(s)
                                 </p>
                             </div>
                         </div>
                     </div>
 
-                    {/* Loading State */}
+                    {/* Loading */}
                     {loading ? (
                         <div className="loading">
                             <div className="spinner"></div>
                             Chargement des tâches en attente...
                         </div>
                     ) : tasks.length > 0 ? (
-                        /* Tasks List */
-                        <div style={{
-                            display: 'flex',
-                            flexDirection: 'column',
-                            gap: '1.5rem'
-                        }}>
+                        <div style={{ display: 'flex', flexDirection: 'column', gap: '1.5rem' }}>
                             {tasks.map((task) => (
                                 <div
                                     key={task.taskId}
@@ -146,18 +148,23 @@ const ProjectManagerValidation = () => {
                                         borderRadius: '16px',
                                         padding: '1.8rem',
                                         boxShadow: '0 4px 12px rgba(0, 0, 0, 0.08)',
-                                        border: '2px solid #fbbf24',
+                                        border: task.isValidated
+                                            ? '2px solid #10b981'
+                                            : '2px solid #fbbf24',
                                         transition: 'all 0.3s',
                                         position: 'relative',
-                                        overflow: 'hidden'
+                                        overflow: 'hidden',
+                                        opacity: task.isValidated ? 0.85 : 1
                                     }}
                                 >
-                                    {/* Badge "En attente" */}
+                                    {/* Badge statut */}
                                     <div style={{
                                         position: 'absolute',
                                         top: '1rem',
                                         right: '1rem',
-                                        background: 'linear-gradient(135deg, #fbbf24, #f59e0b)',
+                                        background: task.isValidated
+                                            ? 'linear-gradient(135deg, #10b981, #059669)'
+                                            : 'linear-gradient(135deg, #fbbf24, #f59e0b)',
                                         color: 'white',
                                         padding: '0.4rem 0.9rem',
                                         borderRadius: '12px',
@@ -167,11 +174,14 @@ const ProjectManagerValidation = () => {
                                         display: 'flex',
                                         alignItems: 'center',
                                         gap: '0.4rem',
-                                        boxShadow: '0 2px 8px rgba(245, 158, 11, 0.4)',
-                                        animation: 'pulse 2s infinite'
+                                        boxShadow: task.isValidated
+                                            ? '0 2px 8px rgba(16, 185, 129, 0.4)'
+                                            : '0 2px 8px rgba(245, 158, 11, 0.4)'
                                     }}>
-                                        <AlertCircle size={14} />
-                                        En Attente
+                                        {task.isValidated
+                                            ? <><CheckCircle size={14} /> Validée</>
+                                            : <><AlertCircle size={14} /> En Attente</>
+                                        }
                                     </div>
 
                                     {/* Task Header */}
@@ -201,80 +211,36 @@ const ProjectManagerValidation = () => {
                                         gap: '1rem',
                                         marginBottom: '1.5rem'
                                     }}>
-                                        {/* Projet */}
-                                        <div style={{
-                                            background: '#f9fafb',
-                                            padding: '0.8rem',
-                                            borderRadius: '10px',
-                                            display: 'flex',
-                                            alignItems: 'center',
-                                            gap: '0.6rem'
-                                        }}>
+                                        <div style={{ background: '#f9fafb', padding: '0.8rem', borderRadius: '10px', display: 'flex', alignItems: 'center', gap: '0.6rem' }}>
                                             <FolderKanban size={20} style={{ color: 'var(--mobilis-green)' }} />
                                             <div>
-                                                <p style={{ margin: 0, fontSize: '0.75rem', color: '#9ca3af', fontWeight: '600' }}>
-                                                    PROJET
-                                                </p>
-                                                <p style={{ margin: 0, fontSize: '0.95rem', color: '#374151', fontWeight: '600' }}>
-                                                    {task.projectName}
-                                                </p>
+                                                <p style={{ margin: 0, fontSize: '0.75rem', color: '#9ca3af', fontWeight: '600' }}>PROJET</p>
+                                                <p style={{ margin: 0, fontSize: '0.95rem', color: '#374151', fontWeight: '600' }}>{task.projectName}</p>
                                             </div>
                                         </div>
 
-                                        {/* Assigné à */}
-                                        <div style={{
-                                            background: '#f9fafb',
-                                            padding: '0.8rem',
-                                            borderRadius: '10px',
-                                            display: 'flex',
-                                            alignItems: 'center',
-                                            gap: '0.6rem'
-                                        }}>
+                                        <div style={{ background: '#f9fafb', padding: '0.8rem', borderRadius: '10px', display: 'flex', alignItems: 'center', gap: '0.6rem' }}>
                                             <User size={20} style={{ color: '#3b82f6' }} />
                                             <div>
-                                                <p style={{ margin: 0, fontSize: '0.75rem', color: '#9ca3af', fontWeight: '600' }}>
-                                                    ASSIGNÉ À
-                                                </p>
-                                                <p style={{ margin: 0, fontSize: '0.95rem', color: '#374151', fontWeight: '600' }}>
-                                                    {task.assignedToName || 'Non assigné'}
-                                                </p>
+                                                <p style={{ margin: 0, fontSize: '0.75rem', color: '#9ca3af', fontWeight: '600' }}>ASSIGNÉ À</p>
+                                                <p style={{ margin: 0, fontSize: '0.95rem', color: '#374151', fontWeight: '600' }}>{task.assignedToName || 'Non assigné'}</p>
                                             </div>
                                         </div>
 
-                                        {/* Deadline */}
-                                        <div style={{
-                                            background: '#f9fafb',
-                                            padding: '0.8rem',
-                                            borderRadius: '10px',
-                                            display: 'flex',
-                                            alignItems: 'center',
-                                            gap: '0.6rem'
-                                        }}>
+                                        <div style={{ background: '#f9fafb', padding: '0.8rem', borderRadius: '10px', display: 'flex', alignItems: 'center', gap: '0.6rem' }}>
                                             <Calendar size={20} style={{ color: '#f59e0b' }} />
                                             <div>
-                                                <p style={{ margin: 0, fontSize: '0.75rem', color: '#9ca3af', fontWeight: '600' }}>
-                                                    DEADLINE
-                                                </p>
+                                                <p style={{ margin: 0, fontSize: '0.75rem', color: '#9ca3af', fontWeight: '600' }}>DEADLINE</p>
                                                 <p style={{ margin: 0, fontSize: '0.95rem', color: '#374151', fontWeight: '600' }}>
                                                     {task.deadline ? new Date(task.deadline).toLocaleDateString('fr-FR') : 'N/A'}
                                                 </p>
                                             </div>
                                         </div>
 
-                                        {/* Priorité */}
-                                        <div style={{
-                                            background: '#f9fafb',
-                                            padding: '0.8rem',
-                                            borderRadius: '10px',
-                                            display: 'flex',
-                                            alignItems: 'center',
-                                            gap: '0.6rem'
-                                        }}>
+                                        <div style={{ background: '#f9fafb', padding: '0.8rem', borderRadius: '10px', display: 'flex', alignItems: 'center', gap: '0.6rem' }}>
                                             <AlertCircle size={20} style={{ color: '#dc2626' }} />
                                             <div>
-                                                <p style={{ margin: 0, fontSize: '0.75rem', color: '#9ca3af', fontWeight: '600' }}>
-                                                    PRIORITÉ
-                                                </p>
+                                                <p style={{ margin: 0, fontSize: '0.75rem', color: '#9ca3af', fontWeight: '600' }}>PRIORITÉ</p>
                                                 <span className={`task-priority ${getPriorityClass(task.priority)}`}>
                                                     {task.priority || 'Moyenne'}
                                                 </span>
@@ -282,16 +248,10 @@ const ProjectManagerValidation = () => {
                                         </div>
                                     </div>
 
-                                    {/* Progress */}
+                                    {/* Progress Bar */}
                                     <div style={{ marginBottom: '1.5rem' }}>
-                                        <div style={{
-                                            display: 'flex',
-                                            justifyContent: 'space-between',
-                                            marginBottom: '0.5rem'
-                                        }}>
-                                            <span style={{ fontSize: '0.9rem', fontWeight: '600', color: '#374151' }}>
-                                                Progression
-                                            </span>
+                                        <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '0.5rem' }}>
+                                            <span style={{ fontSize: '0.9rem', fontWeight: '600', color: '#374151' }}>Progression</span>
                                             <span style={{ fontSize: '0.9rem', fontWeight: '700', color: 'var(--mobilis-green)' }}>
                                                 {task.progress || 0}%
                                             </span>
@@ -306,81 +266,72 @@ const ProjectManagerValidation = () => {
                                         </div>
                                     </div>
 
-                                    {/* Action Buttons */}
-                                    <div style={{
-                                        display: 'flex',
-                                        gap: '1rem'
-                                    }}>
-                                        <button
-                                            onClick={() => handleRejectTask(task.taskId)}
-                                            style={{
-                                                flex: 1,
-                                                padding: '0.85rem',
-                                                background: 'white',
-                                                color: '#dc2626',
-                                                border: '2px solid #dc2626',
-                                                borderRadius: '12px',
-                                                fontWeight: '600',
-                                                cursor: 'pointer',
-                                                transition: 'all 0.3s',
-                                                display: 'flex',
-                                                alignItems: 'center',
-                                                justifyContent: 'center',
-                                                gap: '0.5rem',
-                                                fontSize: '0.95rem'
-                                            }}
-                                            onMouseEnter={(e) => {
-                                                e.target.style.background = '#dc2626';
-                                                e.target.style.color = 'white';
-                                            }}
-                                            onMouseLeave={(e) => {
-                                                e.target.style.background = 'white';
-                                                e.target.style.color = '#dc2626';
-                                            }}
-                                        >
-                                            <XCircle size={20} />
-                                            Refuser
-                                        </button>
+                                    {/* Boutons actions */}
+                                    {!task.isValidated ? (
+                                        <div style={{ display: 'flex', gap: '1rem' }}>
+                                            <button
+                                                onClick={() => handleRejectTask(task.taskId)}
+                                                style={{
+                                                    flex: 1,
+                                                    padding: '0.85rem',
+                                                    background: 'white',
+                                                    color: '#dc2626',
+                                                    border: '2px solid #dc2626',
+                                                    borderRadius: '12px',
+                                                    fontWeight: '600',
+                                                    cursor: 'pointer',
+                                                    display: 'flex',
+                                                    alignItems: 'center',
+                                                    justifyContent: 'center',
+                                                    gap: '0.5rem',
+                                                    fontSize: '0.95rem'
+                                                }}
+                                            >
+                                                <XCircle size={20} />
+                                                Refuser
+                                            </button>
 
-                                        <button
-                                            onClick={() => handleValidateTask(task.taskId)}
-                                            style={{
-                                                flex: 1,
-                                                padding: '0.85rem',
-                                                background: 'var(--mobilis-green)',
-                                                color: 'white',
-                                                border: 'none',
-                                                borderRadius: '12px',
-                                                fontWeight: '600',
-                                                cursor: 'pointer',
-                                                transition: 'all 0.3s',
-                                                display: 'flex',
-                                                alignItems: 'center',
-                                                justifyContent: 'center',
-                                                gap: '0.5rem',
-                                                fontSize: '0.95rem',
-                                                boxShadow: '0 4px 12px rgba(0, 166, 81, 0.3)'
-                                            }}
-                                            onMouseEnter={(e) => {
-                                                e.target.style.background = 'var(--mobilis-dark)';
-                                                e.target.style.transform = 'translateY(-2px)';
-                                                e.target.style.boxShadow = '0 6px 16px rgba(0, 166, 81, 0.4)';
-                                            }}
-                                            onMouseLeave={(e) => {
-                                                e.target.style.background = 'var(--mobilis-green)';
-                                                e.target.style.transform = 'translateY(0)';
-                                                e.target.style.boxShadow = '0 4px 12px rgba(0, 166, 81, 0.3)';
-                                            }}
-                                        >
-                                            <CheckCircle size={20} />
-                                            Valider la Tâche
-                                        </button>
-                                    </div>
+                                            <button
+                                                onClick={() => handleValidateTask(task.taskId)}
+                                                style={{
+                                                    flex: 1,
+                                                    padding: '0.85rem',
+                                                    background: 'var(--mobilis-green)',
+                                                    color: 'white',
+                                                    border: 'none',
+                                                    borderRadius: '12px',
+                                                    fontWeight: '600',
+                                                    cursor: 'pointer',
+                                                    display: 'flex',
+                                                    alignItems: 'center',
+                                                    justifyContent: 'center',
+                                                    gap: '0.5rem',
+                                                    fontSize: '0.95rem',
+                                                    boxShadow: '0 4px 12px rgba(0, 166, 81, 0.3)'
+                                                }}
+                                            >
+                                                <CheckCircle size={20} />
+                                                Valider la Tâche
+                                            </button>
+                                        </div>
+                                    ) : (
+                                        <div style={{
+                                            padding: '0.85rem',
+                                            background: '#f0fdf4',
+                                            border: '1px solid #10b981',
+                                            borderRadius: '12px',
+                                            color: '#059669',
+                                            fontWeight: '600',
+                                            textAlign: 'center',
+                                            fontSize: '0.95rem'
+                                        }}>
+                                            ✅ Tâche validée avec succès !
+                                        </div>
+                                    )}
                                 </div>
                             ))}
                         </div>
                     ) : (
-                        /* No Tasks */
                         <div className="welcome-card" style={{ textAlign: 'center' }}>
                             <CheckCircle size={64} style={{ color: 'var(--mobilis-green)', margin: '0 auto 1rem' }} />
                             <h3 style={{ color: '#6b7280', marginBottom: '0.5rem' }}>

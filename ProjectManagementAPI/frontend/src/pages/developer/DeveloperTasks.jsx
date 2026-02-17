@@ -6,24 +6,23 @@ import UpdateTaskModal from '../../components/modals/UpdateTaskModal';
 import DeveloperLayout from '../../components/layout/DeveloperLayout';
 import '../../styles/Dashboard.css';
 import '../../styles/DeveloperDashboard.css';
+import commentService from '../../services/commentService';
 
 const DeveloperTasks = () => {
     const { user } = useAuth();
 
-    // États
     const [tasks, setTasks] = useState([]);
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState(null);
     const [selectedTask, setSelectedTask] = useState(null);
+    const [lastComments, setLastComments] = useState({}); // taskId -> dernier commentaire
 
-    // Charger les données au montage du composant
     useEffect(() => {
         if (user?.userId) {
             fetchTasks();
         }
     }, [user]);
 
-    // Fonction pour récupérer les tâches
     const fetchTasks = async () => {
         try {
             setLoading(true);
@@ -32,12 +31,33 @@ const DeveloperTasks = () => {
             const response = await developerService.getDashboardData();
 
             if (response.success) {
-                console.log('📋 Tasks received:', response.data.tasks);
-                response.data.tasks.forEach(t => {
-                    console.log(`Task "${t.taskName}" - Status: "${t.status}" - Progress: ${t.progress}%`);
+                const loadedTasks = response.data.tasks || [];
+
+                console.log('📋 Tasks received:', loadedTasks);
+                loadedTasks.forEach(t => {
+                    console.log(
+                        `Task "${t.taskName}" - Status: "${t.status}" - Progress: ${t.progress}%`
+                    );
                 });
 
-                setTasks(response.data.tasks || []);
+                setTasks(loadedTasks);
+
+                // Charger le dernier commentaire pour chaque tâche
+                const commentsByTask = {};
+
+                for (const t of loadedTasks) {
+                    try {
+                        const res = await commentService.getComments(t.taskId);
+                        if (res.success && res.data && res.data.length > 0) {
+                            // On prend le plus récent (ton service trie déjà en CreatedAt desc)
+                            commentsByTask[t.taskId] = res.data[0].content;
+                        }
+                    } catch (e) {
+                        console.error('❌ Error loading comments for task', t.taskId, e);
+                    }
+                }
+
+                setLastComments(commentsByTask);
             } else {
                 setError(response.message || 'Erreur lors du chargement des tâches');
             }
@@ -49,7 +69,6 @@ const DeveloperTasks = () => {
         }
     };
 
-    // Fonction pour mettre à jour une tâche
     const handleUpdateTask = async (taskId, updateData) => {
         try {
             console.log('📤 Updating task:', taskId, updateData);
@@ -69,7 +88,6 @@ const DeveloperTasks = () => {
         }
     };
 
-    // ✅ FONCTION POUR VÉRIFIER SI LA TÂCHE EST VALIDÉE (statut 5)
     const isTaskValidated = (status) => {
         const validatedStatuses = [
             'Validée',
@@ -80,12 +98,21 @@ const DeveloperTasks = () => {
         return validatedStatuses.some(s => status?.toLowerCase().includes(s.toLowerCase()));
     };
 
-    // ✅ FONCTION POUR VÉRIFIER SI LA TÂCHE EST EN ATTENTE (statut 4)
     const isTaskPending = (status) => {
         return status?.toLowerCase().includes('attente');
     };
 
-    // Fonction pour obtenir la classe CSS du statut
+    const getDisplayStatus = (status) => {
+        const s = status?.toLowerCase() || '';
+
+        if (s.includes('valid')) return 'Validée';
+        if (s.includes('attente')) return 'Terminé · En attente de validation';
+        if (s.includes('terminé')) return 'Terminé';
+        if (s.includes('cours')) return 'En cours';
+        if (s.includes('faire')) return 'À faire';
+        return status || '—';
+    };
+
     const getStatusClass = (status) => {
         const statusLower = status?.toLowerCase() || '';
 
@@ -104,7 +131,6 @@ const DeveloperTasks = () => {
         return 'pending';
     };
 
-    // Fonction pour obtenir la classe CSS de la priorité
     const getPriorityClass = (priority) => {
         const priorityMap = {
             'Haute': 'high',
@@ -114,7 +140,6 @@ const DeveloperTasks = () => {
         return priorityMap[priority] || 'medium';
     };
 
-    // Classe de progression
     const getProgressClass = (progress) => {
         if (progress === 100) return 'completed';
         if (progress >= 60) return 'high';
@@ -122,7 +147,6 @@ const DeveloperTasks = () => {
         return 'low';
     };
 
-    // Fonction pour formater la date
     const formatDate = (dateString) => {
         if (!dateString) return 'N/A';
         const date = new Date(dateString);
@@ -133,7 +157,6 @@ const DeveloperTasks = () => {
         });
     };
 
-    // Fonction pour vérifier si une tâche est en retard
     const isTaskOverdue = (deadline, status) => {
         if (!deadline || isTaskValidated(status) || isTaskPending(status)) return false;
         return new Date(deadline) < new Date();
@@ -198,7 +221,6 @@ const DeveloperTasks = () => {
                                                     <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
                                                         <h4 style={{ margin: 0 }}>{task.taskName || 'Sans titre'}</h4>
 
-                                                        {/* ✅ BADGE VALIDÉE (vert) */}
                                                         {isValidated && (
                                                             <span style={{
                                                                 display: 'inline-flex',
@@ -217,7 +239,6 @@ const DeveloperTasks = () => {
                                                             </span>
                                                         )}
 
-                                                        {/* ⏳ BADGE EN ATTENTE (orange) */}
                                                         {isPending && (
                                                             <span style={{
                                                                 display: 'inline-flex',
@@ -236,6 +257,24 @@ const DeveloperTasks = () => {
                                                             </span>
                                                         )}
                                                     </div>
+
+                                                    {/* Statut lisible */}
+                                                    <p style={{ fontSize: '0.85rem', color: '#4b5563', margin: '0.2rem 0 0.4rem' }}>
+                                                        Statut : {getDisplayStatus(task.status)}
+                                                    </p>
+
+                                                    {/* Raison du refus si commentaire dispo */}
+                                                    {lastComments[task.taskId] && (
+                                                        <p style={{
+                                                            fontSize: '0.85rem',
+                                                            color: '#b91c1c',
+                                                            margin: '0.2rem 0 0.4rem',
+                                                            fontWeight: 600
+                                                        }}>
+                                                            Raison du refus : {lastComments[task.taskId]}
+                                                        </p>
+                                                    )}
+
                                                     <p>Projet: {task.projectName || 'N/A'}</p>
                                                     <p style={{ fontSize: '0.85rem', color: '#666', marginTop: '0.25rem' }}>
                                                         Chef de projet: {task.projectManagerName || 'N/A'}
@@ -272,7 +311,6 @@ const DeveloperTasks = () => {
                                                         </div>
                                                     )}
 
-                                                    {/* ✅ BOUTON AVEC MESSAGES DIFFÉRENTS */}
                                                     <button
                                                         className="btn-update-task"
                                                         onClick={() => !isLocked && setSelectedTask(task)}
@@ -318,7 +356,6 @@ const DeveloperTasks = () => {
                     )}
                 </div>
 
-                {/* Modal de mise à jour */}
                 {selectedTask && (
                     <UpdateTaskModal
                         task={selectedTask}
