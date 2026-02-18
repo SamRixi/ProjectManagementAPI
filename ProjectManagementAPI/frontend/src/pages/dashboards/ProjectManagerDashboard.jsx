@@ -70,10 +70,7 @@ const ProjectManagerDashboard = () => {
         }
     };
 
-    // Naviguer vers les stats détaillées d'un projet
-    const viewProjectStats = (projectId) => {
-        navigate(`/project-manager/projects/${projectId}/stats`);
-    };
+   
 
     // Obtenir la classe CSS selon le pourcentage
     const getProgressClass = (progress) => {

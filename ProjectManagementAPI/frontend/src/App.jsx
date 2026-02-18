@@ -24,6 +24,11 @@ import ProjectManagerProjects from './pages/project-manager/ProjectManagerProjec
 import ProjectManagerTasks from './pages/project-manager/ProjectManagerTasks';
 import ProjectManagerValidation from './pages/project-manager/ProjectManagerValidation';
 import ProjectStats from './pages/project-manager/ProjectStats';
+// ========== MANAGER ==========//
+import ManagerDashboard from './pages/dashboards/ManagerDashboard';
+import ManagerProjects from './pages/manager/ManagerProjects';
+import ManagerStatistics from './pages/manager/ManagerStatistics';
+import ManagerTeams from './pages/manager/ManagerTeams';
 
 const ProtectedRoute = ({ children }) => {
     const { isAuthenticated } = useAuth();
@@ -59,8 +64,40 @@ function App() {
                     <Route path="/project-manager/projects/:projectId/stats" element={<ProjectStats />} /> 
                     <Route path="/project-manager/tasks" element={<ProjectManagerTasks />} />
                     <Route path="/project-manager/validation" element={<ProjectManagerValidation />} />
-                  
 
+                    {/* ========== MANAGER ROUTES ========== */}
+                    <Route
+                        path="/manager/dashboard"
+                        element={
+                            <ProtectedRoute allowedRoles={['Manager']}>
+                                <ManagerDashboard />
+                            </ProtectedRoute>
+                        }
+                    />
+                    <Route
+                        path="/manager/projects"
+                        element={
+                            <ProtectedRoute allowedRoles={['Manager']}>
+                                <ManagerProjects />
+                            </ProtectedRoute>
+                        }
+                    />
+                    <Route
+                        path="/manager/statistics"
+                        element={
+                            <ProtectedRoute allowedRoles={['Manager']}>
+                                <ManagerStatistics />
+                            </ProtectedRoute>
+                        }
+                    />
+                    <Route
+                        path="/manager/teams"
+                        element={
+                            <ProtectedRoute allowedRoles={['Manager']}>
+                                <ManagerTeams />
+                            </ProtectedRoute>
+                        }
+                    />
 
                     {/* ========== PROTECTED DASHBOARD ========== */}
                     <Route
