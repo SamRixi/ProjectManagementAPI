@@ -76,6 +76,7 @@ builder.Services.AddScoped<ITaskService, ProjectTaskService>();
 builder.Services.AddScoped<ICommentService, CommentService>();
 builder.Services.AddScoped<INotificationService, NotificationService>();
 
+
 var app = builder.Build();
 
 // ============= CONFIGURE HTTP PIPELINE =============

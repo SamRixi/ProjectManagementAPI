@@ -17,11 +17,9 @@ public class ProjectService : IProjectService
     {
         try
         {
-            // ✅ ADD THESE DEBUG LOGS:
-            Console.WriteLine($"📥 DTO received:");
-            Console.WriteLine($"  ProjectName: {dto.ProjectName}");
-            Console.WriteLine($"  ProjectManagerId: {dto.ProjectManagerId}");
-            Console.WriteLine($"  CreatedByUserId: {dto.CreatedByUserId}");  // ← What shows here?
+            // 1 = Planifié (par défaut pour Reporting)
+            var statusId = 1;
+
             var project = new Project
             {
                 ProjectName = dto.ProjectName,
@@ -29,7 +27,7 @@ public class ProjectService : IProjectService
                 StartDate = dto.StartDate,
                 EndDate = dto.EndDate,
                 TeamId = dto.TeamId,
-                ProjectStatusId = dto.ProjectStatusId,
+                ProjectStatusId = statusId,
                 PriorityId = dto.PriorityId,
                 ProjectManagerId = dto.ProjectManagerId,
                 Progress = 0,
@@ -65,6 +63,7 @@ public class ProjectService : IProjectService
         }
     }
 
+
     public async Task<ApiResponse<ProjectDTO>> CreateProjectWithEdbAsync(CreateProjectWithEdbDTO dto)
     {
         try
@@ -79,6 +78,9 @@ public class ProjectService : IProjectService
                 };
             }
 
+            // 1 = Planifié
+            var statusId = 1;
+
             var project = new Project
             {
                 ProjectName = dto.ProjectName,
@@ -87,7 +89,7 @@ public class ProjectService : IProjectService
                 EndDate = dto.EndDate,
                 CreatedByUserId = dto.CreatedByUserId,
                 TeamId = dto.TeamId,
-                ProjectStatusId = dto.ProjectStatusId,
+                ProjectStatusId = statusId,
                 PriorityId = dto.PriorityId,
                 ProjectManagerId = dto.ProjectManagerId,
                 Progress = 0,
@@ -174,6 +176,10 @@ public class ProjectService : IProjectService
         }
     }
 
+    // ❌ Ancien DeleteProjectAsync (suppression physique)
+    // ✅ Tu peux le laisser si tu veux encore supprimer définitivement via un autre écran,
+    //    mais pour Reporting on utilisera CancelProjectAsync.
+
     public async Task<ApiResponse<bool>> DeleteProjectAsync(int projectId)
     {
         try
@@ -209,6 +215,61 @@ public class ProjectService : IProjectService
         }
     }
 
+    // ✅ Annulation logique du projet (statut projet + statuts tâches)
+    public async Task<ApiResponse<bool>> CancelProjectAsync(int projectId)
+    {
+        try
+        {
+            var project = await _context.Projects
+                .Include(p => p.ProjectTasks)
+                .FirstOrDefaultAsync(p => p.ProjectId == projectId);
+
+            if (project == null)
+            {
+                return new ApiResponse<bool>
+                {
+                    Success = false,
+                    Message = "Projet introuvable"
+                };
+            }
+
+            // ⚠ Assure-toi que 4 correspond bien au statut "Annulé" dans ProjectStatus
+            const int PROJECT_STATUS_CANCELLED = 4;
+            // ⚠ Assure-toi que 6 correspond bien au statut "Annulé" dans ProjectTaskStatus
+            const int TASK_STATUS_CANCELLED = 6;
+
+            // 1) Statut projet = Annulé
+            project.ProjectStatusId = PROJECT_STATUS_CANCELLED;
+
+            // 2) Toutes les tâches du projet passent en "Annulé"
+            if (project.ProjectTasks != null && project.ProjectTasks.Any())
+            {
+                foreach (var task in project.ProjectTasks)
+                {
+                    task.TaskStatusId = TASK_STATUS_CANCELLED;
+                }
+            }
+
+            await _context.SaveChangesAsync();
+
+            return new ApiResponse<bool>
+            {
+                Success = true,
+                Message = "Projet annulé avec succès",
+                Data = true
+            };
+        }
+        catch (Exception ex)
+        {
+            return new ApiResponse<bool>
+            {
+                Success = false,
+                Message = $"Erreur: {ex.Message}"
+            };
+        }
+    }
+
+
     public async Task<ApiResponse<ProjectDetailsDTO>> GetProjectByIdAsync(int projectId)
     {
         try
@@ -237,9 +298,9 @@ public class ProjectService : IProjectService
             var details = new ProjectDetailsDTO
             {
                 ProjectManagerId = project.ProjectManagerId,
-                ProjectManagerName = project.ProjectManager != null  // ✅ AJOUTE CETTE LIGNE
-        ? $"{project.ProjectManager.FirstName} {project.ProjectManager.LastName}"
-        : "Non assigné",
+                ProjectManagerName = project.ProjectManager != null
+                    ? $"{project.ProjectManager.FirstName} {project.ProjectManager.LastName}"
+                    : "Non assigné",
                 ProjectId = project.ProjectId,
                 ProjectName = project.ProjectName,
                 Description = project.Description,
@@ -299,7 +360,7 @@ public class ProjectService : IProjectService
                 .Include(p => p.ProjectStatus)
                 .Include(p => p.Priority)
                 .Include(p => p.ProjectTasks)
-                 .Include(p => p.EDBs)
+                .Include(p => p.EDBs)
                 .Include(p => p.ProjectManager)
                 .ToListAsync();
 
@@ -458,7 +519,6 @@ public class ProjectService : IProjectService
         }
     }
 
-    // ✅ CORRECTION : TeamId ajouté dans MapToProjectDTO
     private ProjectDTO MapToProjectDTO(Project p)
     {
         var taskCount = p.ProjectTasks?.Count ?? 0;
@@ -478,14 +538,16 @@ public class ProjectService : IProjectService
             StartDate = p.StartDate,
             EndDate = p.EndDate,
             Progress = calculatedProgress,
-            TeamId = p.TeamId ?? 0,                          // ✅ CORRECTION - était absent !
+            TeamId = p.TeamId ?? 0,
             TeamName = p.Team?.teamName ?? "N/A",
             ProjectManagerId = p.ProjectManagerId ?? 0,
             ProjectManagerName = p.ProjectManager != null
                 ? $"{p.ProjectManager.FirstName} {p.ProjectManager.LastName}"
                 : "Non assigné",
+            ProjectStatusId = p.ProjectStatusId ?? 0,
             StatusName = p.ProjectStatus?.StatusName ?? "N/A",
             StatusColor = p.ProjectStatus?.Color ?? "#000000",
+            PriorityId = p.PriorityId ?? 0,
             PriorityName = p.Priority?.Name ?? "N/A",
             TaskCount = taskCount,
             CompletedTaskCount = completedTaskCount,
@@ -528,7 +590,7 @@ public class ProjectService : IProjectService
                 Data = true
             };
         }
-        catch (Exception ex)
+        catch (Exception)
         {
             return new ApiResponse<bool>
             {
@@ -562,7 +624,7 @@ public class ProjectService : IProjectService
                 Data = true
             };
         }
-        catch (Exception ex)
+        catch (Exception)
         {
             return new ApiResponse<bool>
             {
@@ -631,7 +693,7 @@ public class ProjectService : IProjectService
                 Data = teamMemberDTOs
             };
         }
-        catch (Exception ex)
+        catch (Exception)
         {
             return new ApiResponse<List<TeamMemberDTO>>
             {
@@ -726,7 +788,7 @@ public class ProjectService : IProjectService
                 .Include(p => p.ProjectStatus)
                 .Include(p => p.Priority)
                 .Include(p => p.ProjectTasks)
-                 .Include(p => p.EDBs)
+                .Include(p => p.EDBs)
                 .Include(p => p.ProjectManager)
                 .ToListAsync();
 

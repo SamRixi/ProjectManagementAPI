@@ -101,7 +101,7 @@ const ManagerDashboard = () => {
                     >
                         <h2>Bienvenue, {user?.firstName || user?.username || 'Manager'}!</h2>
                         <div className="user-info">
-                            <p><strong>Username:</strong> {user?.username}</p>
+                            <p><strong>Username:</strong> {user?.userName}</p>
                             <p><strong>Email:</strong> {user?.email}</p>
                             <p><strong>Role:</strong> Manager</p>
                         </div>

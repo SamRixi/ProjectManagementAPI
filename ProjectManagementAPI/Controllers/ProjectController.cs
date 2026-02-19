@@ -468,24 +468,24 @@ namespace ProjectManagementAPI.Controllers
             }
         }
 
-        // ============= DELETE PROJECT (Manager/Reporting only) =============
+        // ============= CANCEL PROJECT (Manager/Reporting only) =============
 
         /// <summary>
-        /// Supprime un projet
+        /// Annule un projet (statut = Annulé, tâches annulées)
         /// </summary>
-        /// <param name="projectId">ID du projet à supprimer</param>
-        /// <returns>Confirmation de suppression</returns>
-        /// <response code="200">Projet supprimé avec succès</response>
+        /// <param name="projectId">ID du projet à annuler</param>
+        /// <returns>Confirmation d'annulation</returns>
+        /// <response code="200">Projet annulé avec succès</response>
         /// <response code="404">Projet non trouvé</response>
-        [HttpDelete("{projectId}")]
+        [HttpPut("{projectId}/cancel")]
         [Authorize(Roles = "Manager,Reporting")]
         [ProducesResponseType(StatusCodes.Status200OK)]
         [ProducesResponseType(StatusCodes.Status404NotFound)]
-        public async Task<IActionResult> DeleteProject(int projectId)
+        public async Task<IActionResult> CancelProject(int projectId)
         {
             try
             {
-                var result = await _projectService.DeleteProjectAsync(projectId);
+                var result = await _projectService.CancelProjectAsync(projectId);
                 return result.Success ? Ok(result) : BadRequest(result);
             }
             catch (Exception ex)
@@ -493,11 +493,14 @@ namespace ProjectManagementAPI.Controllers
                 return StatusCode(500, new
                 {
                     success = false,
-                    message = "Erreur lors de la suppression du projet",
+                    message = "Erreur lors de l'annulation du projet",
                     error = ex.Message
                 });
             }
         }
+
+       }
     }
-}
+    
+
 

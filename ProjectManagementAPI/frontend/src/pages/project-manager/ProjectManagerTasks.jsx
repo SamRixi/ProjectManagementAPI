@@ -251,7 +251,13 @@ const ProjectManagerTasks = () => {
                                 <select
                                     value={selectedProject}
                                     onChange={(e) => setSelectedProject(e.target.value)}
-                                    style={{ width: '100%', padding: '0.7rem', borderRadius: '8px', border: '1px solid #d1d5db', fontSize: '0.95rem' }}
+                                    style={{
+                                        width: '100%',
+                                        padding: '0.7rem',
+                                        borderRadius: '8px',
+                                        border: '1px solid #d1d5db',
+                                        fontSize: '0.95rem'
+                                    }}
                                 >
                                     {projects.map(project => (
                                         <option key={project.projectId} value={project.projectId}>

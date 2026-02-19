@@ -64,7 +64,7 @@ const DeveloperDashboard = () => {
                     <div className="welcome-card">
                         <h2>Bienvenue, {user?.firstName || user?.username || 'Developer'}!</h2>
                         <div className="user-info">
-                            <p><strong>Username:</strong> {user?.username}</p>
+                            <p><strong>Username:</strong> {user?.userName}</p>
                             <p><strong>Email:</strong> {user?.email}</p>
                             <p><strong>Role:</strong> Developer</p>
                         </div>

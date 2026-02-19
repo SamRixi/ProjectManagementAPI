@@ -4,7 +4,9 @@ using Microsoft.EntityFrameworkCore;
 using ProjectManagementAPI.Data;
 using ProjectManagementAPI.DTOs;
 using ProjectManagementAPI.Models;
+using ProjectManagementAPI.Services.Interfaces;
 using System.Security.Claims;
+
 
 namespace ProjectManagementAPI.Controllers
 {
@@ -13,12 +15,16 @@ namespace ProjectManagementAPI.Controllers
     [Authorize(Roles = "Project Manager")]
     [Produces("application/json")]
     public class ProjectManagerController : ControllerBase
+
     {
         private readonly ApplicationDbContext _context;
+        private readonly ITaskService _taskService;
 
-        public ProjectManagerController(ApplicationDbContext context)
+
+        public ProjectManagerController(ApplicationDbContext context, ITaskService taskService)
         {
             _context = context;
+            _taskService = taskService;
         }
 
         private int GetCurrentUserId()
@@ -402,6 +408,7 @@ namespace ProjectManagementAPI.Controllers
 
                 var userId = GetCurrentUserId();
 
+                // ✅ Vérifier que le PM est bien le chef du projet
                 var project = await _context.Projects
                     .FirstOrDefaultAsync(p => p.ProjectId == dto.ProjectId);
 
@@ -419,31 +426,23 @@ namespace ProjectManagementAPI.Controllers
                     });
                 }
 
-                var task = new ProjectTask
-                {
-                    TaskName = dto.TaskName,
-                    Description = dto.Description,
-                    DueDate = dto.DueDate,
-                    ProjectId = dto.ProjectId,
-                    TaskStatusId = dto.TaskStatusId,
-                    PriorityId = dto.PriorityId,
-                    AssignedToUserId = dto.AssignedToUserId,
-                    CreatedByUserId = userId,
-                    Progress = 0
-                };
+                // ✅ Appel de la logique métier centralisée (change aussi le statut du projet)
+                var result = await _taskService.CreateTaskAsync(dto, userId);
 
-                _context.ProjectTasks.Add(task);
-                await _context.SaveChangesAsync();
+                if (!result.Success)
+                {
+                    return BadRequest(new
+                    {
+                        success = false,
+                        message = result.Message
+                    });
+                }
 
                 return Ok(new
                 {
                     success = true,
-                    message = "Tâche créée avec succès",
-                    data = new
-                    {
-                        taskId = task.ProjectTaskId,
-                        taskName = task.TaskName
-                    }
+                    message = result.Message,
+                    data = result.Data
                 });
             }
             catch (Exception ex)
@@ -456,6 +455,7 @@ namespace ProjectManagementAPI.Controllers
                 });
             }
         }
+
 
         // ============= ASSIGNER UNE TÂCHE =============
         [HttpPut("tasks/{taskId}/assign")]
@@ -710,12 +710,92 @@ namespace ProjectManagementAPI.Controllers
                 });
             }
         }
-
-        // ============= REFUSER UNE TÂCHE =============
-        [HttpPut("tasks/{taskId}/reject")]
+        // ============= TERMINER UN PROJET =============
+        [HttpPut("projects/{projectId}/close")]
         [ProducesResponseType(StatusCodes.Status200OK)]
         [ProducesResponseType(StatusCodes.Status403Forbidden)]
         [ProducesResponseType(StatusCodes.Status404NotFound)]
+        public async Task<IActionResult> CloseProject(int projectId)
+        {
+            try
+            {
+                var userId = GetCurrentUserId();
+
+                var project = await _context.Projects
+                    .Include(p => p.ProjectTasks)
+                    .FirstOrDefaultAsync(p => p.ProjectId == projectId);
+
+                if (project == null)
+                {
+                    return NotFound(new { success = false, message = "Projet non trouvé" });
+                }
+
+                if (project.ProjectManagerId != userId)
+                {
+                    return StatusCode(403, new
+                    {
+                        success = false,
+                        message = "Vous n'êtes pas autorisé à clôturer ce projet"
+                    });
+                }
+
+                var tasks = project.ProjectTasks ?? new List<ProjectTask>();
+                var totalTasks = tasks.Count;
+                var validatedTasks = tasks.Count(t => t.IsValidated);
+
+                // Progress calculé (au cas où)
+                int progress = 0;
+                if (totalTasks > 0)
+                {
+                    progress = (int)Math.Round((validatedTasks * 100.0) / totalTasks);
+                }
+
+                // Tu peux décider ici : forcer ou pas
+                // Si tu veux bloquer si tout n'est pas validé, décommente ce bloc :
+                /*
+                if (progress < 100)
+                {
+                    return BadRequest(new
+                    {
+                        success = false,
+                        message = "Toutes les tâches ne sont pas validées. Impossible de clôturer."
+                    });
+                }
+                */
+
+                project.Progress = progress;
+                project.ProjectStatusId = 3;  // 3 = Terminé
+                                              // Optionnel : audit
+                                              // project.ClosedAt = DateTime.UtcNow;
+                                              // project.ClosedByUserId = userId;
+
+                await _context.SaveChangesAsync();
+
+                return Ok(new
+                {
+                    success = true,
+                    message = "Projet clôturé avec succès",
+                    data = new
+                    {
+                        projectId = project.ProjectId,
+                        progress = project.Progress,
+                        statusId = project.ProjectStatusId
+                    }
+                });
+            }
+            catch (Exception ex)
+            {
+                return StatusCode(500, new
+                {
+                    success = false,
+                    message = "Erreur lors de la clôture du projet",
+                    error = ex.Message
+                });
+            }
+        }
+
+        // ============= REFUSER UNE TÂCHE =============
+        [HttpPut("tasks/{taskId}/reject")]
         public async Task<IActionResult> RejectTask(int taskId, [FromBody] RejectTaskDTO dto)
         {
             try
@@ -741,8 +821,14 @@ namespace ProjectManagementAPI.Controllers
                     });
                 }
 
-                task.TaskStatusId = 2;
+                // ❌ Avant : seulement le statut
+                // task.TaskStatusId = 2;
+                // task.IsValidated = false;
+
+                // ✅ Après : on remet en cours + on ajuste la progression
+                task.TaskStatusId = 2;          // En cours
                 task.IsValidated = false;
+                task.Progress = 0;             // ou 0, selon ta règle métier
 
                 if (!string.IsNullOrEmpty(dto.Reason))
                 {

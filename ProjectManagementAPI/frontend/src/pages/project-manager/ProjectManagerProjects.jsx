@@ -36,7 +36,6 @@ const ProjectManagerProjects = () => {
             setLoading(true);
             setError(null);
 
-            // ✅ DEBUG - INFORMATIONS UTILISATEUR
             const token = localStorage.getItem('token');
             console.log('🔑 Token exists:', !!token);
             console.log('👤 User:', user);
@@ -105,6 +104,29 @@ const ProjectManagerProjects = () => {
         if (progress >= 66) return 'high';
         if (progress >= 33) return 'medium';
         return 'low';
+    };
+
+    // ✅ Terminer un projet
+    const handleCloseProject = async (projectId, progress) => {
+        if (progress < 100) {
+            const confirmClose = window.confirm(
+                "Il reste des tâches non validées. Voulez-vous vraiment clôturer ce projet ?"
+            );
+            if (!confirmClose) return;
+        }
+
+        try {
+            const response = await api.put(`/projectmanager/projects/${projectId}/close`);
+            if (response.data.success) {
+                alert('✅ Projet clôturé avec succès');
+                fetchProjects();
+            } else {
+                alert('❌ ' + response.data.message);
+            }
+        } catch (err) {
+            console.error('❌ Erreur clôture projet:', err);
+            alert('❌ Erreur lors de la clôture du projet');
+        }
     };
 
     return (
@@ -274,30 +296,53 @@ const ProjectManagerProjects = () => {
                                                 </div>
                                             )}
 
-                                            {/* Action Button */}
-                                            <button
-                                                onClick={() => viewProjectStats(project)}
-                                                style={{
-                                                    width: '100%',
-                                                    marginTop: '1rem',
-                                                    padding: '0.85rem 1rem',
-                                                    background: 'linear-gradient(135deg, var(--mobilis-green) 0%, #008f3f 100%)',
-                                                    color: 'white',
-                                                    border: 'none',
-                                                    borderRadius: '12px',
-                                                    fontWeight: '600',
-                                                    cursor: 'pointer',
-                                                    display: 'flex',
-                                                    alignItems: 'center',
-                                                    justifyContent: 'center',
-                                                    gap: '0.5rem',
-                                                    fontSize: '0.95rem',
-                                                    boxShadow: '0 4px 12px rgba(0, 166, 81, 0.25)'
-                                                }}
-                                            >
-                                                <BarChart3 size={20} />
-                                                Statistiques Détaillées
-                                            </button>
+                                            {/* Boutons d'action */}
+                                            <div style={{ display: 'flex', flexDirection: 'column', gap: '0.6rem', marginTop: '1rem' }}>
+                                                <button
+                                                    onClick={() => viewProjectStats(project)}
+                                                    style={{
+                                                        width: '100%',
+                                                        padding: '0.85rem 1rem',
+                                                        background: 'linear-gradient(135deg, var(--mobilis-green) 0%, #008f3f 100%)',
+                                                        color: 'white',
+                                                        border: 'none',
+                                                        borderRadius: '12px',
+                                                        fontWeight: '600',
+                                                        cursor: 'pointer',
+                                                        display: 'flex',
+                                                        alignItems: 'center',
+                                                        justifyContent: 'center',
+                                                        gap: '0.5rem',
+                                                        fontSize: '0.95rem',
+                                                        boxShadow: '0 4px 12px rgba(0, 166, 81, 0.25)'
+                                                    }}
+                                                >
+                                                    <BarChart3 size={20} />
+                                                    Statistiques Détaillées
+                                                </button>
+
+                                                {/* ✅ Bouton Terminer le projet (si pas déjà terminé) */}
+                                                {project.statusName !== 'Terminé' && (
+                                                    <button
+                                                        onClick={() => handleCloseProject(project.projectId, project.progress)}
+                                                        style={{
+                                                            width: '100%',
+                                                            padding: '0.75rem 1rem',
+                                                            background: '#111827',
+                                                            color: 'white',
+                                                            border: 'none',
+                                                            borderRadius: '10px',
+                                                            fontWeight: '600',
+                                                            cursor: 'pointer',
+                                                            fontSize: '0.9rem',
+                                                            opacity: project.progress === 0 ? 0.6 : 1
+                                                        }}
+                                                        disabled={project.progress === 0}
+                                                    >
+                                                        Terminer le projet
+                                                    </button>
+                                                )}
+                                            </div>
                                         </div>
                                     ))}
                                 </div>
@@ -476,7 +521,7 @@ const ProjectManagerProjects = () => {
                                 {projectStats.isDelayed && (
                                     <div style={{
                                         background: '#fee2e2',
-                                        border: '2px solid #dc2626',
+                                            border: '2px solid #dc2626',
                                         borderRadius: '12px',
                                         padding: '1rem',
                                         display: 'flex',
@@ -529,3 +574,4 @@ const ProjectManagerProjects = () => {
 };
 
 export default ProjectManagerProjects;
+

@@ -127,6 +127,13 @@ namespace ProjectManagementAPI.Services.Implementations
                 };
 
                 _context.ProjectTasks.Add(task);
+
+                // ✅ Si le projet est encore "Planifié" (1), on le passe en "En cours" (2)
+                if (project.ProjectStatusId == 1)
+                {
+                    project.ProjectStatusId = 2; // 2 = En cours
+                }
+
                 await _context.SaveChangesAsync();
 
                 var createdTask = await _context.ProjectTasks
@@ -151,6 +158,7 @@ namespace ProjectManagementAPI.Services.Implementations
                 };
             }
         }
+
 
         // UPDATE task status
         public async Task<ApiResponse<TaskDTO>> UpdateTaskStatusAsync(int taskId, int statusId, int userId)

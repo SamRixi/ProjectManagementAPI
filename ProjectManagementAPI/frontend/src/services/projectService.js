@@ -266,6 +266,29 @@ const projectService = {
         }
     },
 
+    // ✅ Nouvelle méthode : annuler un projet (statut Annulé)
+    cancelProject: async (projectId) => {
+        try {
+            console.log(`🚫 Cancelling project with ID: ${projectId}`);
+            const response = await api.put(`/project/${projectId}/cancel`);
+            console.log('✅ Cancel project response:', response.data);
+            return {
+                success: response.data.success,
+                message: response.data.message || 'Projet annulé avec succès'
+            };
+        } catch (error) {
+            console.error('❌ Cancel project error:', error);
+            return {
+                success: false,
+                message:
+                    error.response?.data?.message ||
+                    error.response?.data?.Message ||
+                    'Erreur lors de l\'annulation du projet'
+            };
+        }
+    },
+
+    // Optionnel : suppression physique (si tu en as encore besoin)
     deleteProject: async (projectId) => {
         try {
             console.log(`🗑️ Deleting project with ID: ${projectId}`);
