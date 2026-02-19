@@ -16,6 +16,7 @@ const ProjectDetails = () => {
 
     useEffect(() => {
         loadProjectDetails();
+        // eslint-disable-next-line react-hooks/exhaustive-deps
     }, [projectId]);
 
     const loadProjectDetails = async () => {
@@ -23,7 +24,7 @@ const ProjectDetails = () => {
         try {
             const [projectResponse, tasksResponse] = await Promise.all([
                 developerService.getProjectDetails(projectId),
-                developerService.getAllTasks()
+                developerService.getProjectAllTasks(projectId)
             ]);
 
             if (projectResponse.success) {
@@ -33,10 +34,7 @@ const ProjectDetails = () => {
             }
 
             if (tasksResponse.success) {
-                const projectTasks = (tasksResponse.data || []).filter(
-                    task => task.projectId === parseInt(projectId)
-                );
-                setTasks(projectTasks);
+                setTasks(tasksResponse.data || []);
             }
         } catch (err) {
             console.error('❌ Error loading project details:', err);
@@ -80,6 +78,49 @@ const ProjectDetails = () => {
         return 'low';
     };
 
+    // mapping des statuts pour l'affichage au développeur
+    const getDisplayStatus = (status) => {
+        if (status === 'En attente de validation') return 'Terminé (en attente de validation)';
+        if (status === 'Validé') return 'Validé par le chef de projet';
+        return status; // À faire, En cours, Terminé
+    };
+
+    // style visuel du badge de statut
+    const getStatusStyle = (status) => {
+        switch (status) {
+            case 'À faire':
+                return {
+                    backgroundColor: '#E5E7EB',
+                    color: '#374151'
+                };
+            case 'En cours':
+                return {
+                    backgroundColor: '#DBEAFE',
+                    color: '#1D4ED8'
+                };
+            case 'En attente de validation':
+                return {
+                    backgroundColor: '#FEF3C7',
+                    color: '#B45309'
+                };
+            case 'Validé':
+                return {
+                    backgroundColor: '#DCFCE7',
+                    color: '#15803D'
+                };
+            case 'Terminé':
+                return {
+                    backgroundColor: '#E0F2FE',
+                    color: '#0369A1'
+                };
+            default:
+                return {
+                    backgroundColor: '#E5E7EB',
+                    color: '#374151'
+                };
+        }
+    };
+
     const isOverdue = (deadline, status) => {
         if (!deadline || status === 'Terminé') return false;
         return new Date(deadline) < new Date();
@@ -104,7 +145,7 @@ const ProjectDetails = () => {
                 <div className="dashboard-container">
                     <div className="dashboard-content">
                         <div className="error-message">
-                            <p>⚠️ {error || 'Projet introuvable'}</p>
+                            <p>⚠️ {error || 'Projet introuvable'} </p>
                             <button onClick={() => navigate('/developer/projects')}>
                                 Retour aux projets
                             </button>
@@ -115,11 +156,14 @@ const ProjectDetails = () => {
         );
     }
 
-    const completedTasks = tasks.filter(t => t.status === 'Terminé').length;
+    const completedTasks = tasks.filter(t => t.status === 'Terminé' || t.status === 'Validé').length;
     const inProgressTasks = tasks.filter(t => t.status === 'En cours').length;
     const _pendingTasks = tasks.filter(t => t.status === 'À faire').length;
     const overdueTasks = tasks.filter(t => isOverdue(t.deadline, t.status)).length;
-    const progress = tasks.length > 0 ? Math.round((completedTasks / tasks.length) * 100) : 0;
+
+    const progress = tasks.length > 0
+        ? Math.round(tasks.reduce((sum, t) => sum + (t.progress || 0), 0) / tasks.length)
+        : 0;
 
     return (
         <DeveloperLayout>
@@ -158,11 +202,14 @@ const ProjectDetails = () => {
                     </button>
 
                     {/* Project Header */}
-                    <div className="welcome-card" style={{
-                        background: 'linear-gradient(135deg, #00A651 0%, #004D29 100%)',
-                        color: 'white',
-                        marginBottom: '30px'
-                    }}>
+                    <div
+                        className="welcome-card"
+                        style={{
+                            background: 'linear-gradient(135deg, #00A651 0%, #004D29 100%)',
+                            color: 'white',
+                            marginBottom: '30px'
+                        }}
+                    >
                         <h2 style={{ margin: '0 0 12px 0', color: 'white', fontSize: '2rem' }}>
                             {project.projectName}
                         </h2>
@@ -172,17 +219,22 @@ const ProjectDetails = () => {
 
                         {/* Progress Bar */}
                         <div className="task-progress-section">
-                            <div style={{
-                                display: 'flex',
-                                justifyContent: 'space-between',
-                                marginBottom: '8px',
-                                fontSize: '0.95rem',
-                                fontWeight: '600'
-                            }}>
+                            <div
+                                style={{
+                                    display: 'flex',
+                                    justifyContent: 'space-between',
+                                    marginBottom: '8px',
+                                    fontSize: '0.95rem',
+                                    fontWeight: '600'
+                                }}
+                            >
                                 <span>Progression globale</span>
                                 <span>{progress}%</span>
                             </div>
-                            <div className="task-progress-bar-bg" style={{ background: 'rgba(255,255,255,0.3)' }}>
+                            <div
+                                className="task-progress-bar-bg"
+                                style={{ background: 'rgba(255,255,255,0.3)' }}
+                            >
                                 <div
                                     className={`task-progress-bar-fill ${getProgressClass(progress)}`}
                                     style={{
@@ -199,45 +251,65 @@ const ProjectDetails = () => {
                     {/* Stats Grid */}
                     <div className="stats-grid">
                         <div className="stat-card">
-                            <div className="stat-icon" style={{ background: 'linear-gradient(135deg, #2196F3 0%, #1976D2 100%)' }}>
+                            <div
+                                className="stat-icon"
+                                style={{ background: 'linear-gradient(135deg, #2196F3 0%, #1976D2 100%)' }}
+                            >
                                 <CheckSquare size={28} />
                             </div>
                             <div className="stat-content">
                                 <h3>Total Tâches</h3>
-                                <p className="stat-number" style={{ color: '#2196F3' }}>{tasks.length}</p>
-                                <p className="stat-label">Assignées à vous</p>
+                                <p className="stat-number" style={{ color: '#2196F3' }}>
+                                    {tasks.length}
+                                </p>
+                                <p className="stat-label">Tâches du projet</p>
                             </div>
                         </div>
 
                         <div className="stat-card">
-                            <div className="stat-icon" style={{ background: 'linear-gradient(135deg, #FF9800 0%, #F57C00 100%)' }}>
+                            <div
+                                className="stat-icon"
+                                style={{ background: 'linear-gradient(135deg, #FF9800 0%, #F57C00 100%)' }}
+                            >
                                 <TrendingUp size={28} />
                             </div>
                             <div className="stat-content">
                                 <h3>En cours</h3>
-                                <p className="stat-number" style={{ color: '#FF9800' }}>{inProgressTasks}</p>
+                                <p className="stat-number" style={{ color: '#FF9800' }}>
+                                    {inProgressTasks}
+                                </p>
                                 <p className="stat-label">Tâches actives</p>
                             </div>
                         </div>
 
                         <div className="stat-card">
-                            <div className="stat-icon" style={{ background: 'linear-gradient(135deg, #4CAF50 0%, #388E3C 100%)' }}>
+                            <div
+                                className="stat-icon"
+                                style={{ background: 'linear-gradient(135deg, #4CAF50 0%, #388E3C 100%)' }}
+                            >
                                 <CheckSquare size={28} />
                             </div>
                             <div className="stat-content">
                                 <h3>Terminées</h3>
-                                <p className="stat-number" style={{ color: '#4CAF50' }}>{completedTasks}</p>
-                                <p className="stat-label">Complétées</p>
+                                <p className="stat-number" style={{ color: '#4CAF50' }}>
+                                    {completedTasks}
+                                </p>
+                                <p className="stat-label">Complétées / validées</p>
                             </div>
                         </div>
 
                         <div className="stat-card">
-                            <div className="stat-icon" style={{ background: 'linear-gradient(135deg, #F44336 0%, #D32F2F 100%)' }}>
+                            <div
+                                className="stat-icon"
+                                style={{ background: 'linear-gradient(135deg, #F44336 0%, #D32F2F 100%)' }}
+                            >
                                 <AlertCircle size={28} />
                             </div>
                             <div className="stat-content">
                                 <h3>En retard</h3>
-                                <p className="stat-number" style={{ color: '#F44336' }}>{overdueTasks}</p>
+                                <p className="stat-number" style={{ color: '#F44336' }}>
+                                    {overdueTasks}
+                                </p>
                                 <p className="stat-label">Tâches overdue</p>
                             </div>
                         </div>
@@ -246,119 +318,193 @@ const ProjectDetails = () => {
                     {/* Project Info */}
                     <div className="recent-section" style={{ marginBottom: '30px' }}>
                         <h3>📋 Informations du projet</h3>
-                        <div style={{
-                            display: 'grid',
-                            gridTemplateColumns: 'repeat(auto-fit, minmax(280px, 1fr))',
-                            gap: '20px',
-                            marginTop: '20px'
-                        }}>
-                            <div style={{
-                                display: 'flex',
-                                alignItems: 'center',
-                                gap: '16px',
-                                padding: '16px',
-                                background: '#f8f9fa',
-                                borderRadius: '12px'
-                            }}>
-                                <div style={{
-                                    width: '48px',
-                                    height: '48px',
-                                    borderRadius: '12px',
-                                    background: 'linear-gradient(135deg, #00A651, #004D29)',
+                        <div
+                            style={{
+                                display: 'grid',
+                                gridTemplateColumns: 'repeat(auto-fit, minmax(280px, 1fr))',
+                                gap: '20px',
+                                marginTop: '20px'
+                            }}
+                        >
+                            <div
+                                style={{
                                     display: 'flex',
                                     alignItems: 'center',
-                                    justifyContent: 'center',
-                                    color: 'white'
-                                }}>
+                                    gap: '16px',
+                                    padding: '16px',
+                                    background: '#f8f9fa',
+                                    borderRadius: '12px'
+                                }}
+                            >
+                                <div
+                                    style={{
+                                        width: '48px',
+                                        height: '48px',
+                                        borderRadius: '12px',
+                                        background: 'linear-gradient(135deg, #00A651, #004D29)',
+                                        display: 'flex',
+                                        alignItems: 'center',
+                                        justifyContent: 'center',
+                                        color: 'white'
+                                    }}
+                                >
                                     <Users size={24} />
                                 </div>
                                 <div>
-                                    <p style={{ margin: 0, fontSize: '0.85rem', color: '#666' }}>Chef de projet</p>
-                                    <p style={{ margin: '4px 0 0 0', fontWeight: '600', color: '#333' }}>
+                                    <p
+                                        style={{
+                                            margin: 0,
+                                            fontSize: '0.85rem',
+                                            color: '#666'
+                                        }}
+                                    >
+                                        Chef de projet
+                                    </p>
+                                    <p
+                                        style={{
+                                            margin: '4px 0 0 0',
+                                            fontWeight: '600',
+                                            color: '#333'
+                                        }}
+                                    >
                                         {project.projectManagerName || 'Non assigné'}
                                     </p>
                                 </div>
                             </div>
 
-                            <div style={{
-                                display: 'flex',
-                                alignItems: 'center',
-                                gap: '16px',
-                                padding: '16px',
-                                background: '#f8f9fa',
-                                borderRadius: '12px'
-                            }}>
-                                <div style={{
-                                    width: '48px',
-                                    height: '48px',
-                                    borderRadius: '12px',
-                                    background: 'linear-gradient(135deg, #2196F3, #1976D2)',
+                            <div
+                                style={{
                                     display: 'flex',
                                     alignItems: 'center',
-                                    justifyContent: 'center',
-                                    color: 'white'
-                                }}>
+                                    gap: '16px',
+                                    padding: '16px',
+                                    background: '#f8f9fa',
+                                    borderRadius: '12px'
+                                }}
+                            >
+                                <div
+                                    style={{
+                                        width: '48px',
+                                        height: '48px',
+                                        borderRadius: '12px',
+                                        background: 'linear-gradient(135deg, #2196F3, #1976D2)',
+                                        display: 'flex',
+                                        alignItems: 'center',
+                                        justifyContent: 'center',
+                                        color: 'white'
+                                    }}
+                                >
                                     <Users size={24} />
                                 </div>
                                 <div>
-                                    <p style={{ margin: 0, fontSize: '0.85rem', color: '#666' }}>Équipe</p>
-                                    <p style={{ margin: '4px 0 0 0', fontWeight: '600', color: '#333' }}>
+                                    <p
+                                        style={{
+                                            margin: 0,
+                                            fontSize: '0.85rem',
+                                            color: '#666'
+                                        }}
+                                    >
+                                        Équipe
+                                    </p>
+                                    <p
+                                        style={{
+                                            margin: '4px 0 0 0',
+                                            fontWeight: '600',
+                                            color: '#333'
+                                        }}
+                                    >
                                         {project.teamName || 'Non assignée'}
                                     </p>
                                 </div>
                             </div>
 
-                            <div style={{
-                                display: 'flex',
-                                alignItems: 'center',
-                                gap: '16px',
-                                padding: '16px',
-                                background: '#f8f9fa',
-                                borderRadius: '12px'
-                            }}>
-                                <div style={{
-                                    width: '48px',
-                                    height: '48px',
-                                    borderRadius: '12px',
-                                    background: 'linear-gradient(135deg, #4CAF50, #388E3C)',
+                            <div
+                                style={{
                                     display: 'flex',
                                     alignItems: 'center',
-                                    justifyContent: 'center',
-                                    color: 'white'
-                                }}>
+                                    gap: '16px',
+                                    padding: '16px',
+                                    background: '#f8f9fa',
+                                    borderRadius: '12px'
+                                }}
+                            >
+                                <div
+                                    style={{
+                                        width: '48px',
+                                        height: '48px',
+                                        borderRadius: '12px',
+                                        background: 'linear-gradient(135deg, #4CAF50, #388E3C)',
+                                        display: 'flex',
+                                        alignItems: 'center',
+                                        justifyContent: 'center',
+                                        color: 'white'
+                                    }}
+                                >
                                     <Calendar size={24} />
                                 </div>
                                 <div>
-                                    <p style={{ margin: 0, fontSize: '0.85rem', color: '#666' }}>Date de début</p>
-                                    <p style={{ margin: '4px 0 0 0', fontWeight: '600', color: '#333' }}>
+                                    <p
+                                        style={{
+                                            margin: 0,
+                                            fontSize: '0.85rem',
+                                            color: '#666'
+                                        }}
+                                    >
+                                        Date de début
+                                    </p>
+                                    <p
+                                        style={{
+                                            margin: '4px 0 0 0',
+                                            fontWeight: '600',
+                                            color: '#333'
+                                        }}
+                                    >
                                         {formatDate(project.startDate)}
                                     </p>
                                 </div>
                             </div>
 
-                            <div style={{
-                                display: 'flex',
-                                alignItems: 'center',
-                                gap: '16px',
-                                padding: '16px',
-                                background: '#f8f9fa',
-                                borderRadius: '12px'
-                            }}>
-                                <div style={{
-                                    width: '48px',
-                                    height: '48px',
-                                    borderRadius: '12px',
-                                    background: 'linear-gradient(135deg, #FF9800, #F57C00)',
+                            <div
+                                style={{
                                     display: 'flex',
                                     alignItems: 'center',
-                                    justifyContent: 'center',
-                                    color: 'white'
-                                }}>
+                                    gap: '16px',
+                                    padding: '16px',
+                                    background: '#f8f9fa',
+                                    borderRadius: '12px'
+                                }}
+                            >
+                                <div
+                                    style={{
+                                        width: '48px',
+                                        height: '48px',
+                                        borderRadius: '12px',
+                                        background: 'linear-gradient(135deg, #FF9800, #F57C00)',
+                                        display: 'flex',
+                                        alignItems: 'center',
+                                        justifyContent: 'center',
+                                        color: 'white'
+                                    }}
+                                >
                                     <Clock size={24} />
                                 </div>
                                 <div>
-                                    <p style={{ margin: 0, fontSize: '0.85rem', color: '#666' }}>Date de fin</p>
-                                    <p style={{ margin: '4px 0 0 0', fontWeight: '600', color: '#333' }}>
+                                    <p
+                                        style={{
+                                            margin: 0,
+                                            fontSize: '0.85rem',
+                                            color: '#666'
+                                        }}
+                                    >
+                                        Date de fin
+                                    </p>
+                                    <p
+                                        style={{
+                                            margin: '4px 0 0 0',
+                                            fontWeight: '600',
+                                            color: '#333'
+                                        }}
+                                    >
                                         {formatDate(project.endDate)}
                                     </p>
                                 </div>
@@ -368,26 +514,51 @@ const ProjectDetails = () => {
 
                     {/* Tasks List */}
                     <div className="recent-section">
-                        <h3>✅ Mes tâches sur ce projet</h3>
+                        <h3>✅ Tâches de ce projet</h3>
 
                         {tasks.length === 0 ? (
                             <div className="no-data">
                                 <CheckSquare size={64} color="#ccc" />
-                                <p>Aucune tâche assignée sur ce projet</p>
+                                <p>Aucune tâche pour ce projet</p>
                             </div>
                         ) : (
                             <div className="task-list">
-                                {tasks.map(task => (
+                                {tasks.map((task) => (
                                     <div
                                         key={task.taskId}
-                                        className={`task-item ${isOverdue(task.deadline, task.status) ? 'overdue' : ''}`}
+                                        className={`task-item ${isOverdue(task.deadline, task.status) ? 'overdue' : ''
+                                            }`}
                                     >
-                                        <div className={`task-status ${getStatusClass(task.status)}`}></div>
+                                        <div
+                                            className={`task-status ${getStatusClass(task.status)}`}
+                                        ></div>
 
                                         <div className="task-details">
                                             <h4>{task.taskName}</h4>
+
+                                            {/* Badge de statut */}
+                                            <span
+                                                style={{
+                                                    display: 'inline-flex',
+                                                    alignItems: 'center',
+                                                    padding: '4px 10px',
+                                                    borderRadius: '999px',
+                                                    fontSize: '0.75rem',
+                                                    fontWeight: 600,
+                                                    margin: '4px 0 8px 0',
+                                                    ...getStatusStyle(task.status)
+                                                }}
+                                            >
+                                                {getDisplayStatus(task.status)}
+                                            </span>
+
                                             {task.description && <p>{task.description}</p>}
-                                            <span className={`task-priority ${getPriorityClass(task.priority)}`}>
+
+                                            <span
+                                                className={`task-priority ${getPriorityClass(
+                                                    task.priority
+                                                )}`}
+                                            >
                                                 {task.priority} Priorité
                                             </span>
                                         </div>
@@ -398,16 +569,16 @@ const ProjectDetails = () => {
                                             </span>
 
                                             {isOverdue(task.deadline, task.status) && (
-                                                <span className="overdue-badge">
-                                                    ⚠️ EN RETARD
-                                                </span>
+                                                <span className="overdue-badge">⚠️ EN RETARD</span>
                                             )}
 
                                             {task.progress !== undefined && (
                                                 <div className="progress-wrapper">
                                                     <div className="progress-container">
                                                         <div
-                                                            className={`progress-fill ${getProgressClass(task.progress)}`}
+                                                            className={`progress-fill ${getProgressClass(
+                                                                task.progress
+                                                            )}`}
                                                             style={{ width: `${task.progress}%` }}
                                                         ></div>
                                                     </div>

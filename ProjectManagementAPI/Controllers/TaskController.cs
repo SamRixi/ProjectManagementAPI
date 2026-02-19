@@ -73,6 +73,21 @@ namespace ProjectManagementAPI.Controllers
             return Ok(result);
         }
 
+        // ✅ PUT api/Task/{taskId}/progress
+        [HttpPut("{taskId}/progress")]
+        public async Task<IActionResult> UpdateTaskProgress(int taskId, [FromBody] UpdateProgressDTO dto)
+        {
+            var userId = GetCurrentUserId();
+
+            // méthode à avoir dans ITaskService et ProjectTaskService
+            var result = await _taskService.UpdateTaskProgressAsync(taskId, dto.Progress, userId);
+
+            if (!result.Success)
+                return BadRequest(result);
+
+            return Ok(result);
+        }
+
         // PUT api/Task/{taskId}/validate
         [HttpPut("{taskId}/validate")]
         public async Task<IActionResult> ValidateTask(int taskId)

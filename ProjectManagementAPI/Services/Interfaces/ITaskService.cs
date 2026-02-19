@@ -21,5 +21,6 @@ namespace ProjectManagementAPI.Services.Interfaces
 
         // DELETE
         Task<ApiResponse<bool>> DeleteTaskAsync(int taskId);
+        Task<ApiResponse<TaskDTO>> UpdateTaskProgressAsync(int taskId, int progress, int userId);
     }
 }

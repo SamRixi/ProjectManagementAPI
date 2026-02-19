@@ -17,7 +17,6 @@ const getDashboardData = async () => {
             };
         }
 
-        // ✅ CORRECTION : Enlever /api (déjà dans baseURL)
         const response = await api.get(`/developer/${userId}/dashboard`);
         return response.data;
     } catch (error) {
@@ -34,7 +33,6 @@ const updateTask = async (taskId, updateData) => {
     try {
         console.log('📤 Sending update request:', { taskId, updateData });
 
-        // ✅ Appel direct à l'endpoint developer
         const response = await api.put(`/developer/tasks/${taskId}`, updateData);
         console.log('✅ Update successful:', response.data);
         return response.data;
@@ -47,7 +45,7 @@ const updateTask = async (taskId, updateData) => {
     }
 };
 
-// ============= GET ALL TASKS =============
+// ============= GET ALL TASKS (DU DEV CONNECTÉ) =============
 const getAllTasks = async () => {
     try {
         const userId = getUserId();
@@ -59,7 +57,6 @@ const getAllTasks = async () => {
             };
         }
 
-        // ✅ CORRECTION : Enlever /api
         const response = await api.get(`/developer/${userId}/tasks`);
         return response.data;
     } catch (error) {
@@ -83,7 +80,6 @@ const getProjects = async () => {
             };
         }
 
-        // ✅ CORRECTION : Enlever /api
         const response = await api.get(`/developer/${userId}/projects`);
         return response.data;
     } catch (error) {
@@ -98,7 +94,6 @@ const getProjects = async () => {
 // ============= GET PROJECT DETAILS =============
 const getProjectDetails = async (projectId) => {
     try {
-        // ✅ CORRECTION : Enlever /api
         const response = await api.get(`/developer/projects/${projectId}`);
         return response.data;
     } catch (error) {
@@ -110,10 +105,25 @@ const getProjectDetails = async (projectId) => {
     }
 };
 
+// ============= GET ALL TASKS OF A PROJECT (TOUTE L'ÉQUIPE) =============
+const getProjectAllTasks = async (projectId) => {
+    try {
+        const response = await api.get(`/developer/projects/${projectId}/all-tasks`);
+        return response.data;
+    } catch (error) {
+        console.error('❌ Error fetching project all tasks:', error);
+        return {
+            success: false,
+            message: error.response?.data?.message || 'Erreur lors du chargement des tâches du projet'
+        };
+    }
+};
+
 export default {
     getDashboardData,
     updateTask,
     getAllTasks,
     getProjects,
-    getProjectDetails
+    getProjectDetails,
+    getProjectAllTasks
 };

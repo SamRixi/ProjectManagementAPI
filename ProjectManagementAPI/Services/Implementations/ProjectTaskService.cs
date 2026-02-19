@@ -27,12 +27,10 @@ namespace ProjectManagementAPI.Services.Implementations
                     .Include(t => t.CreatedByUser)
                     .ToListAsync();
 
-                var taskDtos = tasks.Select(t => MapToDto(t)).ToList();
-
                 return new ApiResponse<List<TaskDTO>>
                 {
                     Success = true,
-                    Data = taskDtos,
+                    Data = tasks.Select(t => MapToDto(t)).ToList(),
                     Message = "Tâches récupérées avec succès"
                 };
             }
@@ -59,13 +57,8 @@ namespace ProjectManagementAPI.Services.Implementations
                     .FirstOrDefaultAsync(t => t.ProjectTaskId == taskId);
 
                 if (task == null)
-                {
                     return new ApiResponse<TaskDTO>
-                    {
-                        Success = false,
-                        Message = "Tâche non trouvée"
-                    };
-                }
+                    { Success = false, Message = "Tâche non trouvée" };
 
                 return new ApiResponse<TaskDTO>
                 {
@@ -77,10 +70,7 @@ namespace ProjectManagementAPI.Services.Implementations
             catch (Exception ex)
             {
                 return new ApiResponse<TaskDTO>
-                {
-                    Success = false,
-                    Message = $"Erreur : {ex.Message}"
-                };
+                { Success = false, Message = $"Erreur : {ex.Message}" };
             }
         }
 
@@ -91,25 +81,15 @@ namespace ProjectManagementAPI.Services.Implementations
             {
                 var project = await _context.Projects.FindAsync(dto.ProjectId);
                 if (project == null)
-                {
                     return new ApiResponse<TaskDTO>
-                    {
-                        Success = false,
-                        Message = "Projet non trouvé"
-                    };
-                }
+                    { Success = false, Message = "Projet non trouvé" };
 
                 if (dto.AssignedToUserId.HasValue)
                 {
                     var user = await _context.Users.FindAsync(dto.AssignedToUserId.Value);
                     if (user == null)
-                    {
                         return new ApiResponse<TaskDTO>
-                        {
-                            Success = false,
-                            Message = "Utilisateur assigné non trouvé"
-                        };
-                    }
+                        { Success = false, Message = "Utilisateur assigné non trouvé" };
                 }
 
                 var task = new ProjectTask
@@ -120,7 +100,7 @@ namespace ProjectManagementAPI.Services.Implementations
                     Progress = 0,
                     IsValidated = false,
                     ProjectId = dto.ProjectId,
-                    TaskStatusId = 1, // À faire par défaut
+                    TaskStatusId = 1, // À faire
                     PriorityId = dto.PriorityId,
                     AssignedToUserId = dto.AssignedToUserId,
                     CreatedByUserId = createdByUserId,
@@ -128,11 +108,9 @@ namespace ProjectManagementAPI.Services.Implementations
 
                 _context.ProjectTasks.Add(task);
 
-                // ✅ Si le projet est encore "Planifié" (1), on le passe en "En cours" (2)
+                // Si projet "Planifié" → passe en "En cours"
                 if (project.ProjectStatusId == 1)
-                {
-                    project.ProjectStatusId = 2; // 2 = En cours
-                }
+                    project.ProjectStatusId = 2;
 
                 await _context.SaveChangesAsync();
 
@@ -152,15 +130,74 @@ namespace ProjectManagementAPI.Services.Implementations
             catch (Exception ex)
             {
                 return new ApiResponse<TaskDTO>
-                {
-                    Success = false,
-                    Message = $"Erreur : {ex.Message}"
-                };
+                { Success = false, Message = $"Erreur : {ex.Message}" };
             }
         }
 
+        // ✅ UPDATE task progress (Développeur — 1% par 1%)
+        public async Task<ApiResponse<TaskDTO>> UpdateTaskProgressAsync(int taskId, int progress, int userId)
+        {
+            try
+            {
+                var task = await _context.ProjectTasks
+                    .Include(t => t.ProjectTasksStatus)
+                    .Include(t => t.Priority)
+                    .Include(t => t.AssignedToUser)
+                    .FirstOrDefaultAsync(t => t.ProjectTaskId == taskId);
 
-        // UPDATE task status
+                if (task == null)
+                    return new ApiResponse<TaskDTO>
+                    { Success = false, Message = "Tâche non trouvée" };
+
+                // Seulement le dev assigné peut modifier
+                if (task.AssignedToUserId != userId)
+                    return new ApiResponse<TaskDTO>
+                    { Success = false, Message = "Vous ne pouvez modifier que vos propres tâches" };
+
+                // Validation de la valeur
+                if (progress < 0 || progress > 100)
+                    return new ApiResponse<TaskDTO>
+                    { Success = false, Message = "La progression doit être entre 0 et 100" };
+
+                // Tâche déjà validée → bloquée
+                if (task.IsValidated)
+                    return new ApiResponse<TaskDTO>
+                    { Success = false, Message = "Tâche déjà validée, modification impossible" };
+
+                task.Progress = progress;
+
+                // ✅ Statut automatique selon progression
+                task.TaskStatusId = progress switch
+                {
+                    0 => 1,    // À faire
+                    100 => 4,  // En attente de validation
+                    _ => 2     // En cours
+                };
+
+                // Reset validation si le dev revient en arrière
+                if (progress < 100)
+                    task.IsValidated = false;
+
+                await _context.SaveChangesAsync();
+
+                // ✅ Recalcule la progression du projet
+                await RecalculateProjectProgressAsync(task.ProjectId);
+
+                return new ApiResponse<TaskDTO>
+                {
+                    Success = true,
+                    Data = MapToDto(task),
+                    Message = $"Progression mise à jour : {progress}%"
+                };
+            }
+            catch (Exception ex)
+            {
+                return new ApiResponse<TaskDTO>
+                { Success = false, Message = $"Erreur : {ex.Message}" };
+            }
+        }
+
+        // UPDATE task status (garde pour compatibilité)
         public async Task<ApiResponse<TaskDTO>> UpdateTaskStatusAsync(int taskId, int statusId, int userId)
         {
             try
@@ -171,38 +208,27 @@ namespace ProjectManagementAPI.Services.Implementations
                     .FirstOrDefaultAsync(t => t.ProjectTaskId == taskId);
 
                 if (task == null)
-                {
                     return new ApiResponse<TaskDTO>
-                    {
-                        Success = false,
-                        Message = "Tâche non trouvée"
-                    };
-                }
+                    { Success = false, Message = "Tâche non trouvée" };
 
                 if (task.AssignedToUserId != userId)
-                {
                     return new ApiResponse<TaskDTO>
-                    {
-                        Success = false,
-                        Message = "Vous ne pouvez modifier que vos propres tâches"
-                    };
-                }
+                    { Success = false, Message = "Vous ne pouvez modifier que vos propres tâches" };
 
-                // statut demandé par le dev
                 task.TaskStatusId = statusId;
 
-                // ✅ RÈGLE MÉTIER AUTOMATIQUE
-                // 1 = À faire, 2 = En cours, 3 = Terminé, 4 = En attente de validation, 5 = Validé
-
-                // Si le dev met "Terminé" (3) → on force "En attente de validation" (4) + 100%
+                // Si dev met "Terminé" → force En attente de validation + 100%
                 if (statusId == 3)
                 {
                     task.Progress = 100;
-                    task.TaskStatusId = 4;   // En attente de validation
+                    task.TaskStatusId = 4;
                     task.IsValidated = false;
                 }
 
                 await _context.SaveChangesAsync();
+
+                // ✅ Recalcule aussi ici
+                await RecalculateProjectProgressAsync(task.ProjectId);
 
                 return new ApiResponse<TaskDTO>
                 {
@@ -214,12 +240,10 @@ namespace ProjectManagementAPI.Services.Implementations
             catch (Exception ex)
             {
                 return new ApiResponse<TaskDTO>
-                {
-                    Success = false,
-                    Message = $"Erreur : {ex.Message}"
-                };
+                { Success = false, Message = $"Erreur : {ex.Message}" };
             }
         }
+
         // VALIDATE task (Chef de Projet only)
         public async Task<ApiResponse<TaskDTO>> ValidateTaskAsync(int taskId, int userId)
         {
@@ -232,39 +256,25 @@ namespace ProjectManagementAPI.Services.Implementations
                     .FirstOrDefaultAsync(t => t.ProjectTaskId == taskId);
 
                 if (task == null)
-                {
                     return new ApiResponse<TaskDTO>
-                    {
-                        Success = false,
-                        Message = "Tâche non trouvée"
-                    };
-                }
+                    { Success = false, Message = "Tâche non trouvée" };
 
                 if (task.Project.ProjectManagerId != userId)
-                {
                     return new ApiResponse<TaskDTO>
-                    {
-                        Success = false,
-                        Message = "Seul le Chef de Projet peut valider une tâche"
-                    };
-                }
+                    { Success = false, Message = "Seul le Chef de Projet peut valider une tâche" };
 
-                // ✅ La tâche doit être en attente de validation (4)
                 if (task.TaskStatusId != 4)
-                {
                     return new ApiResponse<TaskDTO>
-                    {
-                        Success = false,
-                        Message = "La tâche doit être en attente de validation"
-                    };
-                }
+                    { Success = false, Message = "La tâche doit être en attente de validation" };
 
                 task.IsValidated = true;
-                task.TaskStatusId = 5;           // 5 = Validé
+                task.TaskStatusId = 5; // Validé
                 task.ValidatedByUserId = userId;
                 task.ValidatedAt = DateTime.UtcNow;
 
                 await _context.SaveChangesAsync();
+
+                // ✅ Recalcule après validation
                 await RecalculateProjectProgressAsync(task.ProjectId);
 
                 return new ApiResponse<TaskDTO>
@@ -277,13 +287,9 @@ namespace ProjectManagementAPI.Services.Implementations
             catch (Exception ex)
             {
                 return new ApiResponse<TaskDTO>
-                {
-                    Success = false,
-                    Message = $"Erreur : {ex.Message}"
-                };
+                { Success = false, Message = $"Erreur : {ex.Message}" };
             }
         }
-
 
         // GET tasks by project
         public async Task<ApiResponse<List<TaskDTO>>> GetTasksByProjectAsync(int projectId)
@@ -297,22 +303,17 @@ namespace ProjectManagementAPI.Services.Implementations
                     .Include(t => t.AssignedToUser)
                     .ToListAsync();
 
-                var taskDtos = tasks.Select(t => MapToDto(t)).ToList();
-
                 return new ApiResponse<List<TaskDTO>>
                 {
                     Success = true,
-                    Data = taskDtos,
+                    Data = tasks.Select(t => MapToDto(t)).ToList(),
                     Message = "Tâches du projet récupérées avec succès"
                 };
             }
             catch (Exception ex)
             {
                 return new ApiResponse<List<TaskDTO>>
-                {
-                    Success = false,
-                    Message = $"Erreur : {ex.Message}"
-                };
+                { Success = false, Message = $"Erreur : {ex.Message}" };
             }
         }
 
@@ -328,22 +329,17 @@ namespace ProjectManagementAPI.Services.Implementations
                     .Include(t => t.Project)
                     .ToListAsync();
 
-                var taskDtos = tasks.Select(t => MapToDto(t)).ToList();
-
                 return new ApiResponse<List<TaskDTO>>
                 {
                     Success = true,
-                    Data = taskDtos,
+                    Data = tasks.Select(t => MapToDto(t)).ToList(),
                     Message = "Tâches de l'utilisateur récupérées avec succès"
                 };
             }
             catch (Exception ex)
             {
                 return new ApiResponse<List<TaskDTO>>
-                {
-                    Success = false,
-                    Message = $"Erreur : {ex.Message}"
-                };
+                { Success = false, Message = $"Erreur : {ex.Message}" };
             }
         }
 
@@ -354,13 +350,8 @@ namespace ProjectManagementAPI.Services.Implementations
             {
                 var task = await _context.ProjectTasks.FindAsync(taskId);
                 if (task == null)
-                {
                     return new ApiResponse<bool>
-                    {
-                        Success = false,
-                        Message = "Tâche non trouvée"
-                    };
-                }
+                    { Success = false, Message = "Tâche non trouvée" };
 
                 _context.ProjectTasks.Remove(task);
                 await _context.SaveChangesAsync();
@@ -375,37 +366,41 @@ namespace ProjectManagementAPI.Services.Implementations
             catch (Exception ex)
             {
                 return new ApiResponse<bool>
-                {
-                    Success = false,
-                    Message = $"Erreur : {ex.Message}"
-                };
+                { Success = false, Message = $"Erreur : {ex.Message}" };
             }
         }
 
-        // HELPER: Recalculate project progress
+        // ✅ HELPER: Recalculate project progress (moyenne de toutes les tâches)
         private async Task RecalculateProjectProgressAsync(int projectId)
         {
             var tasks = await _context.ProjectTasks
                 .Where(t => t.ProjectId == projectId)
                 .ToListAsync();
 
-            if (tasks.Count == 0) return;
-
-            var validatedTasks = tasks.Count(t => t.IsValidated);
-            var progress = (int)((decimal)validatedTasks / tasks.Count * 100);
-
             var project = await _context.Projects.FindAsync(projectId);
-            if (project != null)
+            if (project == null) return;
+
+            if (tasks.Count == 0)
             {
-                project.Progress = progress;
-
-                if (progress == 100)
-                {
-                    project.ProjectStatusId = 3; // Terminé
-                }
-
-                await _context.SaveChangesAsync();
+                project.Progress = 0;
             }
+            else
+            {
+                // ✅ Moyenne de la progression de TOUTES les tâches
+                project.Progress = (int)Math.Round(
+                    tasks.Average(t => (double)t.Progress)
+                );
+            }
+
+            // ✅ Statut projet automatique
+            project.ProjectStatusId = project.Progress switch
+            {
+                0 => 1,    // Planifié
+                100 => 3,  // Terminé
+                _ => 2     // En cours
+            };
+
+            await _context.SaveChangesAsync();
         }
 
         // HELPER: Map ProjectTask to DTO
@@ -430,6 +425,5 @@ namespace ProjectManagementAPI.Services.Implementations
                 CreatedAt = DateTime.UtcNow
             };
         }
-
     }
 }
