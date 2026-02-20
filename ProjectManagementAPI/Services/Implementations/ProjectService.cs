@@ -13,16 +13,13 @@ public class ProjectService : IProjectService
         _context = context;
     }
 
-    // ✅ Constantes des statuts projet (à adapter selon ta table ProjectStatus)
     private const int STATUS_PLANIFIE = 1;
     private const int STATUS_EN_COURS = 2;
     private const int STATUS_TERMINE = 3;
     private const int STATUS_ANNULE = 4;
 
-    // ✅ Recalcule le statut du projet automatiquement
     private async Task RecalculateProjectStatusAsync(Project project)
     {
-        // Ne pas toucher aux projets annulés
         if (project.ProjectStatusId == STATUS_ANNULE)
             return;
 
@@ -32,34 +29,24 @@ public class ProjectService : IProjectService
 
         if (!tasks.Any())
         {
-            // Pas de tâches → Planifié
             project.ProjectStatusId = STATUS_PLANIFIE;
             project.Progress = 0;
             return;
         }
 
-        // Calcul progression (moyenne des Progress des tâches)
         var avgProgress = (int)Math.Round(tasks.Average(t => t.Progress));
         project.Progress = avgProgress;
 
-        // Si projet était "Terminé" mais nouvelles tâches pas 100% → repasser En cours
-        if (project.ProjectStatusId == STATUS_TERMINE)
-        {
-            bool allCompleted = tasks.All(t => t.Progress == 100);
-            if (!allCompleted)
-                project.ProjectStatusId = STATUS_EN_COURS;
-        }
+        var validatedTasks = tasks.Count(t => t.IsValidated);
+
+        if (tasks.Count > 0 && validatedTasks == tasks.Count)
+            project.ProjectStatusId = STATUS_TERMINE;
+        else if (avgProgress == 0)
+            project.ProjectStatusId = STATUS_PLANIFIE;
         else
-        {
-            // Logique normale
-            if (avgProgress == 0)
-                project.ProjectStatusId = STATUS_PLANIFIE;
-            else
-                project.ProjectStatusId = STATUS_EN_COURS;
-        }
+            project.ProjectStatusId = STATUS_EN_COURS;
     }
 
-    // ✅ Clôturer un projet manuellement (chef de projet)
     public async Task<ApiResponse<bool>> CloseProjectAsync(int projectId)
     {
         try
@@ -69,28 +56,13 @@ public class ProjectService : IProjectService
                 .FirstOrDefaultAsync(p => p.ProjectId == projectId);
 
             if (project == null)
-                return new ApiResponse<bool>
-                {
-                    Success = false,
-                    Message = "Projet introuvable"
-                };
+                return new ApiResponse<bool> { Success = false, Message = "Projet introuvable" };
 
             if (project.ProjectStatusId == STATUS_ANNULE)
-                return new ApiResponse<bool>
-                {
-                    Success = false,
-                    Message = "Impossible de clôturer un projet annulé"
-                };
+                return new ApiResponse<bool> { Success = false, Message = "Impossible de clôturer un projet annulé" };
 
-            // ✅ Vérifier si des tâches non terminées existent
-            var unfinishedTasks = project.ProjectTasks?
-                .Where(t => t.Progress < 100)
-                .ToList();
-
-            // Le chef clôture : on met seulement le statut à Terminé,
-            // on NE force PAS Progress, il reste celui calculé à partir des tâches.
+            var unfinishedTasks = project.ProjectTasks?.Where(t => t.Progress < 100).ToList();
             project.ProjectStatusId = STATUS_TERMINE;
-
             await _context.SaveChangesAsync();
 
             return new ApiResponse<bool>
@@ -104,11 +76,7 @@ public class ProjectService : IProjectService
         }
         catch (Exception ex)
         {
-            return new ApiResponse<bool>
-            {
-                Success = false,
-                Message = $"Erreur: {ex.Message}"
-            };
+            return new ApiResponse<bool> { Success = false, Message = $"Erreur: {ex.Message}" };
         }
     }
 
@@ -151,11 +119,7 @@ public class ProjectService : IProjectService
         }
         catch (Exception ex)
         {
-            return new ApiResponse<ProjectDTO>
-            {
-                Success = false,
-                Message = $"Erreur: {ex.Message}"
-            };
+            return new ApiResponse<ProjectDTO> { Success = false, Message = $"Erreur: {ex.Message}" };
         }
     }
 
@@ -165,11 +129,7 @@ public class ProjectService : IProjectService
         {
             var edb = await _context.EDBs.FindAsync(dto.EdbId);
             if (edb == null)
-                return new ApiResponse<ProjectDTO>
-                {
-                    Success = false,
-                    Message = "EDB introuvable"
-                };
+                return new ApiResponse<ProjectDTO> { Success = false, Message = "EDB introuvable" };
 
             var project = new Project
             {
@@ -209,11 +169,7 @@ public class ProjectService : IProjectService
         }
         catch (Exception ex)
         {
-            return new ApiResponse<ProjectDTO>
-            {
-                Success = false,
-                Message = $"Erreur: {ex.Message}"
-            };
+            return new ApiResponse<ProjectDTO> { Success = false, Message = $"Erreur: {ex.Message}" };
         }
     }
 
@@ -222,13 +178,8 @@ public class ProjectService : IProjectService
         try
         {
             var project = await _context.Projects.FindAsync(dto.ProjectId);
-
             if (project == null)
-                return new ApiResponse<ProjectDTO>
-                {
-                    Success = false,
-                    Message = "Projet introuvable"
-                };
+                return new ApiResponse<ProjectDTO> { Success = false, Message = "Projet introuvable" };
 
             project.ProjectName = dto.ProjectName;
             project.Description = dto.Description;
@@ -256,11 +207,7 @@ public class ProjectService : IProjectService
         }
         catch (Exception ex)
         {
-            return new ApiResponse<ProjectDTO>
-            {
-                Success = false,
-                Message = $"Erreur: {ex.Message}"
-            };
+            return new ApiResponse<ProjectDTO> { Success = false, Message = $"Erreur: {ex.Message}" };
         }
     }
 
@@ -269,31 +216,17 @@ public class ProjectService : IProjectService
         try
         {
             var project = await _context.Projects.FindAsync(projectId);
-
             if (project == null)
-                return new ApiResponse<bool>
-                {
-                    Success = false,
-                    Message = "Projet introuvable"
-                };
+                return new ApiResponse<bool> { Success = false, Message = "Projet introuvable" };
 
             _context.Projects.Remove(project);
             await _context.SaveChangesAsync();
 
-            return new ApiResponse<bool>
-            {
-                Success = true,
-                Message = "Projet supprimé",
-                Data = true
-            };
+            return new ApiResponse<bool> { Success = true, Message = "Projet supprimé", Data = true };
         }
         catch (Exception ex)
         {
-            return new ApiResponse<bool>
-            {
-                Success = false,
-                Message = $"Erreur: {ex.Message}"
-            };
+            return new ApiResponse<bool> { Success = false, Message = $"Erreur: {ex.Message}" };
         }
     }
 
@@ -306,36 +239,22 @@ public class ProjectService : IProjectService
                 .FirstOrDefaultAsync(p => p.ProjectId == projectId);
 
             if (project == null)
-                return new ApiResponse<bool>
-                {
-                    Success = false,
-                    Message = "Projet introuvable"
-                };
+                return new ApiResponse<bool> { Success = false, Message = "Projet introuvable" };
 
             project.ProjectStatusId = STATUS_ANNULE;
 
             if (project.ProjectTasks != null && project.ProjectTasks.Any())
             {
                 foreach (var task in project.ProjectTasks)
-                    task.TaskStatusId = 6; // Annulé
+                    task.TaskStatusId = 6;
             }
 
             await _context.SaveChangesAsync();
-
-            return new ApiResponse<bool>
-            {
-                Success = true,
-                Message = "Projet annulé avec succès",
-                Data = true
-            };
+            return new ApiResponse<bool> { Success = true, Message = "Projet annulé avec succès", Data = true };
         }
         catch (Exception ex)
         {
-            return new ApiResponse<bool>
-            {
-                Success = false,
-                Message = $"Erreur: {ex.Message}"
-            };
+            return new ApiResponse<bool> { Success = false, Message = $"Erreur: {ex.Message}" };
         }
     }
 
@@ -356,11 +275,7 @@ public class ProjectService : IProjectService
                 .FirstOrDefaultAsync(p => p.ProjectId == projectId);
 
             if (project == null)
-                return new ApiResponse<ProjectDetailsDTO>
-                {
-                    Success = false,
-                    Message = "Projet introuvable"
-                };
+                return new ApiResponse<ProjectDetailsDTO> { Success = false, Message = "Projet introuvable" };
 
             var details = new ProjectDetailsDTO
             {
@@ -401,20 +316,11 @@ public class ProjectService : IProjectService
                 CreatedAt = project.CreatedAt
             };
 
-            return new ApiResponse<ProjectDetailsDTO>
-            {
-                Success = true,
-                Message = "Projet récupéré",
-                Data = details
-            };
+            return new ApiResponse<ProjectDetailsDTO> { Success = true, Message = "Projet récupéré", Data = details };
         }
         catch (Exception ex)
         {
-            return new ApiResponse<ProjectDetailsDTO>
-            {
-                Success = false,
-                Message = $"Erreur: {ex.Message}"
-            };
+            return new ApiResponse<ProjectDetailsDTO> { Success = false, Message = $"Erreur: {ex.Message}" };
         }
     }
 
@@ -440,11 +346,7 @@ public class ProjectService : IProjectService
         }
         catch (Exception ex)
         {
-            return new ApiResponse<List<ProjectDTO>>
-            {
-                Success = false,
-                Message = $"Erreur: {ex.Message}"
-            };
+            return new ApiResponse<List<ProjectDTO>> { Success = false, Message = $"Erreur: {ex.Message}" };
         }
     }
 
@@ -471,11 +373,7 @@ public class ProjectService : IProjectService
         }
         catch (Exception ex)
         {
-            return new ApiResponse<List<ProjectDTO>>
-            {
-                Success = false,
-                Message = $"Erreur: {ex.Message}"
-            };
+            return new ApiResponse<List<ProjectDTO>> { Success = false, Message = $"Erreur: {ex.Message}" };
         }
     }
 
@@ -533,18 +431,13 @@ public class ProjectService : IProjectService
                 .FirstOrDefaultAsync(p => p.ProjectId == projectId);
 
             if (project == null)
-                return new ApiResponse<ProjectStatsDTO>
-                {
-                    Success = false,
-                    Message = "Projet introuvable"
-                };
+                return new ApiResponse<ProjectStatsDTO> { Success = false, Message = "Projet introuvable" };
 
             var stats = new ProjectStatsDTO
             {
                 ProjectId = project.ProjectId,
                 ProjectName = project.ProjectName,
                 TotalTasks = project.ProjectTasks?.Count ?? 0,
-                // ✅ Terminé = Progress == 100, validé ou non
                 CompletedTasks = project.ProjectTasks?.Count(t => t.Progress == 100) ?? 0,
                 InProgressTasks = project.ProjectTasks?.Count(t => t.Progress > 0 && t.Progress < 100) ?? 0,
                 TodoTasks = project.ProjectTasks?.Count(t => t.Progress == 0) ?? 0,
@@ -554,20 +447,11 @@ public class ProjectService : IProjectService
                 IsDelayed = project.EndDate.HasValue && project.EndDate < DateTime.UtcNow && project.Progress < 100
             };
 
-            return new ApiResponse<ProjectStatsDTO>
-            {
-                Success = true,
-                Message = "Statistiques récupérées",
-                Data = stats
-            };
+            return new ApiResponse<ProjectStatsDTO> { Success = true, Message = "Statistiques récupérées", Data = stats };
         }
         catch (Exception ex)
         {
-            return new ApiResponse<ProjectStatsDTO>
-            {
-                Success = false,
-                Message = $"Erreur: {ex.Message}"
-            };
+            return new ApiResponse<ProjectStatsDTO> { Success = false, Message = $"Erreur: {ex.Message}" };
         }
     }
 
@@ -586,20 +470,11 @@ public class ProjectService : IProjectService
             project.TeamId = teamId;
             await _context.SaveChangesAsync();
 
-            return new ApiResponse<bool>
-            {
-                Success = true,
-                Message = "Équipe assignée au projet",
-                Data = true
-            };
+            return new ApiResponse<bool> { Success = true, Message = "Équipe assignée au projet", Data = true };
         }
         catch (Exception)
         {
-            return new ApiResponse<bool>
-            {
-                Success = false,
-                Message = "Erreur lors de l'assignation"
-            };
+            return new ApiResponse<bool> { Success = false, Message = "Erreur lors de l'assignation" };
         }
     }
 
@@ -623,11 +498,7 @@ public class ProjectService : IProjectService
         }
         catch (Exception)
         {
-            return new ApiResponse<bool>
-            {
-                Success = false,
-                Message = "Erreur lors de la modification"
-            };
+            return new ApiResponse<bool> { Success = false, Message = "Erreur lors de la modification" };
         }
     }
 
@@ -643,15 +514,9 @@ public class ProjectService : IProjectService
                 .FirstOrDefaultAsync(p => p.ProjectId == projectId);
 
             if (project == null || project.Team == null)
-                return new ApiResponse<List<TeamMemberDTO>>
-                {
-                    Success = false,
-                    Message = "Projet ou équipe introuvable"
-                };
+                return new ApiResponse<List<TeamMemberDTO>> { Success = false, Message = "Projet ou équipe introuvable" };
 
-            var members = project.Team.TeamMembers
-                .Where(tm => tm.IsActive)
-                .AsEnumerable();
+            var members = project.Team.TeamMembers.Where(tm => tm.IsActive).AsEnumerable();
 
             if (!string.IsNullOrEmpty(search))
             {
@@ -690,11 +555,7 @@ public class ProjectService : IProjectService
         }
         catch (Exception)
         {
-            return new ApiResponse<List<TeamMemberDTO>>
-            {
-                Success = false,
-                Message = "Erreur lors de la récupération"
-            };
+            return new ApiResponse<List<TeamMemberDTO>> { Success = false, Message = "Erreur lors de la récupération" };
         }
     }
 
@@ -732,20 +593,11 @@ public class ProjectService : IProjectService
                 await _context.SaveChangesAsync();
             }
 
-            return new ApiResponse<bool>
-            {
-                Success = true,
-                Message = "Chef de projet assigné avec succès",
-                Data = true
-            };
+            return new ApiResponse<bool> { Success = true, Message = "Chef de projet assigné avec succès", Data = true };
         }
         catch (Exception ex)
         {
-            return new ApiResponse<bool>
-            {
-                Success = false,
-                Message = $"Erreur : {ex.Message}"
-            };
+            return new ApiResponse<bool> { Success = false, Message = $"Erreur : {ex.Message}" };
         }
     }
 
@@ -755,11 +607,7 @@ public class ProjectService : IProjectService
         {
             var user = await _context.Users.FindAsync(userId);
             if (user == null)
-                return new ApiResponse<List<ProjectDTO>>
-                {
-                    Success = false,
-                    Message = "Utilisateur introuvable"
-                };
+                return new ApiResponse<List<ProjectDTO>> { Success = false, Message = "Utilisateur introuvable" };
 
             var projects = await _context.Projects
                 .Where(p => p.ProjectManagerId == userId)
@@ -780,25 +628,75 @@ public class ProjectService : IProjectService
         }
         catch (Exception ex)
         {
-            return new ApiResponse<List<ProjectDTO>>
-            {
-                Success = false,
-                Message = $"Erreur : {ex.Message}"
-            };
+            return new ApiResponse<List<ProjectDTO>> { Success = false, Message = $"Erreur : {ex.Message}" };
         }
     }
 
-    // ✅ DTO utilisé côté frontend Project Manager
+    // ✅ SEUL ENDROIT MODIFIÉ — logique statut dynamique corrigée
     private ProjectDTO MapToProjectDTO(Project p)
     {
         var taskCount = p.ProjectTasks?.Count ?? 0;
-
-        // ✅ Tâche terminée = Progress == 100, validée ou non
         var completedTaskCount = p.ProjectTasks?.Count(t => t.Progress == 100) ?? 0;
+        var validatedTaskCount = p.ProjectTasks?.Count(t => t.IsValidated) ?? 0;
+        var pendingValidationCount = p.ProjectTasks?.Count(t => t.TaskStatusId == 4) ?? 0;
 
-        int calculatedProgress = 0;
-        if (taskCount > 0)
-            calculatedProgress = (int)Math.Round((double)completedTaskCount / taskCount * 100);
+        // ✅ Tâches pas encore soumises (progress < 100)
+        var notFinishedCount = p.ProjectTasks?.Count(t => t.Progress < 100) ?? 0;
+
+        int calculatedProgress = taskCount > 0
+            ? (int)Math.Round((double)completedTaskCount / taskCount * 100)
+            : 0;
+
+        bool isDelayed = p.EndDate.HasValue
+            && p.EndDate.Value < DateTime.UtcNow
+            && calculatedProgress < 100;
+
+        // ✅ TOUTES les tâches sont à 100% (soumises ou validées)
+        bool allTasksSubmitted = taskCount > 0 && notFinishedCount == 0;
+
+        string statusName;
+        string statusColor;
+
+        if (p.ProjectStatusId == STATUS_ANNULE)
+        {
+            // PRIORITÉ 1 — Annulé
+            statusName = "Annulé";
+            statusColor = "#9E9E9E";
+        }
+        else if (p.ProjectStatusId == STATUS_TERMINE
+                 && taskCount > 0
+                 && validatedTaskCount == taskCount)
+        {
+            // PRIORITÉ 2 — Officiellement terminé par PM
+            statusName = "Terminé";
+            statusColor = "#00C853";
+        }
+        else if (taskCount > 0 && validatedTaskCount == taskCount && pendingValidationCount == 0)
+        {
+            // PRIORITÉ 3 — Toutes validées, pas encore clôturé
+            statusName = "✅ Prêt à clôturer";
+            statusColor = "#00BFA5";
+        }
+        else if (allTasksSubmitted && pendingValidationCount > 0)
+        {
+            // PRIORITÉ 4 — TOUTES à 100% ET au moins une en attente
+            // ✅ PAS juste une seule tâche soumise parmi d'autres non finies
+            statusName = "⏳ En attente de validation";
+            statusColor = "#FFA500";
+        }
+        else if (isDelayed)
+        {
+            // PRIORITÉ 5 — En retard
+            statusName = "🔴 En retard";
+            statusColor = "#FF0000";
+        }
+        else
+        {
+            // PRIORITÉ 6 — En cours normal
+            // ✅ Inclut le cas : tâche 1 = 100% soumise, tâche 2 = 5% → "En cours"
+            statusName = p.ProjectStatus?.StatusName ?? "En cours";
+            statusColor = p.ProjectStatus?.Color ?? "#2196F3";
+        }
 
         return new ProjectDTO
         {
@@ -807,7 +705,6 @@ public class ProjectService : IProjectService
             Description = p.Description ?? "",
             StartDate = p.StartDate,
             EndDate = p.EndDate,
-            // ✅ Progress affiché dans Mes Projets
             Progress = calculatedProgress,
             TeamId = p.TeamId ?? 0,
             TeamName = p.Team?.teamName ?? "N/A",
@@ -816,11 +713,10 @@ public class ProjectService : IProjectService
                 ? $"{p.ProjectManager.FirstName} {p.ProjectManager.LastName}"
                 : "Non assigné",
             ProjectStatusId = p.ProjectStatusId ?? 0,
-            StatusName = p.ProjectStatus?.StatusName ?? "N/A",
-            StatusColor = p.ProjectStatus?.Color ?? "#000000",
+            StatusName = statusName,
+            StatusColor = statusColor,
             PriorityId = p.PriorityId ?? 0,
             PriorityName = p.Priority?.Name ?? "N/A",
-            // ✅ chiffres pour "X/Y tâches"
             TaskCount = taskCount,
             CompletedTaskCount = completedTaskCount,
             CreatedAt = p.CreatedAt,

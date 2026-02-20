@@ -31,30 +31,43 @@ namespace ProjectManagementAPI.Controllers
 
         // ============= HELPER : Calcul statut dynamique =============
         private static (string statusName, string statusColor) GetDynamicStatus(
-            int? projectStatusId, int pendingValidationTasks, int progress,
-            int validatedTasks, int totalTasks, bool isDelayed,
-            string? dbStatusName, string? dbStatusColor)
+            int? projectStatusId,
+            int pendingValidationTasks,
+            int progress,
+            int validatedTasks,
+            int totalTasks,
+            bool isDelayed,
+            int notFinishedTasks,       // ✅ NOUVEAU paramètre
+            string? dbStatusName,
+            string? dbStatusColor)
         {
-            // Projet déjà officiellement Terminé ou Annulé → on respecte la DB
-            if (projectStatusId == 3) return ("Terminé", "#00C853");
-            if (projectStatusId == 4) return ("Annulé", "#9E9E9E");
+            // PRIORITÉ 1 — Annulé
+            if (projectStatusId == 4)
+                return ("Annulé", "#9E9E9E");
 
-            // Statut dynamique basé sur l'état réel des tâches
-            if (pendingValidationTasks > 0)
-                return ("⏳ En attente de validation", "#FFA500");
+            // PRIORITÉ 2 — Officiellement terminé par PM + toutes validées
+            if (projectStatusId == 3 && totalTasks > 0 && validatedTasks == totalTasks)
+                return ("Terminé", "#00C853");
 
-            if (totalTasks > 0 && validatedTasks == totalTasks)
+            // PRIORITÉ 3 — Toutes validées, pas encore clôturé
+            if (totalTasks > 0 && validatedTasks == totalTasks && pendingValidationTasks == 0)
                 return ("✅ Prêt à clôturer", "#00BFA5");
 
+            // PRIORITÉ 4 — TOUTES les tâches sont à 100% ET au moins une en attente
+            // ✅ notFinishedTasks == 0 garantit qu'il ne reste PAS de tâches < 100%
+            if (notFinishedTasks == 0 && pendingValidationTasks > 0)
+                return ("⏳ En attente de validation", "#FFA500");
+
+            // PRIORITÉ 5 — En retard
             if (isDelayed)
                 return ("🔴 En retard", "#FF0000");
 
+            // PRIORITÉ 6 — En cours normal
             return (dbStatusName ?? "En cours", dbStatusColor ?? "#2196F3");
         }
 
         // ============= DEBUG TOKEN =============
         [HttpGet("debug/token")]
-        [ProducesResponseType(StatusCodes.Status200OK)]
         public IActionResult DebugToken()
         {
             var claims = User.Claims.Select(c => new { type = c.Type, value = c.Value }).ToList();
@@ -70,7 +83,6 @@ namespace ProjectManagementAPI.Controllers
 
         // ============= DASHBOARD =============
         [HttpGet("dashboard")]
-        [ProducesResponseType(StatusCodes.Status200OK)]
         public async Task<IActionResult> GetDashboard()
         {
             try
@@ -106,17 +118,21 @@ namespace ProjectManagementAPI.Controllers
                     var todo = tasks.Count(t => t.Progress == 0);
                     var pendingValidation = tasks.Count(t => t.TaskStatusId == 4);
                     var validated = tasks.Count(t => t.IsValidated);
+                    // ✅ Tâches pas encore à 100%
+                    var notFinished = tasks.Count(t => t.Progress < 100);
 
                     int progress = totalTasksCount > 0
                         ? (int)Math.Round((completed * 100.0) / totalTasksCount)
                         : 0;
 
-                    bool isDelayed = p.EndDate.HasValue && p.EndDate.Value < DateTime.UtcNow
-                                     && (totalTasksCount == 0 || progress < 100);
+                    bool isDelayed = p.EndDate.HasValue
+                        && p.EndDate.Value < DateTime.UtcNow
+                        && (totalTasksCount == 0 || progress < 100);
 
                     var (statusName, statusColor) = GetDynamicStatus(
                         p.ProjectStatusId, pendingValidation, progress,
                         validated, totalTasksCount, isDelayed,
+                        notFinished,   // ✅ nouveau paramètre
                         p.ProjectStatus?.StatusName, p.ProjectStatus?.Color);
 
                     return new
@@ -156,14 +172,12 @@ namespace ProjectManagementAPI.Controllers
             }
             catch (Exception ex)
             {
-                Console.WriteLine($"❌ Erreur Dashboard: {ex.Message}");
                 return StatusCode(500, new { success = false, message = "Erreur dashboard", error = ex.Message });
             }
         }
 
         // ============= MES PROJETS =============
         [HttpGet("my-projects")]
-        [ProducesResponseType(StatusCodes.Status200OK)]
         public async Task<IActionResult> GetMyProjects()
         {
             try
@@ -177,27 +191,6 @@ namespace ProjectManagementAPI.Controllers
                     .Include(p => p.Team)
                     .ToListAsync();
 
-                // ✅ Correction automatique : projet "Terminé" avec tâches non validées → "En cours"
-                bool hasChanges = false;
-                foreach (var project in projects)
-                {
-                    var tasks = project.ProjectTasks ?? new List<ProjectTask>();
-                    var pendingTasks = tasks.Count(t => t.TaskStatusId == 4);
-                    var totalTasks = tasks.Count;
-                    var validatedTasks = tasks.Count(t => t.IsValidated);
-
-                    if (project.ProjectStatusId == 3 &&
-                        (pendingTasks > 0 || (totalTasks > 0 && validatedTasks < totalTasks)))
-                    {
-                        project.ProjectStatusId = 2; // Remettre "En cours"
-                        project.Progress = 0;
-                        hasChanges = true;
-                    }
-                }
-
-                if (hasChanges)
-                    await _context.SaveChangesAsync();
-
                 var projectsList = projects.Select(p =>
                 {
                     var tasks = p.ProjectTasks ?? new List<ProjectTask>();
@@ -207,6 +200,8 @@ namespace ProjectManagementAPI.Controllers
                     var inProgressTasks = tasks.Count(t => t.Progress > 0 && t.Progress < 100);
                     var todoTasks = tasks.Count(t => t.Progress == 0);
                     var pendingValidationTasks = tasks.Count(t => t.TaskStatusId == 4);
+                    // ✅ Tâches pas encore à 100%
+                    var notFinishedTasks = tasks.Count(t => t.Progress < 100);
 
                     int progress = totalTasks > 0
                         ? (int)Math.Round((completedTasks * 100.0) / totalTasks)
@@ -216,10 +211,10 @@ namespace ProjectManagementAPI.Controllers
                         && p.EndDate.Value < DateTime.UtcNow
                         && (totalTasks == 0 || progress < 100);
 
-                    // ✅ Statut dynamique (logique réelle, pas juste la DB)
                     var (statusName, statusColor) = GetDynamicStatus(
                         p.ProjectStatusId, pendingValidationTasks, progress,
                         validatedTasks, totalTasks, isDelayed,
+                        notFinishedTasks,  // ✅ nouveau paramètre
                         p.ProjectStatus?.StatusName, p.ProjectStatus?.Color);
 
                     return new
@@ -247,16 +242,12 @@ namespace ProjectManagementAPI.Controllers
             }
             catch (Exception ex)
             {
-                Console.WriteLine($"❌ ERREUR GetMyProjects: {ex.Message}");
                 return StatusCode(500, new { success = false, message = "Erreur récupération projets", error = ex.Message });
             }
         }
 
         // ============= STATS D'UN PROJET =============
         [HttpGet("projects/{projectId}/stats")]
-        [ProducesResponseType(StatusCodes.Status200OK)]
-        [ProducesResponseType(StatusCodes.Status403Forbidden)]
-        [ProducesResponseType(StatusCodes.Status404NotFound)]
         public async Task<IActionResult> GetProjectStats(int projectId)
         {
             try
@@ -283,6 +274,8 @@ namespace ProjectManagementAPI.Controllers
                 var inProgressTasks = tasks.Count(t => t.Progress > 0 && t.Progress < 100);
                 var todoTasks = tasks.Count(t => t.Progress == 0);
                 var pendingValidationTasks = tasks.Count(t => t.TaskStatusId == 4);
+                // ✅ Tâches pas encore à 100%
+                var notFinishedTasks = tasks.Count(t => t.Progress < 100);
 
                 int progress = totalTasks > 0
                     ? (int)Math.Round((completedTasks * 100.0) / totalTasks)
@@ -292,10 +285,10 @@ namespace ProjectManagementAPI.Controllers
                     && project.EndDate.Value < DateTime.UtcNow
                     && (totalTasks == 0 || progress < 100);
 
-                // ✅ Statut dynamique
                 var (statusName, statusColor) = GetDynamicStatus(
                     project.ProjectStatusId, pendingValidationTasks, progress,
                     validatedTasks, totalTasks, isDelayed,
+                    notFinishedTasks,  // ✅ nouveau paramètre
                     project.ProjectStatus?.StatusName, project.ProjectStatus?.Color);
 
                 return Ok(new
@@ -325,7 +318,6 @@ namespace ProjectManagementAPI.Controllers
             }
             catch (Exception ex)
             {
-                Console.WriteLine($"❌ Erreur Stats: {ex.Message}");
                 return StatusCode(500, new { success = false, message = "Erreur stats", error = ex.Message });
             }
         }
@@ -337,9 +329,7 @@ namespace ProjectManagementAPI.Controllers
             try
             {
                 var userId = GetCurrentUserId();
-
-                var project = await _context.Projects
-                    .FirstOrDefaultAsync(p => p.ProjectId == projectId);
+                var project = await _context.Projects.FirstOrDefaultAsync(p => p.ProjectId == projectId);
 
                 if (project == null)
                     return NotFound(new { success = false, message = "Projet non trouvé" });
@@ -501,8 +491,8 @@ namespace ProjectManagementAPI.Controllers
                     .Where(t =>
                         t.Project.ProjectManagerId == userId &&
                         t.TaskStatusId == 4 &&
-                        t.Project.ProjectStatusId != 3 && // Exclure projets Terminés
-                        t.Project.ProjectStatusId != 4)   // Exclure projets Annulés
+                        t.Project.ProjectStatusId != 3 &&
+                        t.Project.ProjectStatusId != 4)
                     .Include(t => t.Project)
                     .Include(t => t.AssignedToUser)
                     .Include(t => t.ProjectTasksStatus)
@@ -566,7 +556,6 @@ namespace ProjectManagementAPI.Controllers
 
                 await _context.SaveChangesAsync();
 
-                // ✅ Vérifier si TOUTES les tâches sont validées après cette validation
                 var allTasks = task.Project.ProjectTasks ?? new List<ProjectTask>();
                 var allValidated = allTasks.All(t => t.IsValidated);
 
@@ -578,7 +567,6 @@ namespace ProjectManagementAPI.Controllers
                     {
                         taskId = task.ProjectTaskId,
                         validatedAt = task.ValidatedAt,
-                        // ✅ Info utile pour le front : peut-on clôturer ?
                         canCloseProject = allValidated,
                         projectId = task.ProjectId
                     }
@@ -590,7 +578,7 @@ namespace ProjectManagementAPI.Controllers
             }
         }
 
-        // ============= TERMINER UN PROJET =============
+        // ============= CLÔTURER UN PROJET =============
         [HttpPut("projects/{projectId}/close")]
         public async Task<IActionResult> CloseProject(int projectId)
         {

@@ -209,7 +209,8 @@ namespace ProjectManagementAPI.Controllers
                 return StatusCode(500, new { success = false, message = "Erreur tâches projet", error = ex.Message });
             }
         }
-        // ✅ Toutes les tâches d’un projet (visibles par le développeur)
+
+        // ============= TOUTES LES TÂCHES D'UN PROJET =============
         [HttpGet("projects/{projectId}/all-tasks")]
         public async Task<IActionResult> GetAllTasksForProject(int projectId)
         {
@@ -246,7 +247,7 @@ namespace ProjectManagementAPI.Controllers
             }
         }
 
-        // ============= UPDATE TÂCHE (STATUT + PROGRESSION) =============
+        // ============= UPDATE TÂCHE =============
         [HttpPut("tasks/{taskId}")]
         public async Task<IActionResult> UpdateTask(int taskId, [FromBody] UpdateTaskDTO dto)
         {
@@ -277,7 +278,8 @@ namespace ProjectManagementAPI.Controllers
 
                 if (task.Progress == 100 || dto.TaskStatusId == 3)
                 {
-                    task.TaskStatusId = 4;
+                    // ✅ Progress 100% → soumettre au PM, pas "Terminé" automatiquement
+                    task.TaskStatusId = 4; // En attente de validation
                     task.Progress = 100;
                     task.IsValidated = false;
                 }
@@ -288,7 +290,7 @@ namespace ProjectManagementAPI.Controllers
 
                 await _context.SaveChangesAsync();
 
-                // ✅ CORRECTION ICI : recalcule la progression du projet
+                // ✅ Recalcule la progression du projet SANS changer le statut automatiquement
                 await RecalculateProjectProgressAsync(task.ProjectId);
 
                 string statusName = task.TaskStatusId switch
@@ -331,7 +333,10 @@ namespace ProjectManagementAPI.Controllers
             {
                 var now = DateTime.Now;
                 var tasks = await _context.ProjectTasks
-                    .Where(t => t.AssignedToUserId == userId && t.DueDate < now && t.TaskStatusId != 4 && t.TaskStatusId != 5)
+                    .Where(t => t.AssignedToUserId == userId
+                             && t.DueDate < now
+                             && t.TaskStatusId != 4
+                             && t.TaskStatusId != 5)
                     .Include(t => t.ProjectTasksStatus)
                     .Include(t => t.Priority)
                     .Include(t => t.Project)
@@ -357,7 +362,7 @@ namespace ProjectManagementAPI.Controllers
             }
         }
 
-        // ✅ MÉTHODE PRIVÉE : Recalcul automatique de la progression du projet
+        // ============= RECALCUL PROGRESSION PROJET =============
         private async Task RecalculateProjectProgressAsync(int projectId)
         {
             var project = await _context.Projects.FindAsync(projectId);
@@ -367,23 +372,31 @@ namespace ProjectManagementAPI.Controllers
                 .Where(t => t.ProjectId == projectId)
                 .ToListAsync();
 
-            if (tasks.Count == 0)
+            var totalTasks = tasks.Count;
+            var validatedTasks = tasks.Count(t => t.IsValidated);
+            var pendingTasks = tasks.Count(t => t.TaskStatusId == 4);
+
+            // ✅ Recalcul de la progression uniquement
+            project.Progress = totalTasks == 0
+                ? 0
+                : (int)Math.Round(tasks.Average(t => (double)t.Progress));
+
+            // ✅ Statut projet — seul le PM peut mettre "Terminé" via CloseProject
+            if (totalTasks == 0 || project.Progress == 0)
             {
-                project.Progress = 0;
+                project.ProjectStatusId = 1; // Planifié
+            }
+            else if (totalTasks > 0 && validatedTasks == totalTasks)
+            {
+                // ✅ Toutes les tâches validées par PM → Terminé
+                project.ProjectStatusId = 3;
             }
             else
             {
-                // Moyenne de la progression de toutes les tâches
-                project.Progress = (int)Math.Round(tasks.Average(t => (double)t.Progress));
+                // ✅ En cours, en attente de validation, ou progression partielle
+                // → JAMAIS "Terminé" automatiquement côté développeur
+                project.ProjectStatusId = 2; // En cours
             }
-
-            // Statut projet automatique
-            project.ProjectStatusId = project.Progress switch
-            {
-                0 => 1,    // Planifié
-                100 => 3,  // Terminé
-                _ => 2     // En cours
-            };
 
             await _context.SaveChangesAsync();
         }
