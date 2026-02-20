@@ -57,13 +57,11 @@ public class TeamService : ITeamService
             var team = await _context.Teams.FindAsync(dto.TeamId);
 
             if (team == null)
-            {
                 return new ApiResponse<TeamDTO>
                 {
                     Success = false,
                     Message = "Équipe introuvable"
                 };
-            }
 
             team.teamName = dto.TeamName;
             await _context.SaveChangesAsync();
@@ -90,21 +88,36 @@ public class TeamService : ITeamService
         }
     }
 
+    // ✅ DELETE TEAM — supprime membres + équipe
     public async Task<ApiResponse<bool>> DeleteTeamAsync(int teamId)
     {
         try
         {
-            var team = await _context.Teams.FindAsync(teamId);
+            var team = await _context.Teams
+                .Include(t => t.TeamMembers)
+                .Include(t => t.Projects)
+                .FirstOrDefaultAsync(t => t.teamId == teamId);
 
             if (team == null)
-            {
                 return new ApiResponse<bool>
                 {
                     Success = false,
                     Message = "Équipe introuvable"
                 };
-            }
 
+            // ✅ Bloquer si des projets actifs sont liés
+            if (team.Projects != null && team.Projects.Any())
+                return new ApiResponse<bool>
+                {
+                    Success = false,
+                    Message = "Impossible de supprimer : cette équipe a des projets liés. Désassignez-les d'abord."
+                };
+
+            // ✅ Supprimer les membres liés
+            if (team.TeamMembers != null && team.TeamMembers.Any())
+                _context.TeamMembers.RemoveRange(team.TeamMembers);
+
+            // ✅ Supprimer l'équipe
             _context.Teams.Remove(team);
             await _context.SaveChangesAsync();
 
@@ -120,7 +133,7 @@ public class TeamService : ITeamService
             return new ApiResponse<bool>
             {
                 Success = false,
-                Message = $"Erreur: {ex.Message}"
+                Message = $"Erreur lors de la suppression: {ex.Message}"
             };
         }
     }
@@ -137,13 +150,11 @@ public class TeamService : ITeamService
                 .FirstOrDefaultAsync(t => t.teamId == teamId);
 
             if (team == null)
-            {
                 return new ApiResponse<TeamDetailsDTO>
                 {
                     Success = false,
                     Message = "Équipe introuvable"
                 };
-            }
 
             var teamDetails = new TeamDetailsDTO
             {
@@ -192,7 +203,7 @@ public class TeamService : ITeamService
         try
         {
             var teams = await _context.Teams
-                .Where(t => t.IsActive) // ✅ FIXED: Only show active teams
+                .Where(t => t.IsActive)
                 .Include(t => t.TeamMembers)
                 .Include(t => t.Projects)
                 .Select(t => new TeamDTO
@@ -231,25 +242,21 @@ public class TeamService : ITeamService
                 .FirstOrDefaultAsync(u => u.UserId == dto.UserId);
 
             if (user == null)
-            {
                 return new ApiResponse<TeamMemberDTO>
                 {
                     Success = false,
                     Message = "Utilisateur introuvable"
                 };
-            }
 
             var existingMember = await _context.TeamMembers
                 .FirstOrDefaultAsync(tm => tm.UserId == dto.UserId && tm.TeamId == dto.TeamId);
 
             if (existingMember != null)
-            {
                 return new ApiResponse<TeamMemberDTO>
                 {
                     Success = false,
                     Message = "Ce membre fait déjà partie de l'équipe"
                 };
-            }
 
             var teamMember = new TeamMember
             {
@@ -305,13 +312,11 @@ public class TeamService : ITeamService
             var teamMember = await _context.TeamMembers.FindAsync(teamMemberId);
 
             if (teamMember == null)
-            {
                 return new ApiResponse<bool>
                 {
                     Success = false,
                     Message = "Membre introuvable"
                 };
-            }
 
             _context.TeamMembers.Remove(teamMember);
             await _context.SaveChangesAsync();
@@ -340,13 +345,11 @@ public class TeamService : ITeamService
             var team = await _context.Teams.FindAsync(teamId);
 
             if (team == null)
-            {
                 return new ApiResponse<bool>
                 {
                     Success = false,
                     Message = "Équipe introuvable"
                 };
-            }
 
             team.IsActive = isActive;
             await _context.SaveChangesAsync();
@@ -375,13 +378,11 @@ public class TeamService : ITeamService
             var teamMember = await _context.TeamMembers.FindAsync(memberId);
 
             if (teamMember == null)
-            {
                 return new ApiResponse<bool>
                 {
                     Success = false,
                     Message = "Membre introuvable"
                 };
-            }
 
             teamMember.IsActive = isActive;
             await _context.SaveChangesAsync();
@@ -414,13 +415,11 @@ public class TeamService : ITeamService
                 .FirstOrDefaultAsync(t => t.teamId == teamId);
 
             if (team == null)
-            {
                 return new ApiResponse<List<TeamMemberDTO>>
                 {
                     Success = false,
                     Message = "Équipe introuvable"
                 };
-            }
 
             var members = team.TeamMembers
                 .Select(tm => new TeamMemberDTO
@@ -467,13 +466,11 @@ public class TeamService : ITeamService
                 .FirstOrDefaultAsync(tm => tm.TeamId == teamId && tm.UserId == userId);
 
             if (teamMember == null)
-            {
                 return new ApiResponse<bool>
                 {
                     Success = false,
                     Message = "Membre introuvable dans cette équipe"
                 };
-            }
 
             _context.TeamMembers.Remove(teamMember);
             await _context.SaveChangesAsync();
@@ -495,7 +492,6 @@ public class TeamService : ITeamService
         }
     }
 
-    // ✅ NEW METHOD 1: Get Project Managers (for dropdown)
     public async Task<ApiResponse<List<ProjectManagerDTO>>> GetProjectManagersAsync()
     {
         try
@@ -528,13 +524,11 @@ public class TeamService : ITeamService
             return new ApiResponse<List<ProjectManagerDTO>>
             {
                 Success = false,
-                Message = "Erreur lors de la récupération des chefs de projet",
-             
+                Message = "Erreur lors de la récupération des chefs de projet"
             };
         }
     }
 
-    // ✅ NEW METHOD 2: Set Project Manager (mark member as project manager)
     public async Task<ApiResponse<bool>> SetProjectManagerAsync(int teamMemberId, bool isProjectManager)
     {
         try
@@ -544,13 +538,11 @@ public class TeamService : ITeamService
                 .FirstOrDefaultAsync(tm => tm.TeamMemberId == teamMemberId);
 
             if (teamMember == null)
-            {
                 return new ApiResponse<bool>
                 {
                     Success = false,
                     Message = "Membre d'équipe introuvable"
                 };
-            }
 
             teamMember.IsProjectManager = isProjectManager;
             await _context.SaveChangesAsync();
@@ -571,10 +563,8 @@ public class TeamService : ITeamService
             return new ApiResponse<bool>
             {
                 Success = false,
-                Message = "Erreur lors de la mise à jour du statut chef de projet",
-                
+                Message = "Erreur lors de la mise à jour du statut chef de projet"
             };
         }
     }
 }
-

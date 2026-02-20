@@ -10,5 +10,7 @@
         public int TodoTasks { get; set; }
         public int Progress { get; set; }
         public bool IsDelayed { get; set; }
+        public DateTime? StartDate { get; set; }
+        public DateTime? EndDate { get; set; }
     }
 }

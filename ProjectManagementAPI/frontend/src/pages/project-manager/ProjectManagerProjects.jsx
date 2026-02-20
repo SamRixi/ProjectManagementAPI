@@ -1,4 +1,5 @@
-﻿import { useState, useEffect } from 'react';
+﻿// src/pages/projectmanager/ProjectManagerProjects.jsx
+import { useState, useEffect } from 'react';
 import { useAuth } from '../../context/AuthContext';
 import {
     FolderKanban,
@@ -14,7 +15,6 @@ import '../../styles/DeveloperDashboard.css';
 const ProjectManagerProjects = () => {
     const { user } = useAuth();
 
-    // États
     const [projects, setProjects] = useState([]);
     const [selectedProject, setSelectedProject] = useState(null);
     const [projectStats, setProjectStats] = useState(null);
@@ -23,82 +23,53 @@ const ProjectManagerProjects = () => {
     const [statsLoading, setStatsLoading] = useState(false);
     const [error, setError] = useState(null);
 
-    // Charger les projets au montage
     useEffect(() => {
-        if (user?.userId) {
-            fetchProjects();
-        }
+        if (user?.userId) fetchProjects();
     }, [user]);
 
-    // Récupérer la liste des projets
     const fetchProjects = async () => {
         try {
             setLoading(true);
             setError(null);
-
-            const token = localStorage.getItem('token');
-            console.log('🔑 Token exists:', !!token);
-            console.log('👤 User:', user);
-            console.log('👤 User Role:', user?.role);
-            console.log('👤 User ID:', user?.userId);
-
-            console.log('📥 Fetching projects...');
             const response = await api.get('/projectmanager/my-projects');
-            console.log('✅ Projects response:', response.data);
-
             if (response.data.success) {
                 setProjects(response.data.data || []);
             } else {
                 setError(response.data.message || 'Erreur lors du chargement des projets');
             }
         } catch (err) {
-            console.error('❌ Error loading projects:', err);
-            console.error('❌ Error response:', err.response);
-            console.error('❌ Error data:', err.response?.data);
-            console.error('❌ Error status:', err.response?.status);
-            console.error('❌ Error message:', err.response?.data?.message);
-
             setError(err.response?.data?.message || 'Erreur lors de la connexion au serveur');
         } finally {
             setLoading(false);
         }
     };
 
-    // Récupérer les stats d'un projet
     const fetchProjectStats = async (projectId) => {
         try {
             setStatsLoading(true);
-
-            console.log(`📥 Fetching stats for project ${projectId}...`);
             const response = await api.get(`/projectmanager/projects/${projectId}/stats`);
-            console.log('✅ Stats response:', response.data);
-
             if (response.data.success) {
                 setProjectStats(response.data.data);
             }
         } catch (err) {
             console.error('❌ Error loading stats:', err);
-            console.error('❌ Stats error data:', err.response?.data);
         } finally {
             setStatsLoading(false);
         }
     };
 
-    // Ouvrir le modal des statistiques
     const viewProjectStats = async (project) => {
         setSelectedProject(project);
         setShowStatsModal(true);
         await fetchProjectStats(project.projectId);
     };
 
-    // Fermer le modal
     const closeStatsModal = () => {
         setShowStatsModal(false);
         setSelectedProject(null);
         setProjectStats(null);
     };
 
-    // Obtenir la classe CSS selon le pourcentage
     const getProgressClass = (progress) => {
         if (progress >= 100) return 'completed';
         if (progress >= 66) return 'high';
@@ -106,14 +77,27 @@ const ProjectManagerProjects = () => {
         return 'low';
     };
 
-    // ✅ Terminer un projet
-    const handleCloseProject = async (projectId, progress) => {
-        if (progress < 100) {
-            const confirmClose = window.confirm(
-                "Il reste des tâches non validées. Voulez-vous vraiment clôturer ce projet ?"
-            );
-            if (!confirmClose) return;
+    const getProjectStatusStyle = (status, progress) => {
+        if (status === 'En cours' && progress === 100) {
+            return { backgroundColor: '#FEF3C7', color: '#B45309' };
         }
+        switch (status) {
+            case 'Planifié':
+                return { backgroundColor: '#E5E7EB', color: '#374151' };
+            case 'En cours':
+                return { backgroundColor: '#DBEAFE', color: '#1D4ED8' };
+            case 'Terminé':
+                return { backgroundColor: '#DCFCE7', color: '#15803D' };
+            case 'Annulé':
+                return { backgroundColor: '#FEE2E2', color: '#B91C1C' };
+            default:
+                return { backgroundColor: '#E5E7EB', color: '#374151' };
+        }
+    };
+
+    const handleCloseProject = async (projectId) => {
+        const confirmClose = window.confirm('✅ Toutes les tâches sont validées.\nVoulez-vous clôturer ce projet ?');
+        if (!confirmClose) return;
 
         try {
             const response = await api.put(`/projectmanager/projects/${projectId}/close`);
@@ -133,6 +117,7 @@ const ProjectManagerProjects = () => {
         <ProjectManagerLayout>
             <div className="dashboard-container">
                 <div className="dashboard-content">
+
                     {/* Header */}
                     <div className="welcome-card" style={{ marginBottom: '2rem' }}>
                         <h2>📁 Mes Projets</h2>
@@ -141,37 +126,23 @@ const ProjectManagerProjects = () => {
                         </p>
                     </div>
 
-                    {/* Error Message */}
+                    {/* Error */}
                     {error && (
-                        <div className="error-message" style={{
-                            background: '#fee2e2',
-                            border: '2px solid #dc2626',
-                            borderRadius: '12px',
-                            padding: '1rem',
-                            marginBottom: '1.5rem',
-                            display: 'flex',
-                            alignItems: 'center',
-                            justifyContent: 'space-between'
+                        <div style={{
+                            background: '#fee2e2', border: '2px solid #dc2626',
+                            borderRadius: '12px', padding: '1rem', marginBottom: '1.5rem',
+                            display: 'flex', alignItems: 'center', justifyContent: 'space-between'
                         }}>
                             <p style={{ margin: 0, color: '#dc2626', fontWeight: '600' }}>⚠️ {error}</p>
-                            <button
-                                onClick={fetchProjects}
-                                style={{
-                                    padding: '0.5rem 1rem',
-                                    background: '#dc2626',
-                                    color: 'white',
-                                    border: 'none',
-                                    borderRadius: '8px',
-                                    cursor: 'pointer',
-                                    fontWeight: '600'
-                                }}
-                            >
+                            <button onClick={fetchProjects} style={{
+                                padding: '0.5rem 1rem', background: '#dc2626', color: 'white',
+                                border: 'none', borderRadius: '8px', cursor: 'pointer', fontWeight: '600'
+                            }}>
                                 Réessayer
                             </button>
                         </div>
                     )}
 
-                    {/* Loading State */}
                     {loading ? (
                         <div className="loading">
                             <div className="spinner"></div>
@@ -179,175 +150,161 @@ const ProjectManagerProjects = () => {
                         </div>
                     ) : (
                         <>
-                            {/* Projects Grid */}
                             {projects.length > 0 ? (
                                 <div style={{
                                     display: 'grid',
                                     gridTemplateColumns: 'repeat(auto-fill, minmax(340px, 1fr))',
                                     gap: '1.5rem'
                                 }}>
-                                    {projects.map((project) => (
-                                        <div
-                                            key={project.projectId}
-                                            style={{
+                                    {projects.map((project) => {
+                                        console.log('PROJECT DEBUG', project.projectName, {
+                                            totalTasks: project.totalTasks,
+                                            validatedTasks: project.validatedTasks,
+                                            progress: project.progress
+                                        });
+
+                                        const allTasksValidated =
+                                            (project.totalTasks ?? 0) > 0 &&
+                                            (project.validatedTasks ?? 0) === (project.totalTasks ?? 0);
+
+                                        return (
+                                            <div key={project.projectId} style={{
                                                 background: 'white',
                                                 borderRadius: '16px',
                                                 padding: '1.5rem',
                                                 boxShadow: '0 4px 12px rgba(0, 0, 0, 0.08)',
-                                                border: '1px solid #e5e7eb'
-                                            }}
-                                        >
-                                            {/* Header */}
-                                            <div style={{
-                                                display: 'flex',
-                                                justifyContent: 'space-between',
-                                                alignItems: 'flex-start',
-                                                marginBottom: '1rem'
+                                                border: project.statusName === 'Terminé'
+                                                    ? '2px solid #10B981'
+                                                    : allTasksValidated
+                                                        ? '2px solid #F59E0B'
+                                                        : '1px solid #e5e7eb'
                                             }}>
-                                                <h3 style={{
-                                                    fontSize: '1.2rem',
-                                                    color: '#1f2937',
-                                                    fontWeight: '700',
-                                                    margin: 0,
-                                                    flex: 1
-                                                }}>
-                                                    {project.projectName}
-                                                </h3>
-                                                {project.isDelayed && (
-                                                    <span className="overdue-badge">
-                                                        <Clock size={14} />
-                                                        RETARD
-                                                    </span>
-                                                )}
-                                            </div>
 
-                                            {/* Status Badge */}
-                                            <div style={{
-                                                display: 'inline-flex',
-                                                alignItems: 'center',
-                                                gap: '0.5rem',
-                                                padding: '0.4rem 0.8rem',
-                                                borderRadius: '12px',
-                                                fontSize: '0.85rem',
-                                                fontWeight: '600',
-                                                marginBottom: '1rem',
-                                                background: project.statusColor || '#e5e7eb',
-                                                color: 'white'
-                                            }}>
-                                                {project.statusName || 'En cours'}
-                                            </div>
-
-                                            {/* Description */}
-                                            <p style={{
-                                                fontSize: '0.9rem',
-                                                color: '#6b7280',
-                                                marginBottom: '1rem',
-                                                lineHeight: '1.5'
-                                            }}>
-                                                {project.description || 'Aucune description'}
-                                            </p>
-
-                                            {/* Progress Bar */}
-                                            <div className="task-progress-section">
-                                                <div className="task-progress-bar-bg">
-                                                    <div
-                                                        className={`task-progress-bar-fill progress-${getProgressClass(project.progress)}`}
-                                                        style={{ width: `${project.progress}%` }}
-                                                    >
-                                                        <div className="progress-shimmer"></div>
-                                                    </div>
-                                                </div>
-                                                <span className="task-progress-text">
-                                                    {project.progress}% - {project.completedTasks}/{project.totalTasks} tâches
-                                                </span>
-                                            </div>
-
-                                            {/* Task Stats */}
-                                            <div style={{
-                                                display: 'flex',
-                                                gap: '0.8rem',
-                                                marginTop: '1rem',
-                                                fontSize: '0.85rem',
-                                                color: '#6b7280',
-                                                fontWeight: '600'
-                                            }}>
-                                                <span>✅ {project.completedTasks}</span>
-                                                <span>🔄 {project.inProgressTasks}</span>
-                                                <span>📝 {project.todoTasks}</span>
-                                            </div>
-
-                                            {/* Dates */}
-                                            {(project.startDate || project.endDate) && (
+                                                {/* Header */}
                                                 <div style={{
-                                                    marginTop: '1rem',
-                                                    fontSize: '0.85rem',
-                                                    color: '#6b7280'
+                                                    display: 'flex', justifyContent: 'space-between',
+                                                    alignItems: 'flex-start', marginBottom: '1rem'
                                                 }}>
-                                                    {project.startDate && (
-                                                        <p style={{ margin: '0.3rem 0' }}>
-                                                            📅 Début: {new Date(project.startDate).toLocaleDateString('fr-FR')}
-                                                        </p>
-                                                    )}
-                                                    {project.endDate && (
-                                                        <p style={{ margin: '0.3rem 0' }}>
-                                                            🏁 Fin: {new Date(project.endDate).toLocaleDateString('fr-FR')}
-                                                        </p>
+                                                    <h3 style={{
+                                                        fontSize: '1.2rem', color: '#1f2937',
+                                                        fontWeight: '700', margin: 0, flex: 1
+                                                    }}>
+                                                        {project.projectName}
+                                                    </h3>
+                                                    {project.isDelayed && (
+                                                        <span className="overdue-badge">
+                                                            <Clock size={14} />
+                                                            RETARD
+                                                        </span>
                                                     )}
                                                 </div>
-                                            )}
 
-                                            {/* Boutons d'action */}
-                                            <div style={{ display: 'flex', flexDirection: 'column', gap: '0.6rem', marginTop: '1rem' }}>
-                                                <button
-                                                    onClick={() => viewProjectStats(project)}
-                                                    style={{
-                                                        width: '100%',
-                                                        padding: '0.85rem 1rem',
-                                                        background: 'linear-gradient(135deg, var(--mobilis-green) 0%, #008f3f 100%)',
-                                                        color: 'white',
-                                                        border: 'none',
-                                                        borderRadius: '12px',
-                                                        fontWeight: '600',
-                                                        cursor: 'pointer',
-                                                        display: 'flex',
-                                                        alignItems: 'center',
-                                                        justifyContent: 'center',
-                                                        gap: '0.5rem',
-                                                        fontSize: '0.95rem',
-                                                        boxShadow: '0 4px 12px rgba(0, 166, 81, 0.25)'
-                                                    }}
-                                                >
-                                                    <BarChart3 size={20} />
-                                                    Statistiques Détaillées
-                                                </button>
+                                                {/* Status Badge */}
+                                                <div style={{
+                                                    display: 'inline-flex', alignItems: 'center',
+                                                    gap: '0.5rem', padding: '0.35rem 0.85rem',
+                                                    borderRadius: '999px', fontSize: '0.8rem',
+                                                    fontWeight: 600, marginBottom: '1rem',
+                                                    ...getProjectStatusStyle(project.statusName, project.progress)
+                                                }}>
+                                                    {allTasksValidated && project.statusName !== 'Terminé'
+                                                        ? '⏳ En attente de clôture'
+                                                        : project.statusName
+                                                    }
+                                                </div>
 
-                                                {/* ✅ Bouton Terminer le projet (si pas déjà terminé) */}
-                                                {project.statusName !== 'Terminé' && (
-                                                    <button
-                                                        onClick={() => handleCloseProject(project.projectId, project.progress)}
-                                                        style={{
-                                                            width: '100%',
-                                                            padding: '0.75rem 1rem',
-                                                            background: '#111827',
-                                                            color: 'white',
-                                                            border: 'none',
-                                                            borderRadius: '10px',
-                                                            fontWeight: '600',
-                                                            cursor: 'pointer',
-                                                            fontSize: '0.9rem',
-                                                            opacity: project.progress === 0 ? 0.6 : 1
-                                                        }}
-                                                        disabled={project.progress === 0}
-                                                    >
-                                                        Terminer le projet
-                                                    </button>
+                                                {/* Description */}
+                                                <p style={{
+                                                    fontSize: '0.9rem', color: '#6b7280',
+                                                    marginBottom: '1rem', lineHeight: '1.5'
+                                                }}>
+                                                    {project.description || 'Aucune description'}
+                                                </p>
+
+                                                {/* Progress Bar */}
+                                                <div className="task-progress-section">
+                                                    <div className="task-progress-bar-bg">
+                                                        <div
+                                                            className={`task-progress-bar-fill progress-${getProgressClass(project.progress)}`}
+                                                            style={{ width: `${project.progress ?? 0}%` }}
+                                                        >
+                                                            <div className="progress-shimmer"></div>
+                                                        </div>
+                                                    </div>
+                                                    <span className="task-progress-text">
+                                                        {project.progress ?? 0}% — {project.completedTasks ?? 0}/{project.totalTasks ?? 0} tâches
+                                                    </span>
+                                                </div>
+
+                                                {/* Task Stats */}
+                                                <div style={{
+                                                    display: 'flex', gap: '0.8rem', marginTop: '1rem',
+                                                    fontSize: '0.85rem', color: '#6b7280', fontWeight: '600'
+                                                }}>
+                                                    <span>✅ {project.completedTasks ?? 0}</span>
+                                                    <span>🔄 {project.inProgressTasks ?? 0}</span>
+                                                    <span>📝 {project.todoTasks ?? 0}</span>
+                                                    {(project.pendingValidationTasks ?? 0) > 0 && (
+                                                        <span>⏳ {project.pendingValidationTasks} en validation</span>
+                                                    )}
+                                                </div>
+
+                                                {/* Dates */}
+                                                {(project.startDate || project.endDate) && (
+                                                    <div style={{ marginTop: '1rem', fontSize: '0.85rem', color: '#6b7280' }}>
+                                                        {project.startDate && (
+                                                            <p style={{ margin: '0.3rem 0' }}>
+                                                                📅 Début: {new Date(project.startDate).toLocaleDateString('fr-FR')}
+                                                            </p>
+                                                        )}
+                                                        {project.endDate && (
+                                                            <p style={{ margin: '0.3rem 0' }}>
+                                                                🏁 Fin: {new Date(project.endDate).toLocaleDateString('fr-FR')}
+                                                            </p>
+                                                        )}
+                                                    </div>
                                                 )}
+
+                                                {/* Boutons */}
+                                                <div style={{ display: 'flex', flexDirection: 'column', gap: '0.6rem', marginTop: '1rem' }}>
+                                                    <button
+                                                        onClick={() => viewProjectStats(project)}
+                                                        style={{
+                                                            width: '100%', padding: '0.85rem 1rem',
+                                                            background: 'linear-gradient(135deg, var(--mobilis-green) 0%, #008f3f 100%)',
+                                                            color: 'white', border: 'none', borderRadius: '12px',
+                                                            fontWeight: '600', cursor: 'pointer',
+                                                            display: 'flex', alignItems: 'center',
+                                                            justifyContent: 'center', gap: '0.5rem',
+                                                            fontSize: '0.95rem',
+                                                            boxShadow: '0 4px 12px rgba(0, 166, 81, 0.25)'
+                                                        }}
+                                                    >
+                                                        <BarChart3 size={20} />
+                                                        Statistiques Détaillées
+                                                    </button>
+
+                                                    {/* ✅ Bouton clôture dès que toutes les tâches sont validées */}
+                                                    {allTasksValidated && (
+                                                        <button
+                                                            onClick={() => handleCloseProject(project.projectId)}
+                                                            style={{
+                                                                width: '100%', padding: '0.75rem 1rem',
+                                                                background: 'linear-gradient(135deg, #15803D, #166534)',
+                                                                color: 'white', border: 'none',
+                                                                borderRadius: '10px', fontWeight: '600',
+                                                                cursor: 'pointer', fontSize: '0.9rem'
+                                                            }}
+                                                        >
+                                                            ✅ Clôturer le projet
+                                                        </button>
+                                                    )}
+                                                </div>
                                             </div>
-                                        </div>
-                                    ))}
+                                        );
+                                    })}
                                 </div>
                             ) : (
-                                /* No Projects */
                                 <div className="welcome-card" style={{ textAlign: 'center' }}>
                                     <FolderKanban size={64} style={{ color: 'var(--mobilis-green)', margin: '0 auto 1rem' }} />
                                     <h3 style={{ color: '#6b7280', marginBottom: '0.5rem' }}>Aucun projet trouvé</h3>
@@ -363,69 +320,31 @@ const ProjectManagerProjects = () => {
 
             {/* Stats Modal */}
             {showStatsModal && (
-                <div
-                    onClick={closeStatsModal}
-                    style={{
-                        position: 'fixed',
-                        top: 0,
-                        left: 0,
-                        right: 0,
-                        bottom: 0,
-                        background: 'rgba(0, 0, 0, 0.5)',
-                        display: 'flex',
-                        alignItems: 'center',
-                        justifyContent: 'center',
-                        zIndex: 9999,
-                        padding: '20px'
-                    }}
-                >
-                    <div
-                        onClick={(e) => e.stopPropagation()}
-                        style={{
-                            background: 'white',
-                            borderRadius: '20px',
-                            padding: '2rem',
-                            maxWidth: '600px',
-                            width: '100%',
-                            maxHeight: '80vh',
-                            overflowY: 'auto',
-                            position: 'relative',
-                            boxShadow: '0 20px 60px rgba(0, 0, 0, 0.3)'
-                        }}
-                    >
-                        <button
-                            onClick={closeStatsModal}
-                            style={{
-                                position: 'absolute',
-                                top: '1rem',
-                                right: '1rem',
-                                width: '40px',
-                                height: '40px',
-                                background: 'var(--mobilis-green)',
-                                border: 'none',
-                                borderRadius: '50%',
-                                cursor: 'pointer',
-                                display: 'flex',
-                                alignItems: 'center',
-                                justifyContent: 'center',
-                                boxShadow: '0 2px 8px rgba(0, 166, 81, 0.3)',
-                                zIndex: 10,
-                                color: 'white',
-                                fontSize: '28px',
-                                fontWeight: 'bold',
-                                lineHeight: '1',
-                                padding: 0
-                            }}
-                        >
+                <div onClick={closeStatsModal} style={{
+                    position: 'fixed', top: 0, left: 0, right: 0, bottom: 0,
+                    background: 'rgba(0, 0, 0, 0.5)', display: 'flex',
+                    alignItems: 'center', justifyContent: 'center', zIndex: 9999, padding: '20px'
+                }}>
+                    <div onClick={(e) => e.stopPropagation()} style={{
+                        background: 'white', borderRadius: '20px', padding: '2rem',
+                        maxWidth: '600px', width: '100%', maxHeight: '80vh',
+                        overflowY: 'auto', position: 'relative',
+                        boxShadow: '0 20px 60px rgba(0, 0, 0, 0.3)'
+                    }}>
+                        <button onClick={closeStatsModal} style={{
+                            position: 'absolute', top: '1rem', right: '1rem',
+                            width: '40px', height: '40px', background: 'var(--mobilis-green)',
+                            border: 'none', borderRadius: '50%', cursor: 'pointer',
+                            display: 'flex', alignItems: 'center', justifyContent: 'center',
+                            color: 'white', fontSize: '28px', fontWeight: 'bold',
+                            lineHeight: '1', padding: 0, zIndex: 10
+                        }}>
                             ×
                         </button>
 
                         <h2 style={{
-                            color: 'var(--mobilis-green)',
-                            marginBottom: '1.5rem',
-                            fontSize: '1.8rem',
-                            fontWeight: '700',
-                            paddingRight: '50px'
+                            color: 'var(--mobilis-green)', marginBottom: '1.5rem',
+                            fontSize: '1.8rem', fontWeight: '700', paddingRight: '50px'
                         }}>
                             📊 {selectedProject?.projectName}
                         </h2>
@@ -438,58 +357,36 @@ const ProjectManagerProjects = () => {
                         ) : projectStats ? (
                             <>
                                 <div style={{
-                                    display: 'grid',
-                                    gridTemplateColumns: 'repeat(2, 1fr)',
-                                    gap: '1rem',
-                                    marginBottom: '2rem'
+                                    display: 'grid', gridTemplateColumns: 'repeat(2, 1fr)',
+                                    gap: '1rem', marginBottom: '2rem'
                                 }}>
-                                    <div style={{
-                                        background: '#f0f9ff',
-                                        padding: '1rem',
-                                        borderRadius: '12px',
-                                        textAlign: 'center'
-                                    }}>
+                                    <div style={{ background: '#f0f9ff', padding: '1rem', borderRadius: '12px', textAlign: 'center' }}>
                                         <p style={{ color: '#0369a1', fontSize: '2rem', fontWeight: '700', margin: 0 }}>
-                                            {projectStats.totalTasks}
+                                            {projectStats.totalTasks ?? 0}
                                         </p>
                                         <p style={{ color: '#0284c7', fontSize: '0.9rem', margin: '0.3rem 0 0 0' }}>
                                             Tâches totales
                                         </p>
                                     </div>
-                                    <div style={{
-                                        background: '#f0fdf4',
-                                        padding: '1rem',
-                                        borderRadius: '12px',
-                                        textAlign: 'center'
-                                    }}>
+                                    <div style={{ background: '#f0fdf4', padding: '1rem', borderRadius: '12px', textAlign: 'center' }}>
                                         <p style={{ color: '#15803d', fontSize: '2rem', fontWeight: '700', margin: 0 }}>
-                                            {projectStats.completedTasks}
+                                            {projectStats.completedTasks ?? 0}
                                         </p>
                                         <p style={{ color: '#16a34a', fontSize: '0.9rem', margin: '0.3rem 0 0 0' }}>
                                             Terminées
                                         </p>
                                     </div>
-                                    <div style={{
-                                        background: '#fef3c7',
-                                        padding: '1rem',
-                                        borderRadius: '12px',
-                                        textAlign: 'center'
-                                    }}>
+                                    <div style={{ background: '#fef3c7', padding: '1rem', borderRadius: '12px', textAlign: 'center' }}>
                                         <p style={{ color: '#b45309', fontSize: '2rem', fontWeight: '700', margin: 0 }}>
-                                            {projectStats.inProgressTasks}
+                                            {projectStats.inProgressTasks ?? 0}
                                         </p>
                                         <p style={{ color: '#d97706', fontSize: '0.9rem', margin: '0.3rem 0 0 0' }}>
                                             En cours
                                         </p>
                                     </div>
-                                    <div style={{
-                                        background: '#f3f4f6',
-                                        padding: '1rem',
-                                        borderRadius: '12px',
-                                        textAlign: 'center'
-                                    }}>
+                                    <div style={{ background: '#f3f4f6', padding: '1rem', borderRadius: '12px', textAlign: 'center' }}>
                                         <p style={{ color: '#4b5563', fontSize: '2rem', fontWeight: '700', margin: 0 }}>
-                                            {projectStats.todoTasks}
+                                            {projectStats.todoTasks ?? 0}
                                         </p>
                                         <p style={{ color: '#6b7280', fontSize: '0.9rem', margin: '0.3rem 0 0 0' }}>
                                             À faire
@@ -498,20 +395,16 @@ const ProjectManagerProjects = () => {
                                 </div>
 
                                 <div style={{ marginBottom: '2rem' }}>
-                                    <div style={{
-                                        display: 'flex',
-                                        justifyContent: 'space-between',
-                                        marginBottom: '0.5rem'
-                                    }}>
+                                    <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '0.5rem' }}>
                                         <span style={{ fontWeight: '600', color: '#374151' }}>Progression globale</span>
                                         <span style={{ fontWeight: '700', color: 'var(--mobilis-green)', fontSize: '1.2rem' }}>
-                                            {projectStats.progress}%
+                                            {projectStats.progress ?? 0}%
                                         </span>
                                     </div>
                                     <div className="task-progress-bar-bg" style={{ height: '14px' }}>
                                         <div
-                                            className={`task-progress-bar-fill progress-${getProgressClass(projectStats.progress)}`}
-                                            style={{ width: `${projectStats.progress}%` }}
+                                            className={`task-progress-bar-fill progress-${getProgressClass(projectStats.progress ?? 0)}`}
+                                            style={{ width: `${projectStats.progress ?? 0}%` }}
                                         >
                                             <div className="progress-shimmer"></div>
                                         </div>
@@ -520,14 +413,10 @@ const ProjectManagerProjects = () => {
 
                                 {projectStats.isDelayed && (
                                     <div style={{
-                                        background: '#fee2e2',
-                                            border: '2px solid #dc2626',
-                                        borderRadius: '12px',
-                                        padding: '1rem',
-                                        display: 'flex',
-                                        alignItems: 'center',
-                                        gap: '0.8rem',
-                                        marginBottom: '1.5rem'
+                                        background: '#fee2e2', border: '2px solid #dc2626',
+                                        borderRadius: '12px', padding: '1rem',
+                                        display: 'flex', alignItems: 'center',
+                                        gap: '0.8rem', marginBottom: '1.5rem'
                                     }}>
                                         <AlertCircle size={24} style={{ color: '#dc2626', flexShrink: 0 }} />
                                         <div>
@@ -542,11 +431,7 @@ const ProjectManagerProjects = () => {
                                 )}
 
                                 {(projectStats.startDate || projectStats.endDate) && (
-                                    <div style={{
-                                        background: '#f9fafb',
-                                        borderRadius: '12px',
-                                        padding: '1rem'
-                                    }}>
+                                    <div style={{ background: '#f9fafb', borderRadius: '12px', padding: '1rem' }}>
                                         <h4 style={{ margin: '0 0 0.8rem 0', color: '#374151' }}>📅 Dates</h4>
                                         {projectStats.startDate && (
                                             <p style={{ margin: '0.3rem 0', color: '#6b7280' }}>
@@ -562,9 +447,7 @@ const ProjectManagerProjects = () => {
                                 )}
                             </>
                         ) : (
-                            <div className="no-data">
-                                Aucune statistique disponible
-                            </div>
+                            <div className="no-data">Aucune statistique disponible</div>
                         )}
                     </div>
                 </div>
@@ -574,4 +457,3 @@ const ProjectManagerProjects = () => {
 };
 
 export default ProjectManagerProjects;
-

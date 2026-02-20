@@ -134,7 +134,7 @@ namespace ProjectManagementAPI.Services.Implementations
             }
         }
 
-        // ✅ UPDATE task progress (Développeur — 1% par 1%)
+        // UPDATE task progress (Développeur)
         public async Task<ApiResponse<TaskDTO>> UpdateTaskProgressAsync(int taskId, int progress, int userId)
         {
             try
@@ -154,7 +154,6 @@ namespace ProjectManagementAPI.Services.Implementations
                     return new ApiResponse<TaskDTO>
                     { Success = false, Message = "Vous ne pouvez modifier que vos propres tâches" };
 
-                // Validation de la valeur
                 if (progress < 0 || progress > 100)
                     return new ApiResponse<TaskDTO>
                     { Success = false, Message = "La progression doit être entre 0 et 100" };
@@ -166,7 +165,7 @@ namespace ProjectManagementAPI.Services.Implementations
 
                 task.Progress = progress;
 
-                // ✅ Statut automatique selon progression
+                // Statut automatique selon progression
                 task.TaskStatusId = progress switch
                 {
                     0 => 1,    // À faire
@@ -180,7 +179,6 @@ namespace ProjectManagementAPI.Services.Implementations
 
                 await _context.SaveChangesAsync();
 
-                // ✅ Recalcule la progression du projet
                 await RecalculateProjectProgressAsync(task.ProjectId);
 
                 return new ApiResponse<TaskDTO>
@@ -197,7 +195,7 @@ namespace ProjectManagementAPI.Services.Implementations
             }
         }
 
-        // UPDATE task status (garde pour compatibilité)
+        // UPDATE task status (compatibilité)
         public async Task<ApiResponse<TaskDTO>> UpdateTaskStatusAsync(int taskId, int statusId, int userId)
         {
             try
@@ -217,7 +215,7 @@ namespace ProjectManagementAPI.Services.Implementations
 
                 task.TaskStatusId = statusId;
 
-                // Si dev met "Terminé" → force En attente de validation + 100%
+                // Si dev met "Terminé" → forcer 100% + En attente de validation
                 if (statusId == 3)
                 {
                     task.Progress = 100;
@@ -227,7 +225,6 @@ namespace ProjectManagementAPI.Services.Implementations
 
                 await _context.SaveChangesAsync();
 
-                // ✅ Recalcule aussi ici
                 await RecalculateProjectProgressAsync(task.ProjectId);
 
                 return new ApiResponse<TaskDTO>
@@ -244,7 +241,7 @@ namespace ProjectManagementAPI.Services.Implementations
             }
         }
 
-        // VALIDATE task (Chef de Projet only)
+        // VALIDATE task (Chef de Projet)
         public async Task<ApiResponse<TaskDTO>> ValidateTaskAsync(int taskId, int userId)
         {
             try
@@ -274,7 +271,6 @@ namespace ProjectManagementAPI.Services.Implementations
 
                 await _context.SaveChangesAsync();
 
-                // ✅ Recalcule après validation
                 await RecalculateProjectProgressAsync(task.ProjectId);
 
                 return new ApiResponse<TaskDTO>
@@ -370,7 +366,7 @@ namespace ProjectManagementAPI.Services.Implementations
             }
         }
 
-        // ✅ HELPER: Recalculate project progress (moyenne de toutes les tâches)
+        // HELPER: Recalculate project progress
         private async Task RecalculateProjectProgressAsync(int projectId)
         {
             var tasks = await _context.ProjectTasks
@@ -380,25 +376,31 @@ namespace ProjectManagementAPI.Services.Implementations
             var project = await _context.Projects.FindAsync(projectId);
             if (project == null) return;
 
+            // Ne pas toucher si déjà Terminé ou Annulé (chef a décidé)
+            if (project.ProjectStatusId == 3 || project.ProjectStatusId == 4)
+                return;
+
             if (tasks.Count == 0)
             {
                 project.Progress = 0;
+                project.ProjectStatusId = 1; // Planifié
             }
             else
             {
-                // ✅ Moyenne de la progression de TOUTES les tâches
                 project.Progress = (int)Math.Round(
                     tasks.Average(t => (double)t.Progress)
                 );
-            }
 
-            // ✅ Statut projet automatique
-            project.ProjectStatusId = project.Progress switch
-            {
-                0 => 1,    // Planifié
-                100 => 3,  // Terminé
-                _ => 2     // En cours
-            };
+                if (project.Progress == 0)
+                {
+                    project.ProjectStatusId = 1; // Planifié
+                }
+                else
+                {
+                    // Même à 100%, on reste "En cours" → le chef décide quand Terminé
+                    project.ProjectStatusId = 2; // En cours
+                }
+            }
 
             await _context.SaveChangesAsync();
         }

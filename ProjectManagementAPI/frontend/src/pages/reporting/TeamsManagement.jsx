@@ -8,7 +8,6 @@ import '../../styles/TeamsManagement.css';
 const TeamsManagement = () => {
     const [teams, setTeams] = useState([]);
     const [users, setUsers] = useState([]);
-    const [deletedTeamIds, setDeletedTeamIds] = useState(new Set());
     const [loading, setLoading] = useState(true);
     const [showModal, setShowModal] = useState(false);
     const [showMembersModal, setShowMembersModal] = useState(false);
@@ -23,71 +22,20 @@ const TeamsManagement = () => {
     });
 
     useEffect(() => {
-        const savedDeletedIds = localStorage.getItem('deletedTeamIds');
-        if (savedDeletedIds) {
-            try {
-                const idsArray = JSON.parse(savedDeletedIds);
-                const idsSet = new Set(idsArray);
-                setDeletedTeamIds(idsSet);
-                console.log('📦 Loaded deleted IDs from localStorage:', [...idsSet]);
-                fetchTeamsSync(idsSet);
-            } catch (error) {
-                console.error('Error loading deleted IDs:', error);
-                fetchTeams();
-            }
-        } else {
-            fetchTeams();
-        }
+        // ✅ Nettoyer l'ancien localStorage (plus nécessaire)
+        localStorage.removeItem('deletedTeamIds');
+        fetchTeams();
         fetchUsers();
     }, []);
 
-    const fetchTeams = async (excludeTeamIds = null) => {
+    // ========== FETCH TEAMS ==========
+    const fetchTeams = async () => {
         try {
             setLoading(true);
             const response = await teamService.getAllTeams();
             const teamsArray = Array.isArray(response) ? response : response?.data || [];
-
-            const idsToExclude = excludeTeamIds || deletedTeamIds;
-
-            console.log('🔍 All teams with status:');
-            teamsArray.forEach(team => {
-                console.log(`  - ${team.teamName}: isActive = ${team.isActive}, deleted = ${idsToExclude.has(team.teamId)}`);
-            });
-
-            const activeTeams = teamsArray.filter(team => {
-                const isNotDeleted = !idsToExclude.has(team.teamId);
-                const isActive = team.isActive !== false;
-                return isNotDeleted && isActive;
-            });
-
-            console.log('📊 Total teams:', teamsArray.length, '| Active teams:', activeTeams.length, '| Deleted:', idsToExclude.size);
-            setTeams(activeTeams);
-        } catch (error) {
-            console.error('❌ Fetch teams error:', error);
-        } finally {
-            setLoading(false);
-        }
-    };
-
-    const fetchTeamsSync = async (idsSet) => {
-        try {
-            setLoading(true);
-            const response = await teamService.getAllTeams();
-            const teamsArray = Array.isArray(response) ? response : response?.data || [];
-
-            console.log('🔍 All teams with status (on mount):');
-            teamsArray.forEach(team => {
-                console.log(`  - ${team.teamName}: isActive = ${team.isActive}, deleted = ${idsSet.has(team.teamId)}`);
-            });
-
-            const activeTeams = teamsArray.filter(team => {
-                const isNotDeleted = !idsSet.has(team.teamId);
-                const isActive = team.isActive !== false;
-                return isNotDeleted && isActive;
-            });
-
-            console.log('📊 Total teams:', teamsArray.length, '| Active teams:', activeTeams.length, '| Deleted:', idsSet.size);
-            setTeams(activeTeams);
+            setTeams(teamsArray);
+            console.log('📊 Teams loaded:', teamsArray.length);
         } catch (error) {
             console.error('❌ Fetch teams error:', error);
         } finally {
@@ -162,9 +110,7 @@ const TeamsManagement = () => {
 
     // ========== DELETE MEMBER ==========
     const handleDeleteMember = async (userId, userName) => {
-        if (!window.confirm(`Voulez-vous vraiment retirer ${userName} de l'équipe?`)) {
-            return;
-        }
+        if (!window.confirm(`Voulez-vous vraiment retirer ${userName} de l'équipe?`)) return;
 
         try {
             const response = await teamService.removeMember(selectedTeam.teamId, userId);
@@ -182,6 +128,7 @@ const TeamsManagement = () => {
         }
     };
 
+    // ========== CREATE / EDIT TEAM ==========
     const handleCreateTeam = () => {
         setModalMode('create');
         setFormData({ teamName: '', description: '' });
@@ -204,7 +151,7 @@ const TeamsManagement = () => {
             if (modalMode === 'create') {
                 const response = await teamService.createTeam(formData);
                 if (response.success) {
-                    alert('Équipe créée avec succès !');
+                    alert('✅ Équipe créée avec succès !');
                     fetchTeams();
                     setShowModal(false);
                 } else {
@@ -213,7 +160,7 @@ const TeamsManagement = () => {
             } else {
                 const response = await teamService.updateTeam(selectedTeam.teamId, formData);
                 if (response.success) {
-                    alert('Équipe modifiée avec succès !');
+                    alert('✅ Équipe modifiée avec succès !');
                     fetchTeams();
                     setShowModal(false);
                 } else {
@@ -226,46 +173,27 @@ const TeamsManagement = () => {
         }
     };
 
+    // ✅ DELETE TEAM — vraie suppression via API
     const handleDeleteTeam = async (teamId, teamName) => {
-        if (!window.confirm(`Voulez-vous supprimer l'équipe "${teamName}" ?`)) return;
+        if (!window.confirm(`Voulez-vous vraiment supprimer l'équipe "${teamName}" ?\nCette action est irréversible.`)) return;
 
         try {
-            const newDeletedIds = new Set([...deletedTeamIds, teamId]);
-
-            console.log(`🗑️ Deleting team ${teamId}, updating local state...`);
-
-            setDeletedTeamIds(newDeletedIds);
-            localStorage.setItem('deletedTeamIds', JSON.stringify([...newDeletedIds]));
-            console.log('💾 Saved to localStorage:', [...newDeletedIds]);
-
-            setTeams(prevTeams => prevTeams.filter(t => t.teamId !== teamId));
-
             const response = await teamService.deleteTeam(teamId);
 
-            if (response.notSupported) {
-                console.log('⚠️ DELETE not supported, trying deactivation...');
-                const deactivateResponse = await teamService.deactivateTeam(teamId);
-
-                if (deactivateResponse.success) {
-                    alert('Équipe désactivée avec succès !');
-                } else {
-                    alert('Équipe masquée localement');
-                }
-            } else if (response.success) {
-                alert(response.message || 'Équipe supprimée avec succès !');
+            if (response.success) {
+                alert(`✅ ${response.message || 'Équipe supprimée avec succès !'}`);
+                // ✅ Recharger depuis le serveur
+                fetchTeams();
             } else {
-                alert('Équipe masquée localement');
+                alert(`❌ ${response.message || 'Erreur lors de la suppression'}`);
             }
-
-            fetchTeams(newDeletedIds);
         } catch (error) {
-            console.error('❌ Delete error:', error);
-            alert('Équipe masquée localement');
-            fetchTeams(new Set([...deletedTeamIds, teamId]));
+            console.error('❌ Delete team error:', error);
+            alert(`❌ ${error.message || 'Erreur lors de la suppression'}`);
         }
     };
 
-    // Filter out users who are already members
+    // Filter out users already members
     const availableUsers = users.filter(
         user => !teamMembers.some(member => member.userId === user.userId)
     );
@@ -474,4 +402,3 @@ const TeamsManagement = () => {
 };
 
 export default TeamsManagement;
-

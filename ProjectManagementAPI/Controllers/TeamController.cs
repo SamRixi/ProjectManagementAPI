@@ -50,6 +50,16 @@ namespace ProjectManagementAPI.Controllers
             return result.Success ? Ok(result) : NotFound(result);
         }
 
+        // ============= ✅ DELETE Team (Reporting/Manager) =============
+
+        [HttpDelete("{teamId}")]
+        [Authorize(Roles = "Reporting,Manager")]
+        public async Task<IActionResult> DeleteTeam(int teamId)
+        {
+            var result = await _teamService.DeleteTeamAsync(teamId);
+            return result.Success ? Ok(result) : BadRequest(result);
+        }
+
         // ============= Toggle Team Active (Reporting/Manager) =============
 
         [HttpPut("{teamId}/toggle-active")]
@@ -78,7 +88,7 @@ namespace ProjectManagementAPI.Controllers
             return result.Success ? Ok(result) : BadRequest(result);
         }
 
-        // ✅ NOUVEAU : Définir un membre comme chef de projet
+        // ✅ Définir un membre comme chef de projet
         [HttpPut("member/{teamMemberId}/set-project-manager")]
         [Authorize(Roles = "Reporting,Manager")]
         public async Task<IActionResult> SetProjectManager(int teamMemberId, [FromBody] SetProjectManagerDTO dto)
@@ -96,7 +106,7 @@ namespace ProjectManagementAPI.Controllers
             return result.Success ? Ok(result) : BadRequest(result);
         }
 
-        // ✅ NOUVEAU : Récupérer tous les chefs de projet (pour dropdown)
+        // ✅ Récupérer tous les chefs de projet (pour dropdown)
         [HttpGet("project-managers")]
         [Authorize(Roles = "Reporting,Manager")]
         public async Task<IActionResult> GetProjectManagers()
