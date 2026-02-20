@@ -29,22 +29,40 @@ namespace ProjectManagementAPI.Controllers
             return int.Parse(User.FindFirst(ClaimTypes.NameIdentifier)?.Value ?? "0");
         }
 
+        // ============= HELPER : Calcul statut dynamique =============
+        private static (string statusName, string statusColor) GetDynamicStatus(
+            int? projectStatusId, int pendingValidationTasks, int progress,
+            int validatedTasks, int totalTasks, bool isDelayed,
+            string? dbStatusName, string? dbStatusColor)
+        {
+            // Projet déjà officiellement Terminé ou Annulé → on respecte la DB
+            if (projectStatusId == 3) return ("Terminé", "#00C853");
+            if (projectStatusId == 4) return ("Annulé", "#9E9E9E");
+
+            // Statut dynamique basé sur l'état réel des tâches
+            if (pendingValidationTasks > 0)
+                return ("⏳ En attente de validation", "#FFA500");
+
+            if (totalTasks > 0 && validatedTasks == totalTasks)
+                return ("✅ Prêt à clôturer", "#00BFA5");
+
+            if (isDelayed)
+                return ("🔴 En retard", "#FF0000");
+
+            return (dbStatusName ?? "En cours", dbStatusColor ?? "#2196F3");
+        }
+
         // ============= DEBUG TOKEN =============
         [HttpGet("debug/token")]
         [ProducesResponseType(StatusCodes.Status200OK)]
         public IActionResult DebugToken()
         {
-            var claims = User.Claims.Select(c => new
-            {
-                type = c.Type,
-                value = c.Value
-            }).ToList();
-
+            var claims = User.Claims.Select(c => new { type = c.Type, value = c.Value }).ToList();
             return Ok(new
             {
                 success = true,
                 message = "Claims du token JWT",
-                claims = claims,
+                claims,
                 userIsAuthenticated = User.Identity?.IsAuthenticated ?? false,
                 userName = User.Identity?.Name ?? "N/A"
             });
@@ -69,8 +87,6 @@ namespace ProjectManagementAPI.Controllers
 
                 var totalProjects = projects.Count;
                 var totalTasks = projects.Sum(p => p.ProjectTasks?.Count ?? 0);
-
-                // ✅ Tâche terminée = Progress == 100 (validée ou non)
                 var completedTasks = projects.Sum(p => p.ProjectTasks?.Count(t => t.Progress == 100) ?? 0);
                 var pendingTasks = totalTasks - completedTasks;
                 var tasksAwaitingValidation = projects.Sum(p => p.ProjectTasks?.Count(t => t.TaskStatusId == 4) ?? 0);
@@ -85,59 +101,63 @@ namespace ProjectManagementAPI.Controllers
                 {
                     var tasks = p.ProjectTasks ?? new List<ProjectTask>();
                     var totalTasksCount = tasks.Count;
-
-                    var completed = tasks.Count(t => t.Progress == 100);   // ✅
+                    var completed = tasks.Count(t => t.Progress == 100);
                     var inProgress = tasks.Count(t => t.Progress > 0 && t.Progress < 100);
                     var todo = tasks.Count(t => t.Progress == 0);
                     var pendingValidation = tasks.Count(t => t.TaskStatusId == 4);
+                    var validated = tasks.Count(t => t.IsValidated);
 
-                    int progress = 0;
-                    if (totalTasksCount > 0)
-                        progress = (int)Math.Round((completed * 100.0) / totalTasksCount);
+                    int progress = totalTasksCount > 0
+                        ? (int)Math.Round((completed * 100.0) / totalTasksCount)
+                        : 0;
 
-                    bool isDelayed = p.EndDate.HasValue && p.EndDate.Value < DateTime.UtcNow &&
-                                     (totalTasksCount == 0 || progress < 100);
+                    bool isDelayed = p.EndDate.HasValue && p.EndDate.Value < DateTime.UtcNow
+                                     && (totalTasksCount == 0 || progress < 100);
+
+                    var (statusName, statusColor) = GetDynamicStatus(
+                        p.ProjectStatusId, pendingValidation, progress,
+                        validated, totalTasksCount, isDelayed,
+                        p.ProjectStatus?.StatusName, p.ProjectStatus?.Color);
 
                     return new
                     {
                         projectId = p.ProjectId,
                         projectName = p.ProjectName,
+                        statusName,
+                        statusColor,
                         totalTasks = totalTasksCount,
                         completedTasks = completed,
                         inProgressTasks = inProgress,
                         todoTasks = todo,
                         pendingValidationTasks = pendingValidation,
-                        progress = progress,
-                        isDelayed = isDelayed
+                        progress,
+                        isDelayed
                     };
                 }).ToList();
-
-                var stats = new
-                {
-                    totalProjects,
-                    totalTasks,
-                    completedTasks,
-                    pendingTasks,
-                    tasksAwaitingValidation,
-                    activeMembers
-                };
 
                 return Ok(new
                 {
                     success = true,
                     message = "Dashboard chargé avec succès",
-                    data = new { stats, projects = projectsList }
+                    data = new
+                    {
+                        stats = new
+                        {
+                            totalProjects,
+                            totalTasks,
+                            completedTasks,
+                            pendingTasks,
+                            tasksAwaitingValidation,
+                            activeMembers
+                        },
+                        projects = projectsList
+                    }
                 });
             }
             catch (Exception ex)
             {
                 Console.WriteLine($"❌ Erreur Dashboard: {ex.Message}");
-                return StatusCode(500, new
-                {
-                    success = false,
-                    message = "Erreur lors du chargement du dashboard",
-                    error = ex.Message
-                });
+                return StatusCode(500, new { success = false, message = "Erreur dashboard", error = ex.Message });
             }
         }
 
@@ -157,68 +177,78 @@ namespace ProjectManagementAPI.Controllers
                     .Include(p => p.Team)
                     .ToListAsync();
 
+                // ✅ Correction automatique : projet "Terminé" avec tâches non validées → "En cours"
+                bool hasChanges = false;
+                foreach (var project in projects)
+                {
+                    var tasks = project.ProjectTasks ?? new List<ProjectTask>();
+                    var pendingTasks = tasks.Count(t => t.TaskStatusId == 4);
+                    var totalTasks = tasks.Count;
+                    var validatedTasks = tasks.Count(t => t.IsValidated);
+
+                    if (project.ProjectStatusId == 3 &&
+                        (pendingTasks > 0 || (totalTasks > 0 && validatedTasks < totalTasks)))
+                    {
+                        project.ProjectStatusId = 2; // Remettre "En cours"
+                        project.Progress = 0;
+                        hasChanges = true;
+                    }
+                }
+
+                if (hasChanges)
+                    await _context.SaveChangesAsync();
+
                 var projectsList = projects.Select(p =>
                 {
                     var tasks = p.ProjectTasks ?? new List<ProjectTask>();
                     var totalTasks = tasks.Count;
-
-                    // ✅ Terminé = Progress == 100 (pas besoin d'être validé)
                     var completedTasks = tasks.Count(t => t.Progress == 100);
                     var validatedTasks = tasks.Count(t => t.IsValidated);
                     var inProgressTasks = tasks.Count(t => t.Progress > 0 && t.Progress < 100);
                     var todoTasks = tasks.Count(t => t.Progress == 0);
                     var pendingValidationTasks = tasks.Count(t => t.TaskStatusId == 4);
 
-                    int progress = 0;
-                    if (totalTasks > 0)
-                        progress = (int)Math.Round((completedTasks * 100.0) / totalTasks);
+                    int progress = totalTasks > 0
+                        ? (int)Math.Round((completedTasks * 100.0) / totalTasks)
+                        : 0;
 
-                    bool isDelayed = false;
-                    if (p.EndDate.HasValue && p.EndDate.Value < DateTime.UtcNow)
-                    {
-                        if (totalTasks == 0 || progress < 100)
-                            isDelayed = true;
-                    }
+                    bool isDelayed = p.EndDate.HasValue
+                        && p.EndDate.Value < DateTime.UtcNow
+                        && (totalTasks == 0 || progress < 100);
+
+                    // ✅ Statut dynamique (logique réelle, pas juste la DB)
+                    var (statusName, statusColor) = GetDynamicStatus(
+                        p.ProjectStatusId, pendingValidationTasks, progress,
+                        validatedTasks, totalTasks, isDelayed,
+                        p.ProjectStatus?.StatusName, p.ProjectStatus?.Color);
 
                     return new
                     {
                         projectId = p.ProjectId,
                         projectName = p.ProjectName,
                         description = p.Description ?? "",
-                        statusName = p.ProjectStatus?.StatusName ?? "N/A",
-                        statusColor = p.ProjectStatus?.Color ?? "#999",
+                        statusName,
+                        statusColor,
                         teamName = p.Team?.teamName ?? "Aucune équipe",
-                        totalTasks = totalTasks,
-                        completedTasks = completedTasks,
-                        inProgressTasks = inProgressTasks,
-                        validatedTasks = validatedTasks,
-                        todoTasks = todoTasks,
-                        pendingValidationTasks = pendingValidationTasks,
-                        progress = progress,
-                        isDelayed = isDelayed,
+                        totalTasks,
+                        completedTasks,
+                        inProgressTasks,
+                        validatedTasks,
+                        todoTasks,
+                        pendingValidationTasks,
+                        progress,
+                        isDelayed,
                         startDate = p.StartDate,
                         endDate = p.EndDate
                     };
                 }).ToList();
 
-                return Ok(new
-                {
-                    success = true,
-                    message = "Projets récupérés avec succès",
-                    data = projectsList
-                });
+                return Ok(new { success = true, message = "Projets récupérés avec succès", data = projectsList });
             }
             catch (Exception ex)
             {
                 Console.WriteLine($"❌ ERREUR GetMyProjects: {ex.Message}");
-                Console.WriteLine($"❌ STACK: {ex.StackTrace}");
-
-                return StatusCode(500, new
-                {
-                    success = false,
-                    message = "Erreur lors de la récupération des projets",
-                    error = ex.Message
-                });
+                return StatusCode(500, new { success = false, message = "Erreur récupération projets", error = ex.Message });
             }
         }
 
@@ -241,81 +271,67 @@ namespace ProjectManagementAPI.Controllers
                     .FirstOrDefaultAsync();
 
                 if (project == null)
-                {
                     return NotFound(new { success = false, message = "Projet non trouvé" });
-                }
 
                 if (project.ProjectManagerId != userId)
-                {
-                    return StatusCode(403, new
-                    {
-                        success = false,
-                        message = "Vous n'êtes pas autorisé à voir ce projet"
-                    });
-                }
+                    return StatusCode(403, new { success = false, message = "Non autorisé" });
 
                 var tasks = project.ProjectTasks ?? new List<ProjectTask>();
                 var totalTasks = tasks.Count;
-
-                // ✅ Terminé = Progress == 100
                 var completedTasks = tasks.Count(t => t.Progress == 100);
+                var validatedTasks = tasks.Count(t => t.IsValidated);
                 var inProgressTasks = tasks.Count(t => t.Progress > 0 && t.Progress < 100);
                 var todoTasks = tasks.Count(t => t.Progress == 0);
                 var pendingValidationTasks = tasks.Count(t => t.TaskStatusId == 4);
 
-                int progress = 0;
-                if (totalTasks > 0)
-                    progress = (int)Math.Round((completedTasks * 100.0) / totalTasks);
+                int progress = totalTasks > 0
+                    ? (int)Math.Round((completedTasks * 100.0) / totalTasks)
+                    : 0;
 
-                bool isDelayed = false;
-                if (project.EndDate.HasValue && project.EndDate.Value < DateTime.UtcNow)
-                {
-                    if (totalTasks == 0 || progress < 100)
-                        isDelayed = true;
-                }
+                bool isDelayed = project.EndDate.HasValue
+                    && project.EndDate.Value < DateTime.UtcNow
+                    && (totalTasks == 0 || progress < 100);
 
-                var stats = new
-                {
-                    projectId = project.ProjectId,
-                    projectName = project.ProjectName,
-                    description = project.Description ?? "",
-                    statusName = project.ProjectStatus?.StatusName ?? "N/A",
-                    statusColor = project.ProjectStatus?.Color ?? "#999",
-                    teamName = project.Team?.teamName ?? "Aucune équipe",
-                    totalTasks = totalTasks,
-                    completedTasks = completedTasks,
-                    inProgressTasks = inProgressTasks,
-                    todoTasks = todoTasks,
-                    pendingValidationTasks = pendingValidationTasks,
-                    progress = progress,
-                    isDelayed = isDelayed,
-                    startDate = project.StartDate,
-                    endDate = project.EndDate
-                };
+                // ✅ Statut dynamique
+                var (statusName, statusColor) = GetDynamicStatus(
+                    project.ProjectStatusId, pendingValidationTasks, progress,
+                    validatedTasks, totalTasks, isDelayed,
+                    project.ProjectStatus?.StatusName, project.ProjectStatus?.Color);
 
                 return Ok(new
                 {
                     success = true,
                     message = "Statistiques récupérées avec succès",
-                    data = stats
+                    data = new
+                    {
+                        projectId = project.ProjectId,
+                        projectName = project.ProjectName,
+                        description = project.Description ?? "",
+                        statusName,
+                        statusColor,
+                        teamName = project.Team?.teamName ?? "Aucune équipe",
+                        totalTasks,
+                        completedTasks,
+                        inProgressTasks,
+                        validatedTasks,
+                        todoTasks,
+                        pendingValidationTasks,
+                        progress,
+                        isDelayed,
+                        startDate = project.StartDate,
+                        endDate = project.EndDate
+                    }
                 });
             }
             catch (Exception ex)
             {
                 Console.WriteLine($"❌ Erreur Stats: {ex.Message}");
-                return StatusCode(500, new
-                {
-                    success = false,
-                    message = "Erreur lors de la récupération des statistiques",
-                    error = ex.Message
-                });
+                return StatusCode(500, new { success = false, message = "Erreur stats", error = ex.Message });
             }
         }
 
         // ============= TÂCHES D'UN PROJET =============
         [HttpGet("projects/{projectId}/tasks")]
-        [ProducesResponseType(StatusCodes.Status200OK)]
-        [ProducesResponseType(StatusCodes.Status403Forbidden)]
         public async Task<IActionResult> GetProjectTasks(int projectId)
         {
             try
@@ -326,18 +342,13 @@ namespace ProjectManagementAPI.Controllers
                     .FirstOrDefaultAsync(p => p.ProjectId == projectId);
 
                 if (project == null)
-                {
                     return NotFound(new { success = false, message = "Projet non trouvé" });
-                }
 
                 if (project.ProjectManagerId != userId)
-                {
-                    return StatusCode(403, new
-                    {
-                        success = false,
-                        message = "Vous n'êtes pas autorisé à voir ces tâches"
-                    });
-                }
+                    return StatusCode(403, new { success = false, message = "Non autorisé" });
+
+                if (project.ProjectStatusId == 4)
+                    return Ok(new { success = true, message = "Projet annulé", data = new List<object>() });
 
                 var tasks = await _context.ProjectTasks
                     .Where(t => t.ProjectId == projectId)
@@ -357,169 +368,92 @@ namespace ProjectManagementAPI.Controllers
                             ? t.AssignedToUser.FirstName + " " + t.AssignedToUser.LastName
                             : "Non assigné",
                         progress = t.Progress,
+                        isValidated = t.IsValidated,
                         isOverdue = t.DueDate < DateTime.Now && t.TaskStatusId != 4 && t.TaskStatusId != 5
                     })
                     .ToListAsync();
 
-                return Ok(new
-                {
-                    success = true,
-                    message = "Tâches récupérées avec succès",
-                    data = tasks
-                });
+                return Ok(new { success = true, message = "Tâches récupérées avec succès", data = tasks });
             }
             catch (Exception ex)
             {
-                return StatusCode(500, new
-                {
-                    success = false,
-                    message = "Erreur lors de la récupération des tâches",
-                    error = ex.Message
-                });
+                return StatusCode(500, new { success = false, message = "Erreur récupération tâches", error = ex.Message });
             }
         }
 
         // ============= CRÉER UNE TÂCHE =============
         [HttpPost("tasks")]
-        [ProducesResponseType(StatusCodes.Status200OK)]
-        [ProducesResponseType(StatusCodes.Status400BadRequest)]
-        [ProducesResponseType(StatusCodes.Status403Forbidden)]
         public async Task<IActionResult> CreateTask([FromBody] CreateTaskDTO dto)
         {
             try
             {
                 if (!ModelState.IsValid)
-                {
-                    return BadRequest(new
-                    {
-                        success = false,
-                        message = "Données invalides",
-                        errors = ModelState.Values.SelectMany(v => v.Errors.Select(e => e.ErrorMessage))
-                    });
-                }
+                    return BadRequest(new { success = false, message = "Données invalides" });
 
                 var userId = GetCurrentUserId();
-
-                var project = await _context.Projects
-                    .FirstOrDefaultAsync(p => p.ProjectId == dto.ProjectId);
+                var project = await _context.Projects.FirstOrDefaultAsync(p => p.ProjectId == dto.ProjectId);
 
                 if (project == null)
-                {
                     return NotFound(new { success = false, message = "Projet non trouvé" });
-                }
 
                 if (project.ProjectManagerId != userId)
-                {
-                    return StatusCode(403, new
-                    {
-                        success = false,
-                        message = "Vous n'êtes pas autorisé à créer des tâches pour ce projet"
-                    });
-                }
+                    return StatusCode(403, new { success = false, message = "Non autorisé" });
 
                 var result = await _taskService.CreateTaskAsync(dto, userId);
 
                 if (!result.Success)
-                {
-                    return BadRequest(new
-                    {
-                        success = false,
-                        message = result.Message
-                    });
-                }
+                    return BadRequest(new { success = false, message = result.Message });
 
-                return Ok(new
-                {
-                    success = true,
-                    message = result.Message,
-                    data = result.Data
-                });
+                return Ok(new { success = true, message = result.Message, data = result.Data });
             }
             catch (Exception ex)
             {
-                return StatusCode(500, new
-                {
-                    success = false,
-                    message = "Erreur lors de la création de la tâche",
-                    error = ex.Message
-                });
+                return StatusCode(500, new { success = false, message = "Erreur création tâche", error = ex.Message });
             }
         }
 
         // ============= ASSIGNER UNE TÂCHE =============
         [HttpPut("tasks/{taskId}/assign")]
-        [ProducesResponseType(StatusCodes.Status200OK)]
-        [ProducesResponseType(StatusCodes.Status400BadRequest)]
-        [ProducesResponseType(StatusCodes.Status403Forbidden)]
         public async Task<IActionResult> AssignTask(int taskId, [FromBody] AssignTaskDTO dto)
         {
             try
             {
                 if (!ModelState.IsValid)
-                {
-                    return BadRequest(new
-                    {
-                        success = false,
-                        message = "Données invalides"
-                    });
-                }
+                    return BadRequest(new { success = false, message = "Données invalides" });
 
                 var userId = GetCurrentUserId();
-
                 var task = await _context.ProjectTasks
                     .Include(t => t.Project)
                     .FirstOrDefaultAsync(t => t.ProjectTaskId == taskId);
 
                 if (task == null)
-                {
                     return NotFound(new { success = false, message = "Tâche non trouvée" });
-                }
 
                 if (task.Project.ProjectManagerId != userId)
-                {
-                    return StatusCode(403, new
-                    {
-                        success = false,
-                        message = "Vous n'êtes pas autorisé à assigner cette tâche"
-                    });
-                }
+                    return StatusCode(403, new { success = false, message = "Non autorisé" });
 
                 var user = await _context.Users.FindAsync(dto.AssignedToUserId);
                 if (user == null)
-                {
                     return BadRequest(new { success = false, message = "Utilisateur non trouvé" });
-                }
 
                 task.AssignedToUserId = dto.AssignedToUserId;
                 await _context.SaveChangesAsync();
 
-                return Ok(new
-                {
-                    success = true,
-                    message = $"Tâche assignée à {user.FirstName} {user.LastName}"
-                });
+                return Ok(new { success = true, message = $"Tâche assignée à {user.FirstName} {user.LastName}" });
             }
             catch (Exception ex)
             {
-                return StatusCode(500, new
-                {
-                    success = false,
-                    message = "Erreur lors de l'assignation de la tâche",
-                    error = ex.Message
-                });
+                return StatusCode(500, new { success = false, message = "Erreur assignation", error = ex.Message });
             }
         }
 
         // ============= MEMBRES D'ÉQUIPE =============
         [HttpGet("projects/{projectId}/team-members")]
-        [ProducesResponseType(StatusCodes.Status200OK)]
-        [ProducesResponseType(StatusCodes.Status403Forbidden)]
         public async Task<IActionResult> GetProjectTeamMembers(int projectId)
         {
             try
             {
                 var userId = GetCurrentUserId();
-
                 var project = await _context.Projects
                     .Include(p => p.Team)
                         .ThenInclude(t => t.TeamMembers)
@@ -528,18 +462,10 @@ namespace ProjectManagementAPI.Controllers
                     .FirstOrDefaultAsync(p => p.ProjectId == projectId);
 
                 if (project == null)
-                {
                     return NotFound(new { success = false, message = "Projet non trouvé" });
-                }
 
                 if (project.ProjectManagerId != userId)
-                {
-                    return StatusCode(403, new
-                    {
-                        success = false,
-                        message = "Vous n'êtes pas autorisé à voir ces membres"
-                    });
-                }
+                    return StatusCode(403, new { success = false, message = "Non autorisé" });
 
                 var members = project.Team?.TeamMembers.Select(tm => new
                 {
@@ -550,37 +476,21 @@ namespace ProjectManagementAPI.Controllers
                     isProjectManager = tm.IsProjectManager
                 }).ToList();
 
-                if (members == null || !members.Any())
-                {
-                    return Ok(new
-                    {
-                        success = true,
-                        message = "Aucun membre trouvé",
-                        data = new List<object>()
-                    });
-                }
-
                 return Ok(new
                 {
                     success = true,
-                    message = "Membres récupérés avec succès",
-                    data = members
+                    message = members?.Any() == true ? "Membres récupérés" : "Aucun membre trouvé",
+                    data = members ?? new List<object>() as object
                 });
             }
             catch (Exception ex)
             {
-                return StatusCode(500, new
-                {
-                    success = false,
-                    message = "Erreur lors de la récupération des membres",
-                    error = ex.Message
-                });
+                return StatusCode(500, new { success = false, message = "Erreur membres", error = ex.Message });
             }
         }
 
         // ============= TÂCHES EN ATTENTE DE VALIDATION =============
         [HttpGet("tasks/awaiting-validation")]
-        [ProducesResponseType(StatusCodes.Status200OK)]
         public async Task<IActionResult> GetTasksAwaitingValidation()
         {
             try
@@ -588,7 +498,11 @@ namespace ProjectManagementAPI.Controllers
                 var userId = GetCurrentUserId();
 
                 var tasks = await _context.ProjectTasks
-                    .Where(t => t.Project.ProjectManagerId == userId && t.TaskStatusId == 4)
+                    .Where(t =>
+                        t.Project.ProjectManagerId == userId &&
+                        t.TaskStatusId == 4 &&
+                        t.Project.ProjectStatusId != 3 && // Exclure projets Terminés
+                        t.Project.ProjectStatusId != 4)   // Exclure projets Annulés
                     .Include(t => t.Project)
                     .Include(t => t.AssignedToUser)
                     .Include(t => t.ProjectTasksStatus)
@@ -619,51 +533,30 @@ namespace ProjectManagementAPI.Controllers
             }
             catch (Exception ex)
             {
-                return StatusCode(500, new
-                {
-                    success = false,
-                    message = "Erreur lors de la récupération des tâches en attente",
-                    error = ex.Message
-                });
+                return StatusCode(500, new { success = false, message = "Erreur validation", error = ex.Message });
             }
         }
 
         [HttpGet("validation")]
-        [ProducesResponseType(StatusCodes.Status200OK)]
-        public async Task<IActionResult> GetValidationTasks()
-        {
-            return await GetTasksAwaitingValidation();
-        }
+        public async Task<IActionResult> GetValidationTasks() => await GetTasksAwaitingValidation();
 
         // ============= VALIDER UNE TÂCHE =============
         [HttpPut("tasks/{taskId}/validate")]
-        [ProducesResponseType(StatusCodes.Status200OK)]
-        [ProducesResponseType(StatusCodes.Status403Forbidden)]
-        [ProducesResponseType(StatusCodes.Status404NotFound)]
         public async Task<IActionResult> ValidateTask(int taskId)
         {
             try
             {
                 var userId = GetCurrentUserId();
-
                 var task = await _context.ProjectTasks
                     .Include(t => t.Project)
-                    .Include(t => t.AssignedToUser)
+                        .ThenInclude(p => p.ProjectTasks)
                     .FirstOrDefaultAsync(t => t.ProjectTaskId == taskId);
 
                 if (task == null)
-                {
                     return NotFound(new { success = false, message = "Tâche non trouvée" });
-                }
 
                 if (task.Project.ProjectManagerId != userId)
-                {
-                    return StatusCode(403, new
-                    {
-                        success = false,
-                        message = "Vous n'êtes pas autorisé à valider cette tâche"
-                    });
-                }
+                    return StatusCode(403, new { success = false, message = "Non autorisé" });
 
                 task.TaskStatusId = 5;
                 task.Progress = 100;
@@ -673,6 +566,10 @@ namespace ProjectManagementAPI.Controllers
 
                 await _context.SaveChangesAsync();
 
+                // ✅ Vérifier si TOUTES les tâches sont validées après cette validation
+                var allTasks = task.Project.ProjectTasks ?? new List<ProjectTask>();
+                var allValidated = allTasks.All(t => t.IsValidated);
+
                 return Ok(new
                 {
                     success = true,
@@ -680,84 +577,69 @@ namespace ProjectManagementAPI.Controllers
                     data = new
                     {
                         taskId = task.ProjectTaskId,
-                        validatedBy = userId,
-                        validatedAt = task.ValidatedAt
+                        validatedAt = task.ValidatedAt,
+                        // ✅ Info utile pour le front : peut-on clôturer ?
+                        canCloseProject = allValidated,
+                        projectId = task.ProjectId
                     }
                 });
             }
             catch (Exception ex)
             {
-                return StatusCode(500, new
-                {
-                    success = false,
-                    message = "Erreur lors de la validation de la tâche",
-                    error = ex.Message
-                });
+                return StatusCode(500, new { success = false, message = "Erreur validation tâche", error = ex.Message });
             }
         }
 
         // ============= TERMINER UN PROJET =============
         [HttpPut("projects/{projectId}/close")]
-        [ProducesResponseType(StatusCodes.Status200OK)]
-        [ProducesResponseType(StatusCodes.Status403Forbidden)]
-        [ProducesResponseType(StatusCodes.Status404NotFound)]
         public async Task<IActionResult> CloseProject(int projectId)
         {
             try
             {
                 var userId = GetCurrentUserId();
-
                 var project = await _context.Projects
                     .Include(p => p.ProjectTasks)
                     .FirstOrDefaultAsync(p => p.ProjectId == projectId);
 
                 if (project == null)
-                {
                     return NotFound(new { success = false, message = "Projet non trouvé" });
-                }
 
                 if (project.ProjectManagerId != userId)
-                {
-                    return StatusCode(403, new
-                    {
-                        success = false,
-                        message = "Vous n'êtes pas autorisé à clôturer ce projet"
-                    });
-                }
+                    return StatusCode(403, new { success = false, message = "Non autorisé" });
 
                 var tasks = project.ProjectTasks ?? new List<ProjectTask>();
                 var totalTasks = tasks.Count;
                 var validatedTasks = tasks.Count(t => t.IsValidated);
+                var pendingTasks = tasks.Count(t => t.TaskStatusId == 4);
 
-                int progress = 0;
-                if (totalTasks > 0)
-                    progress = (int)Math.Round((validatedTasks * 100.0) / totalTasks);
+                if (pendingTasks > 0)
+                    return BadRequest(new
+                    {
+                        success = false,
+                        message = $"❌ Impossible de clôturer : {pendingTasks} tâche(s) encore en attente de validation."
+                    });
 
-                project.Progress = progress;
-                project.ProjectStatusId = 3;  // Terminé
+                if (totalTasks > 0 && validatedTasks < totalTasks)
+                    return BadRequest(new
+                    {
+                        success = false,
+                        message = $"❌ Impossible de clôturer : {validatedTasks}/{totalTasks} tâche(s) validées seulement."
+                    });
 
+                project.Progress = 100;
+                project.ProjectStatusId = 3;
                 await _context.SaveChangesAsync();
 
                 return Ok(new
                 {
                     success = true,
-                    message = "Projet clôturé avec succès",
-                    data = new
-                    {
-                        projectId = project.ProjectId,
-                        progress = project.Progress,
-                        statusId = project.ProjectStatusId
-                    }
+                    message = "✅ Projet clôturé avec succès",
+                    data = new { projectId = project.ProjectId, statusId = project.ProjectStatusId }
                 });
             }
             catch (Exception ex)
             {
-                return StatusCode(500, new
-                {
-                    success = false,
-                    message = "Erreur lors de la clôture du projet",
-                    error = ex.Message
-                });
+                return StatusCode(500, new { success = false, message = "Erreur clôture projet", error = ex.Message });
             }
         }
 
@@ -768,51 +650,30 @@ namespace ProjectManagementAPI.Controllers
             try
             {
                 var userId = GetCurrentUserId();
-
                 var task = await _context.ProjectTasks
                     .Include(t => t.Project)
-                    .Include(t => t.AssignedToUser)
                     .FirstOrDefaultAsync(t => t.ProjectTaskId == taskId);
 
                 if (task == null)
-                {
                     return NotFound(new { success = false, message = "Tâche non trouvée" });
-                }
 
                 if (task.Project.ProjectManagerId != userId)
-                {
-                    return StatusCode(403, new
-                    {
-                        success = false,
-                        message = "Vous n'êtes pas autorisé à refuser cette tâche"
-                    });
-                }
+                    return StatusCode(403, new { success = false, message = "Non autorisé" });
 
-                task.TaskStatusId = 2;   // En cours
+                task.TaskStatusId = 2;
                 task.IsValidated = false;
                 task.Progress = 0;
 
                 if (!string.IsNullOrEmpty(dto.Reason))
-                {
                     task.Description += $"\n\n⚠️ Refusé le {DateTime.Now:dd/MM/yyyy HH:mm}: {dto.Reason}";
-                }
 
                 await _context.SaveChangesAsync();
 
-                return Ok(new
-                {
-                    success = true,
-                    message = $"Tâche '{task.TaskName}' refusée et remise en cours"
-                });
+                return Ok(new { success = true, message = $"Tâche '{task.TaskName}' refusée et remise en cours" });
             }
             catch (Exception ex)
             {
-                return StatusCode(500, new
-                {
-                    success = false,
-                    message = "Erreur lors du refus de la tâche",
-                    error = ex.Message
-                });
+                return StatusCode(500, new { success = false, message = "Erreur refus tâche", error = ex.Message });
             }
         }
     }
