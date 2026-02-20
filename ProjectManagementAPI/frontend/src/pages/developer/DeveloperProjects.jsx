@@ -6,6 +6,20 @@ import DeveloperLayout from '../../components/layout/DeveloperLayout';
 import '../../styles/Dashboard.css';
 import '../../styles/DeveloperDashboard.css';
 
+const mapStatusForDeveloper = (statusName) => {
+    if (!statusName) return 'En cours';
+
+    if (statusName.includes('✅ Prêt à clôturer')) {
+        return 'Terminé (en attente du chef de projet pour clôture)';
+    }
+
+    if (statusName.includes('⏳ En attente de validation')) {
+        return 'En cours (en attente de validation du chef de projet)';
+    }
+
+    return statusName;
+};
+
 const DeveloperProjects = () => {
     const navigate = useNavigate();
     const [projects, setProjects] = useState([]);
@@ -184,7 +198,7 @@ const DeveloperProjects = () => {
                                             textTransform: 'uppercase',
                                             letterSpacing: '0.5px'
                                         }}>
-                                            {project.statusName || 'N/A'}
+                                            {mapStatusForDeveloper(project.statusName)}
                                         </span>
                                     </div>
 
@@ -211,7 +225,7 @@ const DeveloperProjects = () => {
                                             marginBottom: '8px'
                                         }}>
                                             <span style={{ fontSize: '0.9rem', color: '#666', fontWeight: '500' }}>
-                                                 Progression
+                                                Progression
                                             </span>
                                             <span style={{
                                                 fontSize: '0.95rem',
