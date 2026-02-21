@@ -1,6 +1,15 @@
-﻿// src/pages/reporting/UsersManagement.jsx
-import { useState, useEffect } from 'react';
-import { UserPlus, Edit, Key, Search, X, Lock, Unlock, Check, Trash2, UserCheck, UserX } from 'lucide-react';
+﻿import { useState, useEffect } from 'react';
+import {
+    UserPlus,
+    Edit,
+    Key,
+    Search,
+    X,
+    Check,
+    Trash2,
+    UserCheck,
+    UserX
+} from 'lucide-react';
 import userService from '../../services/userService';
 import ReportingLayout from '../../components/layout/ReportingLayout';
 import '../../styles/UsersManagement.css';
@@ -50,7 +59,7 @@ const UsersManagement = () => {
         }
     };
 
-    const filteredUsers = users.filter(u => {
+    const filteredUsers = users.filter((u) => {
         if (!searchTerm) return true;
         const search = searchTerm.toLowerCase();
         return (
@@ -82,7 +91,7 @@ const UsersManagement = () => {
             email: userToEdit.email,
             firstName: userToEdit.firstName,
             lastName: userToEdit.lastName,
-            roleId: userToEdit.roleId
+            roleId: userToEdit.roleId ?? 1
         });
         setShowModal(true);
     };
@@ -99,6 +108,8 @@ const UsersManagement = () => {
                     alert('Utilisateur créé avec succès !');
                     fetchUsers();
                     setShowModal(false);
+                } else {
+                    alert(response.message || 'Création échouée');
                 }
             } else {
                 const updateData = {
@@ -109,7 +120,10 @@ const UsersManagement = () => {
                     roleId: formData.roleId
                 };
 
-                const response = await userService.updateUser(selectedUser.userId, updateData);
+                const response = await userService.updateUser(
+                    selectedUser.userId,
+                    updateData
+                );
 
                 if (response.success) {
                     alert('Utilisateur modifié avec succès !');
@@ -125,7 +139,7 @@ const UsersManagement = () => {
         }
     };
 
-    // ============= APPROVE USER (for pending registrations) =============
+    // ============= APPROVE USER =============
     const handleApprove = async (userId, username) => {
         if (!window.confirm(`Approuver l'inscription de "${username}" ?`)) return;
 
@@ -140,13 +154,18 @@ const UsersManagement = () => {
             }
         } catch (error) {
             console.error('❌ Approve error:', error);
-            alert('Erreur lors de l\'approbation');
+            alert("Erreur lors de l'approbation");
         }
     };
 
-    // ============= REJECT USER (for pending registrations) =============
+    // ============= REJECT USER =============
     const handleReject = async (userId, username) => {
-        if (!window.confirm(`Rejeter l'inscription de "${username}" ?\n\nCette action est irréversible.`)) return;
+        if (
+            !window.confirm(
+                `Rejeter l'inscription de "${username}" ?\n\nCette action est irréversible.`
+            )
+        )
+            return;
 
         try {
             const response = await userService.rejectUser(userId);
@@ -163,13 +182,12 @@ const UsersManagement = () => {
         }
     };
 
-    // ============= TOGGLE ACTIVE/INACTIVE (for existing users) ============= ✅ CORRIGÉ
+    // ============= TOGGLE ACTIVE/INACTIVE =============
     const handleToggleUserStatus = async (userId, userName, isActive) => {
         const action = isActive ? 'désactiver' : 'activer';
         if (!window.confirm(`Voulez-vous ${action} "${userName}" ?`)) return;
 
         try {
-            // ✅ FIX: Utilise toggleUserActive au lieu de toggleUserStatus
             const response = await userService.toggleUserActive(userId);
 
             if (response.success) {
@@ -184,9 +202,14 @@ const UsersManagement = () => {
         }
     };
 
-    // ============= DELETE USER (for inactive users) =============
+    // ============= DELETE USER =============
     const handleDelete = async (userId, username) => {
-        if (!window.confirm(`⚠️ ATTENTION ⚠️\n\nSupprimer définitivement l'utilisateur "${username}" ?\n\nCette action est IRRÉVERSIBLE.`)) return;
+        if (
+            !window.confirm(
+                `⚠️ ATTENTION ⚠️\n\nSupprimer définitivement l'utilisateur "${username}" ?\n\nCette action est IRRÉVERSIBLE.`
+            )
+        )
+            return;
 
         try {
             const response = await userService.deleteUser(userId);
@@ -204,7 +227,8 @@ const UsersManagement = () => {
     };
 
     const handleGenerateTempPassword = async (userId, userName) => {
-        if (!window.confirm(`Générer un mot de passe temporaire pour "${userName}" ?`)) return;
+        if (!window.confirm(`Générer un mot de passe temporaire pour "${userName}" ?`))
+            return;
         try {
             const response = await userService.generateTempPassword(userId);
             setTempPassword(response.data);
@@ -216,6 +240,7 @@ const UsersManagement = () => {
     };
 
     const getRoleName = (roleId) => {
+        if (roleId == null) return 'Aucun rôle';
         const roles = {
             1: 'Developer',
             2: 'Project Manager',
@@ -226,6 +251,7 @@ const UsersManagement = () => {
     };
 
     const getRoleBadgeClass = (roleId) => {
+        if (roleId == null) return 'role-none';
         const classes = {
             1: 'role-developer',
             2: 'role-project-manager',
@@ -256,11 +282,6 @@ const UsersManagement = () => {
                         value={searchTerm}
                         onChange={(e) => setSearchTerm(e.target.value)}
                     />
-                    {searchTerm && (
-                        <button className="clear-search" onClick={() => setSearchTerm('')}>
-                            <X size={18} />
-                        </button>
-                    )}
                 </div>
 
                 {/* Users Table */}
@@ -285,16 +306,22 @@ const UsersManagement = () => {
                             <tbody>
                                 {filteredUsers.length > 0 ? (
                                     filteredUsers.map((u) => {
-                                        // ✅ Determine if user is pending (never logged in + inactive)
+                                        // 🔹 Nouveau: pending = inactif et jamais connecté
                                         const isPending = !u.isActive && !u.lastLoginAt;
 
                                         return (
                                             <tr key={u.userId}>
-                                                <td>{`${u.firstName || ''} ${u.lastName || ''}`.trim() || 'N/A'}</td>
+                                                <td>
+                                                    {`${u.firstName || ''} ${u.lastName || ''}`
+                                                        .trim()
+                                                        .replace(/^$/, 'N/A')}
+                                                </td>
                                                 <td>{u.userName || 'N/A'}</td>
                                                 <td>{u.email || 'N/A'}</td>
                                                 <td>
-                                                    <span className={`role-badge ${getRoleBadgeClass(u.roleId)}`}>
+                                                    <span
+                                                        className={`role-badge ${getRoleBadgeClass(u.roleId)}`}
+                                                    >
                                                         {u.roleName || getRoleName(u.roleId)}
                                                     </span>
                                                 </td>
@@ -304,7 +331,10 @@ const UsersManagement = () => {
                                                             ⏳ En attente
                                                         </span>
                                                     ) : (
-                                                        <span className={`status-badge ${u.isActive ? 'active' : 'inactive'}`}>
+                                                        <span
+                                                            className={`status-badge ${u.isActive ? 'active' : 'inactive'
+                                                                }`}
+                                                        >
                                                             {u.isActive ? 'Actif' : 'Désactivé'}
                                                         </span>
                                                     )}
@@ -312,25 +342,27 @@ const UsersManagement = () => {
                                                 <td>
                                                     <div className="action-buttons">
                                                         {isPending ? (
-                                                            /* PENDING USER: Show Approve/Reject */
                                                             <>
                                                                 <button
                                                                     className="btn-icon btn-approve"
-                                                                    onClick={() => handleApprove(u.userId, u.userName)}
+                                                                    onClick={() =>
+                                                                        handleApprove(u.userId, u.userName)
+                                                                    }
                                                                     title="Approuver"
                                                                 >
                                                                     <Check size={16} />
                                                                 </button>
                                                                 <button
                                                                     className="btn-icon btn-reject"
-                                                                    onClick={() => handleReject(u.userId, u.userName)}
+                                                                    onClick={() =>
+                                                                        handleReject(u.userId, u.userName)
+                                                                    }
                                                                     title="Rejeter"
                                                                 >
                                                                     <X size={16} />
                                                                 </button>
                                                             </>
                                                         ) : !u.isActive ? (
-                                                            /* INACTIVE USER: Show Edit, Key, Activate, Delete */
                                                             <>
                                                                 <button
                                                                     className="btn-icon btn-edit"
@@ -341,28 +373,40 @@ const UsersManagement = () => {
                                                                 </button>
                                                                 <button
                                                                     className="btn-icon btn-key"
-                                                                    onClick={() => handleGenerateTempPassword(u.userId, u.userName)}
+                                                                    onClick={() =>
+                                                                        handleGenerateTempPassword(
+                                                                            u.userId,
+                                                                            u.userName
+                                                                        )
+                                                                    }
                                                                     title="Générer mot de passe"
                                                                 >
                                                                     <Key size={16} />
                                                                 </button>
                                                                 <button
                                                                     className="btn-icon btn-activate"
-                                                                    onClick={() => handleToggleUserStatus(u.userId, u.userName, false)}
+                                                                    onClick={() =>
+                                                                        handleToggleUserStatus(
+                                                                            u.userId,
+                                                                            u.userName,
+                                                                            false
+                                                                        )
+                                                                    }
                                                                     title="Activer"
                                                                 >
                                                                     <UserCheck size={16} />
                                                                 </button>
                                                                 <button
                                                                     className="btn-icon btn-delete"
-                                                                    onClick={() => handleDelete(u.userId, u.userName)}
+                                                                    onClick={() =>
+                                                                        handleDelete(u.userId, u.userName)
+                                                                    }
                                                                     title="Supprimer"
                                                                 >
                                                                     <Trash2 size={16} />
                                                                 </button>
                                                             </>
                                                         ) : (
-                                                            /* ACTIVE USER: Show Edit, Key, Deactivate */
                                                             <>
                                                                 <button
                                                                     className="btn-icon btn-edit"
@@ -373,14 +417,25 @@ const UsersManagement = () => {
                                                                 </button>
                                                                 <button
                                                                     className="btn-icon btn-key"
-                                                                    onClick={() => handleGenerateTempPassword(u.userId, u.userName)}
+                                                                    onClick={() =>
+                                                                        handleGenerateTempPassword(
+                                                                            u.userId,
+                                                                            u.userName
+                                                                        )
+                                                                    }
                                                                     title="Générer mot de passe"
                                                                 >
                                                                     <Key size={16} />
                                                                 </button>
                                                                 <button
                                                                     className="btn-icon btn-deactivate"
-                                                                    onClick={() => handleToggleUserStatus(u.userId, u.userName, true)}
+                                                                    onClick={() =>
+                                                                        handleToggleUserStatus(
+                                                                            u.userId,
+                                                                            u.userName,
+                                                                            true
+                                                                        )
+                                                                    }
                                                                     title="Désactiver"
                                                                 >
                                                                     <UserX size={16} />
@@ -395,7 +450,9 @@ const UsersManagement = () => {
                                 ) : (
                                     <tr>
                                         <td colSpan="6" className="no-data">
-                                            {searchTerm ? 'Aucun utilisateur trouvé' : 'Aucun utilisateur'}
+                                            {searchTerm
+                                                ? 'Aucun utilisateur trouvé'
+                                                : 'Aucun utilisateur'}
                                         </td>
                                     </tr>
                                 )}
@@ -407,10 +464,20 @@ const UsersManagement = () => {
                 {/* Create/Edit Modal */}
                 {showModal && (
                     <div className="modal-overlay" onClick={() => setShowModal(false)}>
-                        <div className="modal-content" onClick={(e) => e.stopPropagation()}>
+                        <div
+                            className="modal-content"
+                            onClick={(e) => e.stopPropagation()}
+                        >
                             <div className="modal-header">
-                                <h3>{modalMode === 'create' ? 'Créer un utilisateur' : 'Modifier un utilisateur'}</h3>
-                                <button className="modal-close" onClick={() => setShowModal(false)}>
+                                <h3>
+                                    {modalMode === 'create'
+                                        ? 'Créer un utilisateur'
+                                        : 'Modifier un utilisateur'}
+                                </h3>
+                                <button
+                                    className="modal-close"
+                                    onClick={() => setShowModal(false)}
+                                >
                                     <X size={24} />
                                 </button>
                             </div>
@@ -418,30 +485,91 @@ const UsersManagement = () => {
                                 <div className="form-row">
                                     <div className="form-group">
                                         <label>Prénom *</label>
-                                        <input type="text" required value={formData.firstName} onChange={(e) => setFormData({ ...formData, firstName: e.target.value })} />
+                                        <input
+                                            type="text"
+                                            required
+                                            value={formData.firstName}
+                                            onChange={(e) =>
+                                                setFormData({
+                                                    ...formData,
+                                                    firstName: e.target.value
+                                                })
+                                            }
+                                        />
                                     </div>
                                     <div className="form-group">
                                         <label>Nom *</label>
-                                        <input type="text" required value={formData.lastName} onChange={(e) => setFormData({ ...formData, lastName: e.target.value })} />
+                                        <input
+                                            type="text"
+                                            required
+                                            value={formData.lastName}
+                                            onChange={(e) =>
+                                                setFormData({
+                                                    ...formData,
+                                                    lastName: e.target.value
+                                                })
+                                            }
+                                        />
                                     </div>
                                 </div>
                                 <div className="form-group">
                                     <label>Username *</label>
-                                    <input type="text" required value={formData.username} onChange={(e) => setFormData({ ...formData, username: e.target.value })} disabled={modalMode === 'edit'} />
+                                    <input
+                                        type="text"
+                                        required
+                                        value={formData.username}
+                                        onChange={(e) =>
+                                            setFormData({
+                                                ...formData,
+                                                username: e.target.value
+                                            })
+                                        }
+                                        disabled={modalMode === 'edit'}
+                                    />
                                 </div>
                                 <div className="form-group">
                                     <label>Email *</label>
-                                    <input type="email" required value={formData.email} onChange={(e) => setFormData({ ...formData, email: e.target.value })} />
+                                    <input
+                                        type="email"
+                                        required
+                                        value={formData.email}
+                                        onChange={(e) =>
+                                            setFormData({
+                                                ...formData,
+                                                email: e.target.value
+                                            })
+                                        }
+                                    />
                                 </div>
                                 {modalMode === 'create' && (
                                     <div className="form-group">
                                         <label>Mot de passe *</label>
-                                        <input type="password" required value={formData.password} onChange={(e) => setFormData({ ...formData, password: e.target.value })} minLength={6} />
+                                        <input
+                                            type="password"
+                                            required
+                                            value={formData.password}
+                                            onChange={(e) =>
+                                                setFormData({
+                                                    ...formData,
+                                                    password: e.target.value
+                                                })
+                                            }
+                                            minLength={6}
+                                        />
                                     </div>
                                 )}
                                 <div className="form-group">
                                     <label>Rôle *</label>
-                                    <select value={formData.roleId} onChange={(e) => setFormData({ ...formData, roleId: parseInt(e.target.value) })} required>
+                                    <select
+                                        value={formData.roleId}
+                                        onChange={(e) =>
+                                            setFormData({
+                                                ...formData,
+                                                roleId: parseInt(e.target.value)
+                                            })
+                                        }
+                                        required
+                                    >
                                         <option value={1}>Developer</option>
                                         <option value={2}>Project Manager</option>
                                         <option value={3}>Manager</option>
@@ -449,8 +577,16 @@ const UsersManagement = () => {
                                     </select>
                                 </div>
                                 <div className="modal-actions">
-                                    <button type="button" className="btn-cancel" onClick={() => setShowModal(false)}>Annuler</button>
-                                    <button type="submit" className="btn-submit">{modalMode === 'create' ? 'Créer' : 'Modifier'}</button>
+                                    <button
+                                        type="button"
+                                        className="btn-cancel"
+                                        onClick={() => setShowModal(false)}
+                                    >
+                                        Annuler
+                                    </button>
+                                    <button type="submit" className="btn-submit">
+                                        {modalMode === 'create' ? 'Créer' : 'Modifier'}
+                                    </button>
                                 </div>
                             </form>
                         </div>
@@ -459,11 +595,20 @@ const UsersManagement = () => {
 
                 {/* Password Display Modal */}
                 {showPasswordModal && (
-                    <div className="modal-overlay" onClick={() => setShowPasswordModal(false)}>
-                        <div className="modal-content password-modal" onClick={(e) => e.stopPropagation()}>
+                    <div
+                        className="modal-overlay"
+                        onClick={() => setShowPasswordModal(false)}
+                    >
+                        <div
+                            className="modal-content password-modal"
+                            onClick={(e) => e.stopPropagation()}
+                        >
                             <div className="modal-header">
                                 <h3>Mot de passe temporaire généré</h3>
-                                <button className="modal-close" onClick={() => setShowPasswordModal(false)}>
+                                <button
+                                    className="modal-close"
+                                    onClick={() => setShowPasswordModal(false)}
+                                >
                                     <X size={24} />
                                 </button>
                             </div>
@@ -471,11 +616,20 @@ const UsersManagement = () => {
                                 <p>Communiquez ce mot de passe à l'utilisateur :</p>
                                 <div className="password-box">
                                     <code>{tempPassword}</code>
-                                    <button className="btn-copy" onClick={() => { navigator.clipboard.writeText(tempPassword); alert('Mot de passe copié !'); }}>
+                                    <button
+                                        className="btn-copy"
+                                        onClick={() => {
+                                            navigator.clipboard.writeText(tempPassword);
+                                            alert('Mot de passe copié !');
+                                        }}
+                                    >
                                         Copier
                                     </button>
                                 </div>
-                                <p className="password-note">L'utilisateur devra changer ce mot de passe à la prochaine connexion.</p>
+                                <p className="password-note">
+                                    L'utilisateur devra changer ce mot de passe à la prochaine
+                                    connexion.
+                                </p>
                             </div>
                         </div>
                     </div>

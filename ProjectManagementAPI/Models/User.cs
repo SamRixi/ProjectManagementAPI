@@ -8,8 +8,8 @@
         public string FirstName { get; set; } // First name
         public string LastName { get; set; } // Last name
         public DateTime CreatedAt { get; set; } = DateTime.UtcNow; // Timestamp of user creation
-        public int RoleId { get; set; } // Foreign key to Role
-        public Role Role { get; set; } // Navigation property
+        public int? RoleId { get; set; } // Foreign key to Role
+        public Role? Role { get; set; } // Navigation property
 
         public string Email { get; set; }
         public bool IsActive { get; set; } = true;

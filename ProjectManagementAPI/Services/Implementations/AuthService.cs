@@ -40,10 +40,8 @@ namespace ProjectManagementAPI.Services.Implementations
                     };
                 }
 
-                // ✅ AMÉLIORATION: Distinguer "en attente" vs "désactivé"
                 if (!user.IsActive)
                 {
-                    // Check if it's a new registration (never logged in)
                     bool isNewRegistration = !user.LastLoginAt.HasValue;
 
                     return new ApiResponse<LoginResponse>
@@ -90,7 +88,7 @@ namespace ProjectManagementAPI.Services.Implementations
                         Email = user.Email,
                         FirstName = user.FirstName,
                         LastName = user.LastName,
-                        RoleName = user.Role.RoleName,
+                        RoleName = user.Role?.RoleName,
                         IsActive = user.IsActive,
                         MustChangePassword = user.MustChangePassword,
                         CreatedAt = user.CreatedAt,
@@ -105,7 +103,7 @@ namespace ProjectManagementAPI.Services.Implementations
                     Data = loginResponse
                 };
             }
-            catch (Exception ex)
+            catch
             {
                 return new ApiResponse<LoginResponse>
                 {
@@ -115,12 +113,11 @@ namespace ProjectManagementAPI.Services.Implementations
             }
         }
 
-        // ============= REGISTER ============= ✅ FIXED WITH APPROVAL SYSTEM
+        // ============= REGISTER =============  (Rôle attribué plus tard par Reporting)
         public async Task<ApiResponse<UserDTO>> RegisterAsync(RegisterRequest request)
         {
             try
             {
-                // Validate passwords match
                 if (!string.IsNullOrEmpty(request.ConfirmPassword) &&
                     request.Password != request.ConfirmPassword)
                 {
@@ -131,7 +128,6 @@ namespace ProjectManagementAPI.Services.Implementations
                     };
                 }
 
-                // Check if username exists
                 var usernameExists = await _context.Users
                     .AnyAsync(u => u.UserName == request.Username);
 
@@ -144,7 +140,6 @@ namespace ProjectManagementAPI.Services.Implementations
                     };
                 }
 
-                // Check if email already exists
                 var emailExists = await _context.Users
                     .AnyAsync(u => u.Email == request.Email);
 
@@ -157,23 +152,8 @@ namespace ProjectManagementAPI.Services.Implementations
                     };
                 }
 
-                // ✅ Get Developer role (default for public registration)
-                var developerRole = await _context.Roles
-                    .FirstOrDefaultAsync(r => r.RoleName == "Developer");
-
-                if (developerRole == null)
-                {
-                    return new ApiResponse<UserDTO>
-                    {
-                        Success = false,
-                        Message = "Erreur de configuration: Rôle Developer introuvable"
-                    };
-                }
-
-                // Hash password
                 string hashedPassword = BC.HashPassword(request.Password);
 
-                // ✅ FIXED: Create new user (INACTIVE - requires approval)
                 var newUser = new User
                 {
                     UserName = request.Username,
@@ -181,19 +161,17 @@ namespace ProjectManagementAPI.Services.Implementations
                     PasswordHash = hashedPassword,
                     FirstName = request.FirstName,
                     LastName = request.LastName,
-                    RoleId = developerRole.RoleId,
-                    IsActive = false,  // ✅ CORRIGÉ - Désactivé par défaut (requires approval)
+                    RoleId = null,           // rôle défini plus tard par le Reporting
+                    IsActive = false,        // en attente d'approbation
                     MustChangePassword = false,
                     CreatedAt = DateTime.UtcNow
                 };
 
-                // Save to database
                 _context.Users.Add(newUser);
                 await _context.SaveChangesAsync();
 
-                Console.WriteLine($"✅ New user registered: {newUser.UserName} (ID: {newUser.UserId}) - Pending approval");
+                Console.WriteLine($"✅ New user registered: {newUser.UserName} (ID: {newUser.UserId}) - Pending approval, no role yet.");
 
-                // Return UserDTO
                 var userDto = new UserDTO
                 {
                     UserId = newUser.UserId,
@@ -201,7 +179,7 @@ namespace ProjectManagementAPI.Services.Implementations
                     Email = newUser.Email,
                     FirstName = newUser.FirstName,
                     LastName = newUser.LastName,
-                    RoleName = developerRole.RoleName,
+                    RoleName = null,
                     IsActive = newUser.IsActive,
                     MustChangePassword = newUser.MustChangePassword,
                     CreatedAt = newUser.CreatedAt
@@ -210,13 +188,16 @@ namespace ProjectManagementAPI.Services.Implementations
                 return new ApiResponse<UserDTO>
                 {
                     Success = true,
-                    Message = "Inscription réussie! Votre compte sera activé après approbation par un administrateur.",  // ✅ Message mis à jour
+                    Message = "Inscription réussie ! Votre compte sera activé après validation et attribution d'un rôle par un Reporting.",
                     Data = userDto
                 };
             }
             catch (Exception ex)
             {
-                Console.WriteLine($"❌ Registration error: {ex.Message}");
+                Console.WriteLine("❌ Registration error:");
+                Console.WriteLine(ex.Message);
+                Console.WriteLine(ex.StackTrace);
+
                 return new ApiResponse<UserDTO>
                 {
                     Success = false,
@@ -237,11 +218,16 @@ namespace ProjectManagementAPI.Services.Implementations
             {
                 new Claim(ClaimTypes.NameIdentifier, user.UserId.ToString()),
                 new Claim(ClaimTypes.Name, user.UserName),
-                new Claim(ClaimTypes.Email, user.Email),
-                new Claim(ClaimTypes.Role, user.Role.RoleName),
-                new Claim("FirstName", user.FirstName),
-                new Claim("LastName", user.LastName)
+                new Claim(ClaimTypes.Email, user.Email)
             };
+
+            if (user.Role != null)
+            {
+                claims.Add(new Claim(ClaimTypes.Role, user.Role.RoleName));
+            }
+
+            claims.Add(new Claim("FirstName", user.FirstName ?? string.Empty));
+            claims.Add(new Claim("LastName", user.LastName ?? string.Empty));
 
             var tokenDescriptor = new SecurityTokenDescriptor
             {
@@ -294,7 +280,7 @@ namespace ProjectManagementAPI.Services.Implementations
                     Message = "Mot de passe changé avec succès"
                 };
             }
-            catch (Exception ex)
+            catch
             {
                 return new ApiResponse<object>
                 {
@@ -334,15 +320,13 @@ namespace ProjectManagementAPI.Services.Implementations
                 _context.PasswordResetTokens.Add(resetToken);
                 await _context.SaveChangesAsync();
 
-                // TODO: Send email with reset link
-
                 return new ApiResponse<object>
                 {
                     Success = true,
                     Message = "Email de réinitialisation envoyé"
                 };
             }
-            catch (Exception ex)
+            catch
             {
                 return new ApiResponse<object>
                 {
@@ -385,7 +369,7 @@ namespace ProjectManagementAPI.Services.Implementations
                     Message = "Mot de passe réinitialisé avec succès"
                 };
             }
-            catch (Exception ex)
+            catch
             {
                 return new ApiResponse<object>
                 {

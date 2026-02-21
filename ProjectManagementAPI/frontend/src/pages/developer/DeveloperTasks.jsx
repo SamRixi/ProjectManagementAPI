@@ -34,32 +34,44 @@ const DeveloperTasks = () => {
                 const loadedTasks = response.data.tasks || [];
 
                 console.log('📋 Tasks received:', loadedTasks);
-                loadedTasks.forEach(t => {
+                console.log('🔍 First task raw =>', loadedTasks[0]);
+
+                loadedTasks.forEach((t) => {
                     console.log(
                         `Task "${t.taskName}" - Status: "${t.status}" - Progress: ${t.progress}%`
                     );
                 });
 
-                setTasks(loadedTasks);
+                // 🔹 Ne garder que les tâches non annulées
+                const activeTasks = loadedTasks.filter(
+                    (t) => t.status !== 'Annulé'
+                );
 
-                // Charger le dernier commentaire pour chaque tâche
+                setTasks(activeTasks);
+
                 const commentsByTask = {};
 
-                for (const t of loadedTasks) {
+                for (const t of activeTasks) {
                     try {
                         const res = await commentService.getComments(t.taskId);
                         if (res.success && res.data && res.data.length > 0) {
-                            // On prend le plus récent (ton service trie déjà en CreatedAt desc)
                             commentsByTask[t.taskId] = res.data[0].content;
                         }
                     } catch (e) {
-                        console.error('❌ Error loading comments for task', t.taskId, e);
+                        console.error(
+                            '❌ Error loading comments for task',
+                            t.taskId,
+                            e
+                        );
                     }
                 }
 
                 setLastComments(commentsByTask);
             } else {
-                setError(response.message || 'Erreur lors du chargement des tâches');
+                setError(
+                    response.message ||
+                    'Erreur lors du chargement des tâches'
+                );
             }
         } catch (err) {
             console.error('❌ Error loading tasks:', err);
@@ -73,7 +85,10 @@ const DeveloperTasks = () => {
         try {
             console.log('📤 Updating task:', taskId, updateData);
 
-            const result = await developerService.updateTask(taskId, updateData);
+            const result = await developerService.updateTask(
+                taskId,
+                updateData
+            );
 
             if (result.success) {
                 alert('✅ ' + result.message);
@@ -95,7 +110,9 @@ const DeveloperTasks = () => {
             'Terminé et validé',
             'Complété'
         ];
-        return validatedStatuses.some(s => status?.toLowerCase().includes(s.toLowerCase()));
+        return validatedStatuses.some((s) =>
+            status?.toLowerCase().includes(s.toLowerCase())
+        );
     };
 
     const isTaskPending = (status) => {
@@ -106,7 +123,8 @@ const DeveloperTasks = () => {
         const s = status?.toLowerCase() || '';
 
         if (s.includes('valid')) return 'Validée';
-        if (s.includes('attente')) return 'Terminé · En attente de validation';
+        if (s.includes('attente'))
+            return 'Terminé · En attente de validation';
         if (s.includes('terminé')) return 'Terminé';
         if (s.includes('cours')) return 'En cours';
         if (s.includes('faire')) return 'À faire';
@@ -116,7 +134,10 @@ const DeveloperTasks = () => {
     const getStatusClass = (status) => {
         const statusLower = status?.toLowerCase() || '';
 
-        if (statusLower.includes('validé') || statusLower.includes('complété')) {
+        if (
+            statusLower.includes('validé') ||
+            statusLower.includes('complété')
+        ) {
             return 'completed';
         }
         if (statusLower.includes('attente')) {
@@ -133,9 +154,9 @@ const DeveloperTasks = () => {
 
     const getPriorityClass = (priority) => {
         const priorityMap = {
-            'Haute': 'high',
-            'Moyenne': 'medium',
-            'Basse': 'low'
+            Haute: 'high',
+            Moyenne: 'medium',
+            Basse: 'low'
         };
         return priorityMap[priority] || 'medium';
     };
@@ -158,7 +179,12 @@ const DeveloperTasks = () => {
     };
 
     const isTaskOverdue = (deadline, status) => {
-        if (!deadline || isTaskValidated(status) || isTaskPending(status)) return false;
+        if (
+            !deadline ||
+            isTaskValidated(status) ||
+            isTaskPending(status)
+        )
+            return false;
         return new Date(deadline) < new Date();
     };
 
@@ -167,16 +193,33 @@ const DeveloperTasks = () => {
             <div className="dashboard-container">
                 <div className="dashboard-content">
                     {/* Page Header */}
-                    <div className="welcome-card" style={{
-                        background: 'linear-gradient(135deg, #00A651 0%, #004D29 100%)',
-                        color: 'white',
-                        marginBottom: '30px'
-                    }}>
-                        <div style={{ display: 'flex', alignItems: 'center', gap: '15px' }}>
+                    <div
+                        className="welcome-card"
+                        style={{
+                            background:
+                                'linear-gradient(135deg, #00A651 0%, #004D29 100%)',
+                            color: 'white',
+                            marginBottom: '30px'
+                        }}
+                    >
+                        <div
+                            style={{
+                                display: 'flex',
+                                alignItems: 'center',
+                                gap: '15px'
+                            }}
+                        >
                             <CheckSquare size={40} />
                             <div>
-                                <h2 style={{ margin: 0, color: 'white' }}>Mes Tâches</h2>
-                                <p style={{ margin: '5px 0 0 0', opacity: 0.9 }}>
+                                <h2 style={{ margin: 0, color: 'white' }}>
+                                    Mes Tâches
+                                </h2>
+                                <p
+                                    style={{
+                                        margin: '5px 0 0 0',
+                                        opacity: 0.9
+                                    }}
+                                >
                                     Gérez et mettez à jour toutes vos tâches assignées
                                 </p>
                             </div>
@@ -187,9 +230,7 @@ const DeveloperTasks = () => {
                     {error && (
                         <div className="error-message">
                             <p>⚠️ {error}</p>
-                            <button onClick={fetchTasks}>
-                                Réessayer
-                            </button>
+                            <button onClick={fetchTasks}>Réessayer</button>
                         </div>
                     )}
 
@@ -212,74 +253,119 @@ const DeveloperTasks = () => {
 
                                         return (
                                             <div
-                                                className={`task-item ${isTaskOverdue(task.deadline, task.status) ? 'overdue' : ''} ${isLocked ? 'locked' : ''}`}
+                                                className={`task-item ${isTaskOverdue(
+                                                    task.deadline,
+                                                    task.status
+                                                )
+                                                        ? 'overdue'
+                                                        : ''
+                                                    } ${isLocked ? 'locked' : ''}`}
                                                 key={task.taskId}
                                             >
-                                                <div className={`task-status ${getStatusClass(task.status)}`}></div>
+                                                <div
+                                                    className={`task-status ${getStatusClass(
+                                                        task.status
+                                                    )}`}
+                                                ></div>
 
                                                 <div className="task-details">
-                                                    <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
-                                                        <h4 style={{ margin: 0 }}>{task.taskName || 'Sans titre'}</h4>
+                                                    <div
+                                                        style={{
+                                                            display: 'flex',
+                                                            alignItems: 'center',
+                                                            gap: '10px'
+                                                        }}
+                                                    >
+                                                        <h4 style={{ margin: 0 }}>
+                                                            {task.taskName || 'Sans titre'}
+                                                        </h4>
 
                                                         {isValidated && (
-                                                            <span style={{
-                                                                display: 'inline-flex',
-                                                                alignItems: 'center',
-                                                                gap: '5px',
-                                                                padding: '4px 12px',
-                                                                background: '#10b981',
-                                                                color: 'white',
-                                                                borderRadius: '12px',
-                                                                fontSize: '0.75rem',
-                                                                fontWeight: '700',
-                                                                textTransform: 'uppercase'
-                                                            }}>
+                                                            <span
+                                                                style={{
+                                                                    display: 'inline-flex',
+                                                                    alignItems: 'center',
+                                                                    gap: '5px',
+                                                                    padding: '4px 12px',
+                                                                    background: '#10b981',
+                                                                    color: 'white',
+                                                                    borderRadius: '12px',
+                                                                    fontSize: '0.75rem',
+                                                                    fontWeight: '700',
+                                                                    textTransform: 'uppercase'
+                                                                }}
+                                                            >
                                                                 <CheckCircle size={14} />
                                                                 Validée
                                                             </span>
                                                         )}
 
                                                         {isPending && (
-                                                            <span style={{
-                                                                display: 'inline-flex',
-                                                                alignItems: 'center',
-                                                                gap: '5px',
-                                                                padding: '4px 12px',
-                                                                background: '#f59e0b',
-                                                                color: 'white',
-                                                                borderRadius: '12px',
-                                                                fontSize: '0.75rem',
-                                                                fontWeight: '700',
-                                                                textTransform: 'uppercase'
-                                                            }}>
+                                                            <span
+                                                                style={{
+                                                                    display: 'inline-flex',
+                                                                    alignItems: 'center',
+                                                                    gap: '5px',
+                                                                    padding: '4px 12px',
+                                                                    background: '#f59e0b',
+                                                                    color: 'white',
+                                                                    borderRadius: '12px',
+                                                                    fontSize: '0.75rem',
+                                                                    fontWeight: '700',
+                                                                    textTransform: 'uppercase'
+                                                                }}
+                                                            >
                                                                 <Clock size={14} />
                                                                 En attente
                                                             </span>
                                                         )}
                                                     </div>
 
-                                                    {/* Statut lisible */}
-                                                    <p style={{ fontSize: '0.85rem', color: '#4b5563', margin: '0.2rem 0 0.4rem' }}>
-                                                        Statut : {getDisplayStatus(task.status)}
+                                                    <p
+                                                        style={{
+                                                            fontSize: '0.85rem',
+                                                            color: '#4b5563',
+                                                            margin: '0.2rem 0 0.4rem'
+                                                        }}
+                                                    >
+                                                        Statut :{' '}
+                                                        {getDisplayStatus(task.status)}
                                                     </p>
 
-                                                    {/* Raison du refus si commentaire dispo */}
                                                     {lastComments[task.taskId] && (
-                                                        <p style={{
-                                                            fontSize: '0.85rem',
-                                                            color: '#b91c1c',
-                                                            margin: '0.2rem 0 0.4rem',
-                                                            fontWeight: 600
-                                                        }}>
-                                                            Raison du refus : {lastComments[task.taskId]}
+                                                        <p
+                                                            style={{
+                                                                fontSize: '0.85rem',
+                                                                color: '#b91c1c',
+                                                                margin: '0.2rem 0 0.4rem',
+                                                                fontWeight: 600
+                                                            }}
+                                                        >
+                                                            Raison du refus :{' '}
+                                                            {lastComments[task.taskId]}
                                                         </p>
                                                     )}
 
-                                                    <p>Projet: {task.projectName || 'N/A'}</p>
-                                                    <p style={{ fontSize: '0.85rem', color: '#666', marginTop: '0.25rem' }}>
-                                                        Chef de projet: {task.projectManagerName || 'N/A'}
+                                                    <p>
+                                                        Projet:{' '}
+                                                        {task.projectName || 'N/A'}
                                                     </p>
-                                                    <span className={`task-priority ${getPriorityClass(task.priority)}`}>
+                                                    <p
+                                                        style={{
+                                                            fontSize: '0.85rem',
+                                                            color: '#666',
+                                                            marginTop: '0.25rem'
+                                                        }}
+                                                    >
+                                                        Chef de projet:{' '}
+                                                        {task.projectManagerName ||
+                                                            'N/A'}
+                                                    </p>
+                                                    <span
+                                                        className={`task-priority ${getPriorityClass(
+                                                            task.priority
+                                                        )}`}
+                                                    >
                                                         {task.priority || 'Moyenne'} Priorité
                                                     </span>
                                                 </div>
@@ -287,22 +373,33 @@ const DeveloperTasks = () => {
                                                 <div className="task-meta">
                                                     <span className="task-deadline">
                                                         {isValidated
-                                                            ? `Complété: ${formatDate(task.completedDate)}`
-                                                            : `Deadline: ${formatDate(task.deadline)}`}
+                                                            ? `Complété: ${formatDate(
+                                                                task.completedDate
+                                                            )}`
+                                                            : `Deadline: ${formatDate(
+                                                                task.deadline
+                                                            )}`}
                                                     </span>
 
-                                                    {isTaskOverdue(task.deadline, task.status) && (
-                                                        <span className="overdue-badge">
-                                                            ⚠️ EN RETARD
-                                                        </span>
-                                                    )}
+                                                    {isTaskOverdue(
+                                                        task.deadline,
+                                                        task.status
+                                                    ) && (
+                                                            <span className="overdue-badge">
+                                                                ⚠️ EN RETARD
+                                                            </span>
+                                                        )}
 
                                                     {task.progress !== undefined && (
                                                         <div className="progress-wrapper">
                                                             <div className="progress-container">
                                                                 <div
-                                                                    className={`progress-fill ${getProgressClass(task.progress)}`}
-                                                                    style={{ width: `${task.progress}%` }}
+                                                                    className={`progress-fill ${getProgressClass(
+                                                                        task.progress
+                                                                    )}`}
+                                                                    style={{
+                                                                        width: `${task.progress}%`
+                                                                    }}
                                                                 ></div>
                                                             </div>
                                                             <span className="progress-text">
@@ -313,16 +410,25 @@ const DeveloperTasks = () => {
 
                                                     <button
                                                         className="btn-update-task"
-                                                        onClick={() => !isLocked && setSelectedTask(task)}
+                                                        onClick={() =>
+                                                            !isLocked &&
+                                                            setSelectedTask(task)
+                                                        }
                                                         disabled={isLocked}
                                                         style={{
                                                             marginTop: '1rem',
                                                             padding: '8px 16px',
-                                                            background: isLocked ? '#d1d5db' : '#00A651',
-                                                            color: isLocked ? '#6b7280' : 'white',
+                                                            background: isLocked
+                                                                ? '#d1d5db'
+                                                                : '#00A651',
+                                                            color: isLocked
+                                                                ? '#6b7280'
+                                                                : 'white',
                                                             border: 'none',
                                                             borderRadius: '6px',
-                                                            cursor: isLocked ? 'not-allowed' : 'pointer',
+                                                            cursor: isLocked
+                                                                ? 'not-allowed'
+                                                                : 'pointer',
                                                             fontSize: '0.9rem',
                                                             fontWeight: '600',
                                                             transition: 'all 0.3s',

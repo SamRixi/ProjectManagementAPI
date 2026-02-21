@@ -8,8 +8,7 @@ import {
     Clock,
     User,
     AlertCircle,
-    X,
-    CheckCircle
+    X
 } from 'lucide-react';
 import api from '../../services/api';
 import ProjectManagerLayout from '../../components/layout/ProjectManagerLayout';
@@ -55,19 +54,24 @@ const ProjectManagerTasks = () => {
         let filtered = [...allTasks];
 
         if (searchQuery) {
-            filtered = filtered.filter(task =>
-                task.taskName.toLowerCase().includes(searchQuery.toLowerCase()) ||
-                task.description?.toLowerCase().includes(searchQuery.toLowerCase())
+            filtered = filtered.filter(
+                (task) =>
+                    task.taskName
+                        .toLowerCase()
+                        .includes(searchQuery.toLowerCase()) ||
+                    task.description
+                        ?.toLowerCase()
+                        .includes(searchQuery.toLowerCase())
             );
         }
 
         if (filterStatus !== 'all') {
-            filtered = filtered.filter(task => {
+            filtered = filtered.filter((task) => {
                 const s = task.status?.toLowerCase() || '';
                 if (filterStatus === 'todo') return s.includes('faire');
                 if (filterStatus === 'progress') return s.includes('cours');
-                // ✅ "Terminé" inclut aussi "En attente de validation"
-                if (filterStatus === 'completed') return s.includes('terminé') || s.includes('attente');
+                if (filterStatus === 'completed')
+                    return s.includes('terminé') || s.includes('attente');
                 if (filterStatus === 'validated') return s.includes('valid');
                 if (filterStatus === 'pending') return s.includes('attente');
                 if (filterStatus === 'overdue') return task.isOverdue;
@@ -84,9 +88,20 @@ const ProjectManagerTasks = () => {
             const response = await api.get('/projectmanager/my-projects');
             if (response.data.success) {
                 const projectsList = response.data.data || [];
-                setProjects(projectsList);
-                if (projectsList.length > 0) {
-                    setSelectedProject(projectsList[0].projectId);
+
+                // 🔹 Ne garder que les projets non annulés
+                const activeProjects = projectsList.filter(
+                    (p) => p.statusName !== 'Annulé'
+                );
+
+                setProjects(activeProjects);
+
+                if (activeProjects.length > 0) {
+                    setSelectedProject(activeProjects[0].projectId);
+                } else {
+                    setSelectedProject('');
+                    setAllTasks([]);
+                    setFilteredTasks([]);
                 }
             }
         } catch (err) {
@@ -99,7 +114,9 @@ const ProjectManagerTasks = () => {
     const fetchProjectTasks = async (projectId) => {
         try {
             setLoading(true);
-            const response = await api.get(`/projectmanager/projects/${projectId}/tasks`);
+            const response = await api.get(
+                `/projectmanager/projects/${projectId}/tasks`
+            );
             if (response.data.success) {
                 setAllTasks(response.data.data || []);
             }
@@ -112,7 +129,9 @@ const ProjectManagerTasks = () => {
 
     const fetchTeamMembers = async (projectId) => {
         try {
-            const response = await api.get(`/projectmanager/projects/${projectId}/team-members`);
+            const response = await api.get(
+                `/projectmanager/projects/${projectId}/team-members`
+            );
             if (response.data.success) {
                 setTeamMembers(response.data.data || []);
             }
@@ -127,7 +146,9 @@ const ProjectManagerTasks = () => {
             const response = await api.post('/projectmanager/tasks', {
                 ...newTask,
                 projectId: parseInt(selectedProject),
-                assignedToUserId: newTask.assignedToUserId ? parseInt(newTask.assignedToUserId) : null
+                assignedToUserId: newTask.assignedToUserId
+                    ? parseInt(newTask.assignedToUserId)
+                    : null
             });
             if (response.data.success) {
                 alert('✅ Tâche créée avec succès!');
@@ -164,29 +185,32 @@ const ProjectManagerTasks = () => {
         return 'pending';
     };
 
-    // ✅ BADGE MIS À JOUR : "En attente" → "Terminé · En attente"
     const getStatusBadge = (status) => {
         const s = status?.toLowerCase() || '';
-        if (s.includes('validé')) return {
-            label: '✅ Validée',
-            bg: '#10b981',
-            color: 'white'
-        };
-        if (s.includes('attente')) return {
-            label: '🏁 Terminé · En attente',
-            bg: '#f59e0b',
-            color: 'white'
-        };
-        if (s.includes('terminé')) return {
-            label: '🏁 Terminé',
-            bg: '#3b82f6',
-            color: 'white'
-        };
-        if (s.includes('cours')) return {
-            label: '🔄 En cours',
-            bg: '#8b5cf6',
-            color: 'white'
-        };
+        if (s.includes('validé'))
+            return {
+                label: '✅ Validée',
+                bg: '#10b981',
+                color: 'white'
+            };
+        if (s.includes('attente'))
+            return {
+                label: '🏁 Terminé · En attente',
+                bg: '#f59e0b',
+                color: 'white'
+            };
+        if (s.includes('terminé'))
+            return {
+                label: '🏁 Terminé',
+                bg: '#3b82f6',
+                color: 'white'
+            };
+        if (s.includes('cours'))
+            return {
+                label: '🔄 En cours',
+                bg: '#8b5cf6',
+                color: 'white'
+            };
         return {
             label: '📋 À faire',
             bg: '#6b7280',
@@ -205,8 +229,17 @@ const ProjectManagerTasks = () => {
             <div className="dashboard-container">
                 <div className="dashboard-content">
                     {/* Header */}
-                    <div className="welcome-card" style={{ marginBottom: '2rem' }}>
-                        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                    <div
+                        className="welcome-card"
+                        style={{ marginBottom: '2rem' }}
+                    >
+                        <div
+                            style={{
+                                display: 'flex',
+                                justifyContent: 'space-between',
+                                alignItems: 'center'
+                            }}
+                        >
                             <div>
                                 <h2>✅ Gestion des Tâches</h2>
                                 <p className="welcome-text">
@@ -237,15 +270,39 @@ const ProjectManagerTasks = () => {
                     </div>
 
                     {/* Filters */}
-                    <div style={{
-                        background: 'white', borderRadius: '16px',
-                        padding: '1.5rem', marginBottom: '2rem',
-                        boxShadow: '0 4px 12px rgba(0,0,0,0.08)'
-                    }}>
-                        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: '1rem' }}>
+                    <div
+                        style={{
+                            background: 'white',
+                            borderRadius: '16px',
+                            padding: '1.5rem',
+                            marginBottom: '2rem',
+                            boxShadow: '0 4px 12px rgba(0,0,0,0.08)'
+                        }}
+                    >
+                        <div
+                            style={{
+                                display: 'grid',
+                                gridTemplateColumns:
+                                    'repeat(auto-fit, minmax(200px, 1fr))',
+                                gap: '1rem'
+                            }}
+                        >
                             <div>
-                                <label style={{ display: 'block', marginBottom: '0.5rem', fontWeight: '600', color: '#374151' }}>
-                                    <Filter size={16} style={{ display: 'inline', marginRight: '0.3rem' }} />
+                                <label
+                                    style={{
+                                        display: 'block',
+                                        marginBottom: '0.5rem',
+                                        fontWeight: '600',
+                                        color: '#374151'
+                                    }}
+                                >
+                                    <Filter
+                                        size={16}
+                                        style={{
+                                            display: 'inline',
+                                            marginRight: '0.3rem'
+                                        }}
+                                    />
                                     Projet
                                 </label>
                                 <select
@@ -259,8 +316,11 @@ const ProjectManagerTasks = () => {
                                         fontSize: '0.95rem'
                                     }}
                                 >
-                                    {projects.map(project => (
-                                        <option key={project.projectId} value={project.projectId}>
+                                    {projects.map((project) => (
+                                        <option
+                                            key={project.projectId}
+                                            value={project.projectId}
+                                        >
                                             {project.projectName}
                                         </option>
                                     ))}
@@ -268,34 +328,73 @@ const ProjectManagerTasks = () => {
                             </div>
 
                             <div>
-                                <label style={{ display: 'block', marginBottom: '0.5rem', fontWeight: '600', color: '#374151' }}>Statut</label>
+                                <label
+                                    style={{
+                                        display: 'block',
+                                        marginBottom: '0.5rem',
+                                        fontWeight: '600',
+                                        color: '#374151'
+                                    }}
+                                >
+                                    Statut
+                                </label>
                                 <select
                                     value={filterStatus}
                                     onChange={(e) => setFilterStatus(e.target.value)}
-                                    style={{ width: '100%', padding: '0.7rem', borderRadius: '8px', border: '1px solid #d1d5db', fontSize: '0.95rem' }}
+                                    style={{
+                                        width: '100%',
+                                        padding: '0.7rem',
+                                        borderRadius: '8px',
+                                        border: '1px solid #d1d5db',
+                                        fontSize: '0.95rem'
+                                    }}
                                 >
                                     <option value="all">📋 Tous</option>
                                     <option value="todo">📋 À faire</option>
                                     <option value="progress">🔄 En cours</option>
-                                    {/* ✅ Terminé inclut En attente de validation */}
-                                    <option value="completed">🏁 Terminé (+ En attente)</option>
-                                    <option value="pending">⏳ En attente de validation</option>
+                                    <option value="completed">
+                                        🏁 Terminé (+ En attente)
+                                    </option>
+                                    <option value="pending">
+                                        ⏳ En attente de validation
+                                    </option>
                                     <option value="validated">✅ Validée</option>
                                     <option value="overdue">⚠️ En retard</option>
                                 </select>
                             </div>
 
                             <div>
-                                <label style={{ display: 'block', marginBottom: '0.5rem', fontWeight: '600', color: '#374151' }}>
-                                    <Search size={16} style={{ display: 'inline', marginRight: '0.3rem' }} />
+                                <label
+                                    style={{
+                                        display: 'block',
+                                        marginBottom: '0.5rem',
+                                        fontWeight: '600',
+                                        color: '#374151'
+                                    }}
+                                >
+                                    <Search
+                                        size={16}
+                                        style={{
+                                            display: 'inline',
+                                            marginRight: '0.3rem'
+                                        }}
+                                    />
                                     Rechercher
                                 </label>
                                 <input
                                     type="text"
                                     placeholder="Nom de la tâche..."
                                     value={searchQuery}
-                                    onChange={(e) => setSearchQuery(e.target.value)}
-                                    style={{ width: '100%', padding: '0.7rem', borderRadius: '8px', border: '1px solid #d1d5db', fontSize: '0.95rem' }}
+                                    onChange={(e) =>
+                                        setSearchQuery(e.target.value)
+                                    }
+                                    style={{
+                                        width: '100%',
+                                        padding: '0.7rem',
+                                        borderRadius: '8px',
+                                        border: '1px solid #d1d5db',
+                                        fontSize: '0.95rem'
+                                    }}
                                 />
                             </div>
                         </div>
@@ -312,46 +411,113 @@ const ProjectManagerTasks = () => {
                             {filteredTasks.map((task) => {
                                 const badge = getStatusBadge(task.status);
                                 return (
-                                    <div key={task.taskId} className={`task-item ${task.isOverdue ? 'overdue' : ''}`}>
-                                        <div className={`task-status ${getStatusClass(task.status)}`}></div>
-                                        <div className="task-details" style={{ flex: 1 }}>
-                                            <div style={{ display: 'flex', alignItems: 'center', gap: '0.7rem', flexWrap: 'wrap' }}>
-                                                <h4 style={{ margin: 0 }}>{task.taskName}</h4>
-                                                <span style={{
-                                                    padding: '3px 10px', borderRadius: '12px',
-                                                    fontSize: '0.75rem', fontWeight: '700',
-                                                    background: badge.bg, color: badge.color
-                                                }}>
+                                    <div
+                                        key={task.taskId}
+                                        className={`task-item ${task.isOverdue ? 'overdue' : ''
+                                            }`}
+                                    >
+                                        <div
+                                            className={`task-status ${getStatusClass(
+                                                task.status
+                                            )}`}
+                                        ></div>
+                                        <div
+                                            className="task-details"
+                                            style={{ flex: 1 }}
+                                        >
+                                            <div
+                                                style={{
+                                                    display: 'flex',
+                                                    alignItems: 'center',
+                                                    gap: '0.7rem',
+                                                    flexWrap: 'wrap'
+                                                }}
+                                            >
+                                                <h4 style={{ margin: 0 }}>
+                                                    {task.taskName}
+                                                </h4>
+                                                <span
+                                                    style={{
+                                                        padding: '3px 10px',
+                                                        borderRadius: '12px',
+                                                        fontSize: '0.75rem',
+                                                        fontWeight: '700',
+                                                        background: badge.bg,
+                                                        color: badge.color
+                                                    }}
+                                                >
                                                     {badge.label}
                                                 </span>
                                             </div>
-                                            <p style={{ margin: '0.3rem 0 0 0', color: '#6b7280' }}>
-                                                {task.description || 'Aucune description'}
+                                            <p
+                                                style={{
+                                                    margin: '0.3rem 0 0 0',
+                                                    color: '#6b7280'
+                                                }}
+                                            >
+                                                {task.description ||
+                                                    'Aucune description'}
                                             </p>
-                                            <div style={{ display: 'flex', gap: '0.8rem', alignItems: 'center', marginTop: '0.5rem' }}>
-                                                <span className={`task-priority ${getPriorityClass(task.priority)}`}>
+                                            <div
+                                                style={{
+                                                    display: 'flex',
+                                                    gap: '0.8rem',
+                                                    alignItems: 'center',
+                                                    marginTop: '0.5rem'
+                                                }}
+                                            >
+                                                <span
+                                                    className={`task-priority ${getPriorityClass(
+                                                        task.priority
+                                                    )}`}
+                                                >
                                                     {task.priority || 'Moyenne'}
                                                 </span>
-                                                <span style={{ fontSize: '0.85rem', color: '#6b7280' }}>
+                                                <span
+                                                    style={{
+                                                        fontSize: '0.85rem',
+                                                        color: '#6b7280'
+                                                    }}
+                                                >
                                                     📊 {task.progress || 0}%
                                                 </span>
                                             </div>
                                         </div>
                                         <div className="task-meta">
                                             {task.assignedToName && (
-                                                <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', marginBottom: '0.5rem', fontSize: '0.9rem', color: '#374151' }}>
+                                                <div
+                                                    style={{
+                                                        display: 'flex',
+                                                        alignItems: 'center',
+                                                        gap: '0.5rem',
+                                                        marginBottom: '0.5rem',
+                                                        fontSize: '0.9rem',
+                                                        color: '#374151'
+                                                    }}
+                                                >
                                                     <User size={16} />
                                                     {task.assignedToName}
                                                 </div>
                                             )}
                                             {task.deadline && (
                                                 <span className="task-deadline">
-                                                    <Clock size={16} style={{ display: 'inline', marginRight: '0.3rem' }} />
-                                                    {new Date(task.deadline).toLocaleDateString('fr-FR')}
+                                                    <Clock
+                                                        size={16}
+                                                        style={{
+                                                            display: 'inline',
+                                                            marginRight: '0.3rem'
+                                                        }}
+                                                    />
+                                                    {new Date(
+                                                        task.deadline
+                                                    ).toLocaleDateString('fr-FR')}
                                                 </span>
                                             )}
                                             {task.isOverdue && (
-                                                <span className="overdue-badge" style={{ marginTop: '0.5rem' }}>
+                                                <span
+                                                    className="overdue-badge"
+                                                    style={{ marginTop: '0.5rem' }}
+                                                >
                                                     <AlertCircle size={14} />
                                                     EN RETARD
                                                 </span>
@@ -362,10 +528,26 @@ const ProjectManagerTasks = () => {
                             })}
                         </div>
                     ) : (
-                        <div className="welcome-card" style={{ textAlign: 'center' }}>
-                            <CheckSquare size={64} style={{ color: 'var(--mobilis-green)', margin: '0 auto 1rem' }} />
-                            <h3 style={{ color: '#6b7280', marginBottom: '0.5rem' }}>
-                                {searchQuery || filterStatus !== 'all' ? 'Aucune tâche trouvée' : 'Aucune tâche dans ce projet'}
+                        <div
+                            className="welcome-card"
+                            style={{ textAlign: 'center' }}
+                        >
+                            <CheckSquare
+                                size={64}
+                                style={{
+                                    color: 'var(--mobilis-green)',
+                                    margin: '0 auto 1rem'
+                                }}
+                            />
+                            <h3
+                                style={{
+                                    color: '#6b7280',
+                                    marginBottom: '0.5rem'
+                                }}
+                            >
+                                {searchQuery || filterStatus !== 'all'
+                                    ? 'Aucune tâche trouvée'
+                                    : 'Aucune tâche dans ce projet'}
                             </h3>
                             <p style={{ color: '#9ca3af' }}>
                                 {searchQuery || filterStatus !== 'all'
@@ -379,24 +561,46 @@ const ProjectManagerTasks = () => {
 
             {/* Create Task Modal */}
             {showCreateModal && (
-                <div className="modal-overlay" onClick={() => { setShowCreateModal(false); resetForm(); }}>
-                    <div className="modal-content" onClick={(e) => e.stopPropagation()}>
+                <div
+                    className="modal-overlay"
+                    onClick={() => {
+                        setShowCreateModal(false);
+                        resetForm();
+                    }}
+                >
+                    <div
+                        className="modal-content"
+                        onClick={(e) => e.stopPropagation()}
+                    >
                         <div className="modal-header">
                             <h2>➕ Nouvelle Tâche</h2>
                             <button
                                 className="close-btn"
-                                onClick={() => { setShowCreateModal(false); resetForm(); }}
+                                onClick={() => {
+                                    setShowCreateModal(false);
+                                    resetForm();
+                                }}
                             >
                                 <X size={24} />
                             </button>
                         </div>
 
-                        <form onSubmit={handleCreateTask} className="modal-body">
+                        <form
+                            onSubmit={handleCreateTask}
+                            className="modal-body"
+                        >
                             <div className="form-group">
                                 <label>📋 Nom de la tâche *</label>
                                 <input
-                                    type="text" required value={newTask.taskName}
-                                    onChange={(e) => setNewTask({ ...newTask, taskName: e.target.value })}
+                                    type="text"
+                                    required
+                                    value={newTask.taskName}
+                                    onChange={(e) =>
+                                        setNewTask({
+                                            ...newTask,
+                                            taskName: e.target.value
+                                        })
+                                    }
                                     placeholder="Ex: Développer la page d'accueil"
                                     className="form-select"
                                 />
@@ -406,8 +610,14 @@ const ProjectManagerTasks = () => {
                                 <label>📝 Description</label>
                                 <textarea
                                     value={newTask.description}
-                                    onChange={(e) => setNewTask({ ...newTask, description: e.target.value })}
-                                    placeholder="Décrivez la tâche..." rows="3"
+                                    onChange={(e) =>
+                                        setNewTask({
+                                            ...newTask,
+                                            description: e.target.value
+                                        })
+                                    }
+                                    placeholder="Décrivez la tâche..."
+                                    rows="3"
                                     className="form-select"
                                     style={{ resize: 'vertical' }}
                                 />
@@ -416,8 +626,15 @@ const ProjectManagerTasks = () => {
                             <div className="form-group">
                                 <label>📅 Date limite *</label>
                                 <input
-                                    type="date" required value={newTask.dueDate}
-                                    onChange={(e) => setNewTask({ ...newTask, dueDate: e.target.value })}
+                                    type="date"
+                                    required
+                                    value={newTask.dueDate}
+                                    onChange={(e) =>
+                                        setNewTask({
+                                            ...newTask,
+                                            dueDate: e.target.value
+                                        })
+                                    }
                                     className="form-select"
                                 />
                             </div>
@@ -426,7 +643,12 @@ const ProjectManagerTasks = () => {
                                 <label>⚡ Priorité *</label>
                                 <select
                                     value={newTask.priorityId}
-                                    onChange={(e) => setNewTask({ ...newTask, priorityId: parseInt(e.target.value) })}
+                                    onChange={(e) =>
+                                        setNewTask({
+                                            ...newTask,
+                                            priorityId: parseInt(e.target.value)
+                                        })
+                                    }
                                     className="form-select"
                                 >
                                     <option value="1">Basse</option>
@@ -439,12 +661,20 @@ const ProjectManagerTasks = () => {
                                 <label>👤 Assigner à</label>
                                 <select
                                     value={newTask.assignedToUserId}
-                                    onChange={(e) => setNewTask({ ...newTask, assignedToUserId: e.target.value })}
+                                    onChange={(e) =>
+                                        setNewTask({
+                                            ...newTask,
+                                            assignedToUserId: e.target.value
+                                        })
+                                    }
                                     className="form-select"
                                 >
                                     <option value="">Non assigné</option>
-                                    {teamMembers.map(member => (
-                                        <option key={member.userId} value={member.userId}>
+                                    {teamMembers.map((member) => (
+                                        <option
+                                            key={member.userId}
+                                            value={member.userId}
+                                        >
                                             {member.fullName} ({member.roleName})
                                         </option>
                                     ))}
@@ -454,7 +684,10 @@ const ProjectManagerTasks = () => {
                             <div className="modal-footer">
                                 <button
                                     type="button"
-                                    onClick={() => { setShowCreateModal(false); resetForm(); }}
+                                    onClick={() => {
+                                        setShowCreateModal(false);
+                                        resetForm();
+                                    }}
                                     className="btn-cancel"
                                 >
                                     Annuler
@@ -473,5 +706,4 @@ const ProjectManagerTasks = () => {
 };
 
 export default ProjectManagerTasks;
-
 

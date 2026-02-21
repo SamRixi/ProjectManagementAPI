@@ -21,7 +21,7 @@
         public string Email { get; set; } = string.Empty;
 
         // Role information
-        public int RoleId { get; set; }  
+        public int? RoleId { get; set; }  
         public string RoleName { get; set; } = string.Empty;
 
         // ✅ Team member specific properties

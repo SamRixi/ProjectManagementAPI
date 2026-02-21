@@ -33,12 +33,15 @@ const ProjectManagerProjects = () => {
             setError(null);
             const response = await api.get('/projectmanager/my-projects');
             if (response.data.success) {
+                // On affiche tous les projets (y compris annulés) dans cette page
                 setProjects(response.data.data || []);
             } else {
                 setError(response.data.message || 'Erreur lors du chargement des projets');
             }
         } catch (err) {
-            setError(err.response?.data?.message || 'Erreur lors de la connexion au serveur');
+            setError(
+                err.response?.data?.message || 'Erreur lors de la connexion au serveur'
+            );
         } finally {
             setLoading(false);
         }
@@ -47,7 +50,9 @@ const ProjectManagerProjects = () => {
     const fetchProjectStats = async (projectId) => {
         try {
             setStatsLoading(true);
-            const response = await api.get(`/projectmanager/projects/${projectId}/stats`);
+            const response = await api.get(
+                `/projectmanager/projects/${projectId}/stats`
+            );
             if (response.data.success) {
                 setProjectStats(response.data.data);
             }
@@ -77,7 +82,6 @@ const ProjectManagerProjects = () => {
         return 'low';
     };
 
-    // ✅ Basé uniquement sur statusName du backend
     const getProjectStatusStyle = (statusName) => {
         switch (statusName) {
             case 'Planifié':
@@ -99,7 +103,6 @@ const ProjectManagerProjects = () => {
         }
     };
 
-    // ✅ Bordure basée sur statusName du backend
     const getProjectBorder = (statusName) => {
         switch (statusName) {
             case 'Terminé':
@@ -118,11 +121,15 @@ const ProjectManagerProjects = () => {
     };
 
     const handleCloseProject = async (projectId) => {
-        const confirmClose = window.confirm('✅ Toutes les tâches sont validées.\nVoulez-vous clôturer ce projet ?');
+        const confirmClose = window.confirm(
+            '✅ Toutes les tâches sont validées.\nVoulez-vous clôturer ce projet ?'
+        );
         if (!confirmClose) return;
 
         try {
-            const response = await api.put(`/projectmanager/projects/${projectId}/close`);
+            const response = await api.put(
+                `/projectmanager/projects/${projectId}/close`
+            );
             if (response.data.success) {
                 alert('✅ Projet clôturé avec succès');
                 fetchProjects();
@@ -131,7 +138,11 @@ const ProjectManagerProjects = () => {
             }
         } catch (err) {
             console.error('❌ Erreur clôture projet:', err);
-            alert('❌ ' + (err.response?.data?.message || 'Erreur lors de la clôture du projet'));
+            alert(
+                '❌ ' +
+                (err.response?.data?.message ||
+                    'Erreur lors de la clôture du projet')
+            );
         }
     };
 
@@ -139,7 +150,6 @@ const ProjectManagerProjects = () => {
         <ProjectManagerLayout>
             <div className="dashboard-container">
                 <div className="dashboard-content">
-
                     {/* Header */}
                     <div className="welcome-card" style={{ marginBottom: '2rem' }}>
                         <h2>📁 Mes Projets</h2>
@@ -150,16 +160,39 @@ const ProjectManagerProjects = () => {
 
                     {/* Error */}
                     {error && (
-                        <div style={{
-                            background: '#fee2e2', border: '2px solid #dc2626',
-                            borderRadius: '12px', padding: '1rem', marginBottom: '1.5rem',
-                            display: 'flex', alignItems: 'center', justifyContent: 'space-between'
-                        }}>
-                            <p style={{ margin: 0, color: '#dc2626', fontWeight: '600' }}>⚠️ {error}</p>
-                            <button onClick={fetchProjects} style={{
-                                padding: '0.5rem 1rem', background: '#dc2626', color: 'white',
-                                border: 'none', borderRadius: '8px', cursor: 'pointer', fontWeight: '600'
-                            }}>
+                        <div
+                            style={{
+                                background: '#fee2e2',
+                                border: '2px solid #dc2626',
+                                borderRadius: '12px',
+                                padding: '1rem',
+                                marginBottom: '1.5rem',
+                                display: 'flex',
+                                alignItems: 'center',
+                                justifyContent: 'space-between'
+                            }}
+                        >
+                            <p
+                                style={{
+                                    margin: 0,
+                                    color: '#dc2626',
+                                    fontWeight: '600'
+                                }}
+                            >
+                                ⚠️ {error}
+                            </p>
+                            <button
+                                onClick={fetchProjects}
+                                style={{
+                                    padding: '0.5rem 1rem',
+                                    background: '#dc2626',
+                                    color: 'white',
+                                    border: 'none',
+                                    borderRadius: '8px',
+                                    cursor: 'pointer',
+                                    fontWeight: '600'
+                                }}
+                            >
                                 Réessayer
                             </button>
                         </div>
@@ -173,30 +206,43 @@ const ProjectManagerProjects = () => {
                     ) : (
                         <>
                             {projects.length > 0 ? (
-                                <div style={{
-                                    display: 'grid',
-                                    gridTemplateColumns: 'repeat(auto-fill, minmax(340px, 1fr))',
-                                    gap: '1.5rem'
-                                }}>
+                                <div
+                                    style={{
+                                        display: 'grid',
+                                        gridTemplateColumns:
+                                            'repeat(auto-fill, minmax(340px, 1fr))',
+                                        gap: '1.5rem'
+                                    }}
+                                >
                                     {projects.map((project) => (
-                                        <div key={project.projectId} style={{
-                                            background: 'white',
-                                            borderRadius: '16px',
-                                            padding: '1.5rem',
-                                            boxShadow: '0 4px 12px rgba(0, 0, 0, 0.08)',
-                                            // ✅ Bordure depuis backend
-                                            border: getProjectBorder(project.statusName)
-                                        }}>
-
+                                        <div
+                                            key={project.projectId}
+                                            style={{
+                                                background: 'white',
+                                                borderRadius: '16px',
+                                                padding: '1.5rem',
+                                                boxShadow: '0 4px 12px rgba(0, 0, 0, 0.08)',
+                                                border: getProjectBorder(project.statusName)
+                                            }}
+                                        >
                                             {/* Header */}
-                                            <div style={{
-                                                display: 'flex', justifyContent: 'space-between',
-                                                alignItems: 'flex-start', marginBottom: '1rem'
-                                            }}>
-                                                <h3 style={{
-                                                    fontSize: '1.2rem', color: '#1f2937',
-                                                    fontWeight: '700', margin: 0, flex: 1
-                                                }}>
+                                            <div
+                                                style={{
+                                                    display: 'flex',
+                                                    justifyContent: 'space-between',
+                                                    alignItems: 'flex-start',
+                                                    marginBottom: '1rem'
+                                                }}
+                                            >
+                                                <h3
+                                                    style={{
+                                                        fontSize: '1.2rem',
+                                                        color: '#1f2937',
+                                                        fontWeight: '700',
+                                                        margin: 0,
+                                                        flex: 1
+                                                    }}
+                                                >
                                                     {project.projectName}
                                                 </h3>
                                                 {project.isDelayed && (
@@ -207,22 +253,32 @@ const ProjectManagerProjects = () => {
                                                 )}
                                             </div>
 
-                                            {/* ✅ Status Badge — direct depuis backend */}
-                                            <div style={{
-                                                display: 'inline-flex', alignItems: 'center',
-                                                gap: '0.5rem', padding: '0.35rem 0.85rem',
-                                                borderRadius: '999px', fontSize: '0.8rem',
-                                                fontWeight: 600, marginBottom: '1rem',
-                                                ...getProjectStatusStyle(project.statusName)
-                                            }}>
+                                            {/* Status Badge */}
+                                            <div
+                                                style={{
+                                                    display: 'inline-flex',
+                                                    alignItems: 'center',
+                                                    gap: '0.5rem',
+                                                    padding: '0.35rem 0.85rem',
+                                                    borderRadius: '999px',
+                                                    fontSize: '0.8rem',
+                                                    fontWeight: 600,
+                                                    marginBottom: '1rem',
+                                                    ...getProjectStatusStyle(project.statusName)
+                                                }}
+                                            >
                                                 {project.statusName}
                                             </div>
 
                                             {/* Description */}
-                                            <p style={{
-                                                fontSize: '0.9rem', color: '#6b7280',
-                                                marginBottom: '1rem', lineHeight: '1.5'
-                                            }}>
+                                            <p
+                                                style={{
+                                                    fontSize: '0.9rem',
+                                                    color: '#6b7280',
+                                                    marginBottom: '1rem',
+                                                    lineHeight: '1.5'
+                                                }}
+                                            >
                                                 {project.description || 'Aucune description'}
                                             </p>
 
@@ -230,98 +286,162 @@ const ProjectManagerProjects = () => {
                                             <div className="task-progress-section">
                                                 <div className="task-progress-bar-bg">
                                                     <div
-                                                        className={`task-progress-bar-fill progress-${getProgressClass(project.progress)}`}
-                                                        style={{ width: `${project.progress ?? 0}%` }}
+                                                        className={`task-progress-bar-fill progress-${getProgressClass(
+                                                            project.progress
+                                                        )}`}
+                                                        style={{
+                                                            width: `${project.progress ?? 0}%`
+                                                        }}
                                                     >
                                                         <div className="progress-shimmer"></div>
                                                     </div>
                                                 </div>
                                                 <span className="task-progress-text">
-                                                    {project.progress ?? 0}% — {project.completedTasks ?? 0}/{project.totalTasks ?? 0} tâches
+                                                    {project.progress ?? 0}% —{' '}
+                                                    {project.completedTasks ?? 0}/
+                                                    {project.totalTasks ?? 0} tâches
                                                 </span>
                                             </div>
 
                                             {/* Task Stats */}
-                                            <div style={{
-                                                display: 'flex', gap: '0.8rem', marginTop: '1rem',
-                                                fontSize: '0.85rem', color: '#6b7280', fontWeight: '600',
-                                                flexWrap: 'wrap'
-                                            }}>
-                                                <span>✅ {project.completedTasks ?? 0}</span>
-                                                <span>🔄 {project.inProgressTasks ?? 0}</span>
+                                            <div
+                                                style={{
+                                                    display: 'flex',
+                                                    gap: '0.8rem',
+                                                    marginTop: '1rem',
+                                                    fontSize: '0.85rem',
+                                                    color: '#6b7280',
+                                                    fontWeight: '600',
+                                                    flexWrap: 'wrap'
+                                                }}
+                                            >
+                                                <span>
+                                                    ✅ {project.completedTasks ?? 0}
+                                                </span>
+                                                <span>
+                                                    🔄 {project.inProgressTasks ?? 0}
+                                                </span>
                                                 <span>📝 {project.todoTasks ?? 0}</span>
-                                                {/* ✅ Masqué si Terminé ou Annulé */}
-                                                {(project.pendingValidationTasks ?? 0) > 0
-                                                    && project.statusName !== 'Terminé'
-                                                    && project.statusName !== 'Annulé' && (
+                                                {(project.pendingValidationTasks ?? 0) > 0 &&
+                                                    project.statusName !== 'Terminé' &&
+                                                    project.statusName !== 'Annulé' && (
                                                         <span style={{ color: '#F59E0B' }}>
-                                                            ⏳ {project.pendingValidationTasks} en validation
+                                                            ⏳ {project.pendingValidationTasks} en
+                                                            validation
                                                         </span>
                                                     )}
                                             </div>
 
                                             {/* Dates */}
                                             {(project.startDate || project.endDate) && (
-                                                <div style={{ marginTop: '1rem', fontSize: '0.85rem', color: '#6b7280' }}>
+                                                <div
+                                                    style={{
+                                                        marginTop: '1rem',
+                                                        fontSize: '0.85rem',
+                                                        color: '#6b7280'
+                                                    }}
+                                                >
                                                     {project.startDate && (
                                                         <p style={{ margin: '0.3rem 0' }}>
-                                                            📅 Début: {new Date(project.startDate).toLocaleDateString('fr-FR')}
+                                                            📅 Début:{' '}
+                                                            {new Date(
+                                                                project.startDate
+                                                            ).toLocaleDateString('fr-FR')}
                                                         </p>
                                                     )}
                                                     {project.endDate && (
                                                         <p style={{ margin: '0.3rem 0' }}>
-                                                            🏁 Fin: {new Date(project.endDate).toLocaleDateString('fr-FR')}
+                                                            🏁 Fin:{' '}
+                                                            {new Date(
+                                                                project.endDate
+                                                            ).toLocaleDateString('fr-FR')}
                                                         </p>
                                                     )}
                                                 </div>
                                             )}
 
                                             {/* Boutons */}
-                                            <div style={{
-                                                display: 'flex', flexDirection: 'column',
-                                                gap: '0.6rem', marginTop: '1rem'
-                                            }}>
+                                            <div
+                                                style={{
+                                                    display: 'flex',
+                                                    flexDirection: 'column',
+                                                    gap: '0.6rem',
+                                                    marginTop: '1rem'
+                                                }}
+                                            >
                                                 <button
                                                     onClick={() => viewProjectStats(project)}
                                                     style={{
-                                                        width: '100%', padding: '0.85rem 1rem',
-                                                        background: 'linear-gradient(135deg, var(--mobilis-green) 0%, #008f3f 100%)',
-                                                        color: 'white', border: 'none', borderRadius: '12px',
-                                                        fontWeight: '600', cursor: 'pointer',
-                                                        display: 'flex', alignItems: 'center',
-                                                        justifyContent: 'center', gap: '0.5rem',
+                                                        width: '100%',
+                                                        padding: '0.85rem 1rem',
+                                                        background:
+                                                            'linear-gradient(135deg, var(--mobilis-green) 0%, #008f3f 100%)',
+                                                        color: 'white',
+                                                        border: 'none',
+                                                        borderRadius: '12px',
+                                                        fontWeight: '600',
+                                                        cursor: 'pointer',
+                                                        display: 'flex',
+                                                        alignItems: 'center',
+                                                        justifyContent: 'center',
+                                                        gap: '0.5rem',
                                                         fontSize: '0.95rem',
-                                                        boxShadow: '0 4px 12px rgba(0, 166, 81, 0.25)'
+                                                        boxShadow:
+                                                            '0 4px 12px rgba(0, 166, 81, 0.25)'
                                                     }}
                                                 >
                                                     <BarChart3 size={20} />
                                                     Statistiques Détaillées
                                                 </button>
 
-                                                {/* ✅ Bouton clôture — uniquement si "Prêt à clôturer" */}
-                                                {project.statusName === '✅ Prêt à clôturer' && (
-                                                    <button
-                                                        onClick={() => handleCloseProject(project.projectId)}
-                                                        style={{
-                                                            width: '100%', padding: '0.75rem 1rem',
-                                                            background: 'linear-gradient(135deg, #15803D, #166534)',
-                                                            color: 'white', border: 'none',
-                                                            borderRadius: '10px', fontWeight: '600',
-                                                            cursor: 'pointer', fontSize: '0.9rem',
-                                                            boxShadow: '0 4px 12px rgba(21, 128, 61, 0.3)'
-                                                        }}
-                                                    >
-                                                        ✅ Clôturer le projet
-                                                    </button>
-                                                )}
+                                                {project.statusName ===
+                                                    '✅ Prêt à clôturer' && (
+                                                        <button
+                                                            onClick={() =>
+                                                                handleCloseProject(project.projectId)
+                                                            }
+                                                            style={{
+                                                                width: '100%',
+                                                                padding: '0.75rem 1rem',
+                                                                background:
+                                                                    'linear-gradient(135deg, #15803D, #166534)',
+                                                                color: 'white',
+                                                                border: 'none',
+                                                                borderRadius: '10px',
+                                                                fontWeight: '600',
+                                                                cursor: 'pointer',
+                                                                fontSize: '0.9rem',
+                                                                boxShadow:
+                                                                    '0 4px 12px rgba(21, 128, 61, 0.3)'
+                                                            }}
+                                                        >
+                                                            ✅ Clôturer le projet
+                                                        </button>
+                                                    )}
                                             </div>
                                         </div>
                                     ))}
                                 </div>
                             ) : (
-                                <div className="welcome-card" style={{ textAlign: 'center' }}>
-                                    <FolderKanban size={64} style={{ color: 'var(--mobilis-green)', margin: '0 auto 1rem' }} />
-                                    <h3 style={{ color: '#6b7280', marginBottom: '0.5rem' }}>Aucun projet trouvé</h3>
+                                <div
+                                    className="welcome-card"
+                                    style={{ textAlign: 'center' }}
+                                >
+                                    <FolderKanban
+                                        size={64}
+                                        style={{
+                                            color: 'var(--mobilis-green)',
+                                            margin: '0 auto 1rem'
+                                        }}
+                                    />
+                                    <h3
+                                        style={{
+                                            color: '#6b7280',
+                                            marginBottom: '0.5rem'
+                                        }}
+                                    >
+                                        Aucun projet trouvé
+                                    </h3>
                                     <p style={{ color: '#9ca3af' }}>
                                         Vous n'avez pas encore de projets assignés.
                                     </p>
@@ -334,30 +454,71 @@ const ProjectManagerProjects = () => {
 
             {/* Stats Modal */}
             {showStatsModal && (
-                <div onClick={closeStatsModal} style={{
-                    position: 'fixed', top: 0, left: 0, right: 0, bottom: 0,
-                    background: 'rgba(0, 0, 0, 0.5)', display: 'flex',
-                    alignItems: 'center', justifyContent: 'center', zIndex: 9999, padding: '20px'
-                }}>
-                    <div onClick={(e) => e.stopPropagation()} style={{
-                        background: 'white', borderRadius: '20px', padding: '2rem',
-                        maxWidth: '600px', width: '100%', maxHeight: '80vh',
-                        overflowY: 'auto', position: 'relative',
-                        boxShadow: '0 20px 60px rgba(0, 0, 0, 0.3)'
-                    }}>
-                        <button onClick={closeStatsModal} style={{
-                            position: 'absolute', top: '1rem', right: '1rem',
-                            width: '40px', height: '40px', background: 'var(--mobilis-green)',
-                            border: 'none', borderRadius: '50%', cursor: 'pointer',
-                            display: 'flex', alignItems: 'center', justifyContent: 'center',
-                            color: 'white', fontSize: '28px', fontWeight: 'bold',
-                            lineHeight: '1', padding: 0, zIndex: 10
-                        }}>×</button>
+                <div
+                    onClick={closeStatsModal}
+                    style={{
+                        position: 'fixed',
+                        top: 0,
+                        left: 0,
+                        right: 0,
+                        bottom: 0,
+                        background: 'rgba(0, 0, 0, 0.5)',
+                        display: 'flex',
+                        alignItems: 'center',
+                        justifyContent: 'center',
+                        zIndex: 9999,
+                        padding: '20px'
+                    }}
+                >
+                    <div
+                        onClick={(e) => e.stopPropagation()}
+                        style={{
+                            background: 'white',
+                            borderRadius: '20px',
+                            padding: '2rem',
+                            maxWidth: '600px',
+                            width: '100%',
+                            maxHeight: '80vh',
+                            overflowY: 'auto',
+                            position: 'relative',
+                            boxShadow: '0 20px 60px rgba(0, 0, 0, 0.3)'
+                        }}
+                    >
+                        <button
+                            onClick={closeStatsModal}
+                            style={{
+                                position: 'absolute',
+                                top: '1rem',
+                                right: '1rem',
+                                width: '40px',
+                                height: '40px',
+                                background: 'var(--mobilis-green)',
+                                border: 'none',
+                                borderRadius: '50%',
+                                cursor: 'pointer',
+                                display: 'flex',
+                                alignItems: 'center',
+                                justifyContent: 'center',
+                                color: 'white',
+                                fontSize: '28px',
+                                fontWeight: 'bold',
+                                lineHeight: '1',
+                                padding: 0,
+                                zIndex: 10
+                            }}
+                        >
+                            ×
+                        </button>
 
-                        <h2 style={{
-                            color: 'var(--mobilis-green)', marginBottom: '1.5rem',
-                            fontSize: '1.8rem', fontWeight: '700', paddingRight: '50px'
-                        }}>
+                        <h2
+                            style={{
+                                color: 'var(--mobilis-green)',
+                                marginBottom: '1.5rem',
+                                fontSize: '1.8rem',
+                                fontWeight: '700',
+                                paddingRight: '50px'
+                            }}
+                        >
                             📊 {selectedProject?.projectName}
                         </h2>
 
@@ -368,96 +529,267 @@ const ProjectManagerProjects = () => {
                             </div>
                         ) : projectStats ? (
                             <>
-                                {/* Stats Grid */}
-                                <div style={{
-                                    display: 'grid', gridTemplateColumns: 'repeat(2, 1fr)',
-                                    gap: '1rem', marginBottom: '2rem'
-                                }}>
-                                    <div style={{ background: '#f0f9ff', padding: '1rem', borderRadius: '12px', textAlign: 'center' }}>
-                                        <p style={{ color: '#0369a1', fontSize: '2rem', fontWeight: '700', margin: 0 }}>
+                                <div
+                                    style={{
+                                        display: 'grid',
+                                        gridTemplateColumns: 'repeat(2, 1fr)',
+                                        gap: '1rem',
+                                        marginBottom: '2rem'
+                                    }}
+                                >
+                                    <div
+                                        style={{
+                                            background: '#f0f9ff',
+                                            padding: '1rem',
+                                            borderRadius: '12px',
+                                            textAlign: 'center'
+                                        }}
+                                    >
+                                        <p
+                                            style={{
+                                                color: '#0369a1',
+                                                fontSize: '2rem',
+                                                fontWeight: '700',
+                                                margin: 0
+                                            }}
+                                        >
                                             {projectStats.totalTasks ?? 0}
                                         </p>
-                                        <p style={{ color: '#0284c7', fontSize: '0.9rem', margin: '0.3rem 0 0 0' }}>Tâches totales</p>
+                                        <p
+                                            style={{
+                                                color: '#0284c7',
+                                                fontSize: '0.9rem',
+                                                margin: '0.3rem 0 0 0'
+                                            }}
+                                        >
+                                            Tâches totales
+                                        </p>
                                     </div>
-                                    <div style={{ background: '#f0fdf4', padding: '1rem', borderRadius: '12px', textAlign: 'center' }}>
-                                        <p style={{ color: '#15803d', fontSize: '2rem', fontWeight: '700', margin: 0 }}>
+                                    <div
+                                        style={{
+                                            background: '#f0fdf4',
+                                            padding: '1rem',
+                                            borderRadius: '12px',
+                                            textAlign: 'center'
+                                        }}
+                                    >
+                                        <p
+                                            style={{
+                                                color: '#15803d',
+                                                fontSize: '2rem',
+                                                fontWeight: '700',
+                                                margin: 0
+                                            }}
+                                        >
                                             {projectStats.completedTasks ?? 0}
                                         </p>
-                                        <p style={{ color: '#16a34a', fontSize: '0.9rem', margin: '0.3rem 0 0 0' }}>Terminées</p>
+                                        <p
+                                            style={{
+                                                color: '#16a34a',
+                                                fontSize: '0.9rem',
+                                                margin: '0.3rem 0 0 0'
+                                            }}
+                                        >
+                                            Terminées
+                                        </p>
                                     </div>
-                                    <div style={{ background: '#fef3c7', padding: '1rem', borderRadius: '12px', textAlign: 'center' }}>
-                                        <p style={{ color: '#b45309', fontSize: '2rem', fontWeight: '700', margin: 0 }}>
+                                    <div
+                                        style={{
+                                            background: '#fef3c7',
+                                            padding: '1rem',
+                                            borderRadius: '12px',
+                                            textAlign: 'center'
+                                        }}
+                                    >
+                                        <p
+                                            style={{
+                                                color: '#b45309',
+                                                fontSize: '2rem',
+                                                fontWeight: '700',
+                                                margin: 0
+                                            }}
+                                        >
                                             {projectStats.inProgressTasks ?? 0}
                                         </p>
-                                        <p style={{ color: '#d97706', fontSize: '0.9rem', margin: '0.3rem 0 0 0' }}>En cours</p>
+                                        <p
+                                            style={{
+                                                color: '#d97706',
+                                                fontSize: '0.9rem',
+                                                margin: '0.3rem 0 0 0'
+                                            }}
+                                        >
+                                            En cours
+                                        </p>
                                     </div>
-                                    <div style={{ background: '#f3f4f6', padding: '1rem', borderRadius: '12px', textAlign: 'center' }}>
-                                        <p style={{ color: '#4b5563', fontSize: '2rem', fontWeight: '700', margin: 0 }}>
+                                    <div
+                                        style={{
+                                            background: '#f3f4f6',
+                                            padding: '1rem',
+                                            borderRadius: '12px',
+                                            textAlign: 'center'
+                                        }}
+                                    >
+                                        <p
+                                            style={{
+                                                color: '#4b5563',
+                                                fontSize: '2rem',
+                                                fontWeight: '700',
+                                                margin: 0
+                                            }}
+                                        >
                                             {projectStats.todoTasks ?? 0}
                                         </p>
-                                        <p style={{ color: '#6b7280', fontSize: '0.9rem', margin: '0.3rem 0 0 0' }}>À faire</p>
+                                        <p
+                                            style={{
+                                                color: '#6b7280',
+                                                fontSize: '0.9rem',
+                                                margin: '0.3rem 0 0 0'
+                                            }}
+                                        >
+                                            À faire
+                                        </p>
                                     </div>
                                 </div>
 
-                                {/* Progress Bar */}
                                 <div style={{ marginBottom: '2rem' }}>
-                                    <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '0.5rem' }}>
-                                        <span style={{ fontWeight: '600', color: '#374151' }}>Progression globale</span>
-                                        <span style={{ fontWeight: '700', color: 'var(--mobilis-green)', fontSize: '1.2rem' }}>
+                                    <div
+                                        style={{
+                                            display: 'flex',
+                                            justifyContent: 'space-between',
+                                            marginBottom: '0.5rem'
+                                        }}
+                                    >
+                                        <span
+                                            style={{
+                                                fontWeight: '600',
+                                                color: '#374151'
+                                            }}
+                                        >
+                                            Progression globale
+                                        </span>
+                                        <span
+                                            style={{
+                                                fontWeight: '700',
+                                                color: 'var(--mobilis-green)',
+                                                fontSize: '1.2rem'
+                                            }}
+                                        >
                                             {projectStats.progress ?? 0}%
                                         </span>
                                     </div>
-                                    <div className="task-progress-bar-bg" style={{ height: '14px' }}>
+                                    <div
+                                        className="task-progress-bar-bg"
+                                        style={{ height: '14px' }}
+                                    >
                                         <div
-                                            className={`task-progress-bar-fill progress-${getProgressClass(projectStats.progress ?? 0)}`}
-                                            style={{ width: `${projectStats.progress ?? 0}%` }}
+                                            className={`task-progress-bar-fill progress-${getProgressClass(
+                                                projectStats.progress ?? 0
+                                            )}`}
+                                            style={{
+                                                width: `${projectStats.progress ?? 0}%`
+                                            }}
                                         >
                                             <div className="progress-shimmer"></div>
                                         </div>
                                     </div>
                                 </div>
 
-                                {/* Statut dans modal */}
-                                <div style={{
-                                    display: 'inline-flex', alignItems: 'center',
-                                    gap: '0.5rem', padding: '0.4rem 1rem',
-                                    borderRadius: '999px', fontSize: '0.85rem',
-                                    fontWeight: 600, marginBottom: '1.5rem',
-                                    ...getProjectStatusStyle(projectStats.statusName)
-                                }}>
+                                <div
+                                    style={{
+                                        display: 'inline-flex',
+                                        alignItems: 'center',
+                                        gap: '0.5rem',
+                                        padding: '0.4rem 1rem',
+                                        borderRadius: '999px',
+                                        fontSize: '0.85rem',
+                                        fontWeight: 600,
+                                        marginBottom: '1.5rem',
+                                        ...getProjectStatusStyle(projectStats.statusName)
+                                    }}
+                                >
                                     {projectStats.statusName}
                                 </div>
 
-                                {/* Retard */}
                                 {projectStats.isDelayed && (
-                                    <div style={{
-                                        background: '#fee2e2', border: '2px solid #dc2626',
-                                        borderRadius: '12px', padding: '1rem',
-                                        display: 'flex', alignItems: 'center',
-                                        gap: '0.8rem', marginBottom: '1.5rem'
-                                    }}>
-                                        <AlertCircle size={24} style={{ color: '#dc2626', flexShrink: 0 }} />
+                                    <div
+                                        style={{
+                                            background: '#fee2e2',
+                                            border: '2px solid #dc2626',
+                                            borderRadius: '12px',
+                                            padding: '1rem',
+                                            display: 'flex',
+                                            alignItems: 'center',
+                                            gap: '0.8rem',
+                                            marginBottom: '1.5rem'
+                                        }}
+                                    >
+                                        <AlertCircle
+                                            size={24}
+                                            style={{ color: '#dc2626', flexShrink: 0 }}
+                                        />
                                         <div>
-                                            <p style={{ margin: 0, fontWeight: '700', color: '#dc2626' }}>Projet en retard</p>
-                                            <p style={{ margin: '0.3rem 0 0 0', fontSize: '0.9rem', color: '#991b1b' }}>
+                                            <p
+                                                style={{
+                                                    margin: 0,
+                                                    fontWeight: '700',
+                                                    color: '#dc2626'
+                                                }}
+                                            >
+                                                Projet en retard
+                                            </p>
+                                            <p
+                                                style={{
+                                                    margin: '0.3rem 0 0 0',
+                                                    fontSize: '0.9rem',
+                                                    color: '#991b1b'
+                                                }}
+                                            >
                                                 Ce projet a dépassé sa date de fin prévue
                                             </p>
                                         </div>
                                     </div>
                                 )}
 
-                                {/* Dates */}
                                 {(projectStats.startDate || projectStats.endDate) && (
-                                    <div style={{ background: '#f9fafb', borderRadius: '12px', padding: '1rem' }}>
-                                        <h4 style={{ margin: '0 0 0.8rem 0', color: '#374151' }}>📅 Dates</h4>
+                                    <div
+                                        style={{
+                                            background: '#f9fafb',
+                                            borderRadius: '12px',
+                                            padding: '1rem'
+                                        }}
+                                    >
+                                        <h4
+                                            style={{
+                                                margin: '0 0 0.8rem 0',
+                                                color: '#374151'
+                                            }}
+                                        >
+                                            📅 Dates
+                                        </h4>
                                         {projectStats.startDate && (
-                                            <p style={{ margin: '0.3rem 0', color: '#6b7280' }}>
-                                                <strong>Début:</strong> {new Date(projectStats.startDate).toLocaleDateString('fr-FR')}
+                                            <p
+                                                style={{
+                                                    margin: '0.3rem 0',
+                                                    color: '#6b7280'
+                                                }}
+                                            >
+                                                <strong>Début:</strong>{' '}
+                                                {new Date(
+                                                    projectStats.startDate
+                                                ).toLocaleDateString('fr-FR')}
                                             </p>
                                         )}
                                         {projectStats.endDate && (
-                                            <p style={{ margin: '0.3rem 0', color: '#6b7280' }}>
-                                                <strong>Fin prévue:</strong> {new Date(projectStats.endDate).toLocaleDateString('fr-FR')}
+                                            <p
+                                                style={{
+                                                    margin: '0.3rem 0',
+                                                    color: '#6b7280'
+                                                }}
+                                            >
+                                                <strong>Fin prévue:</strong>{' '}
+                                                {new Date(
+                                                    projectStats.endDate
+                                                ).toLocaleDateString('fr-FR')}
                                             </p>
                                         )}
                                     </div>
