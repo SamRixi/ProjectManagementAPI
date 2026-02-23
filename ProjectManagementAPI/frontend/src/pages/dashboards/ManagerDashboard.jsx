@@ -41,7 +41,6 @@ const ManagerDashboard = () => {
             setLoading(true);
             setError(null);
 
-            // temporaire : on réutilise les services existants
             const [usersRes, teamsRes, projectsRes] = await Promise.all([
                 userService.getAllUsers(),
                 teamService.getAllTeams(),
@@ -91,11 +90,12 @@ const ManagerDashboard = () => {
         <ManagerLayout>
             <div className="dashboard-container">
                 <div className="dashboard-content">
-                    {/* Welcome Card */}
+
+                    {/* ====== WELCOME CARD ====== */}
                     <div
                         className="welcome-card"
                         style={{
-                            background: 'linear-gradient(135deg, #111827, #1f2937)',
+                            background: 'linear-gradient(135deg, #00A651 0%, #004D29 100%)',
                             color: 'white'
                         }}
                     >
@@ -105,13 +105,13 @@ const ManagerDashboard = () => {
                             <p><strong>Email:</strong> {user?.email}</p>
                             <p><strong>Role:</strong> Manager</p>
                         </div>
-                        <p className="welcome-text" style={{ color: 'rgba(255,255,255,0.8)' }}>
+                        <p className="welcome-text" style={{ color: 'rgba(255,255,255,0.85)' }}>
                             Vous avez accès au tableau de bord global Manager.
                             Consultez les statistiques globales des projets, équipes et chefs de projet.
                         </p>
                     </div>
 
-                    {/* Error Message */}
+                    {/* ====== ERROR ====== */}
                     {error && (
                         <div className="error-message">
                             <p>⚠️ {error}</p>
@@ -122,7 +122,7 @@ const ManagerDashboard = () => {
                         </div>
                     )}
 
-                    {/* Loading State */}
+                    {/* ====== LOADING ====== */}
                     {loading ? (
                         <div className="loading">
                             <div className="spinner"></div>
@@ -130,14 +130,11 @@ const ManagerDashboard = () => {
                         </div>
                     ) : (
                         <>
-                            {/* Stats Grid */}
+                            {/* ====== STATS GRID ====== */}
                             <div className="stats-grid">
-                                {/* Utilisateurs */}
+
                                 <div className="stat-card">
-                                    <div
-                                        className="stat-icon"
-                                        style={{ background: 'linear-gradient(135deg, #3B82F6 0%, #1D4ED8 100%)' }}
-                                    >
+                                    <div className="stat-icon" style={{ background: 'linear-gradient(135deg, #3B82F6 0%, #1D4ED8 100%)' }}>
                                         <Users size={32} />
                                     </div>
                                     <div className="stat-content">
@@ -149,12 +146,8 @@ const ManagerDashboard = () => {
                                     </div>
                                 </div>
 
-                                {/* Équipes */}
                                 <div className="stat-card">
-                                    <div
-                                        className="stat-icon"
-                                        style={{ background: 'linear-gradient(135deg, #8B5CF6 0%, #6D28D9 100%)' }}
-                                    >
+                                    <div className="stat-icon" style={{ background: 'linear-gradient(135deg, #8B5CF6 0%, #6D28D9 100%)' }}>
                                         <UsersRound size={32} />
                                     </div>
                                     <div className="stat-content">
@@ -166,12 +159,8 @@ const ManagerDashboard = () => {
                                     </div>
                                 </div>
 
-                                {/* Projets */}
                                 <div className="stat-card">
-                                    <div
-                                        className="stat-icon"
-                                        style={{ background: 'linear-gradient(135deg, #00A651 0%, #004D29 100%)' }}
-                                    >
+                                    <div className="stat-icon" style={{ background: 'linear-gradient(135deg, #00A651 0%, #004D29 100%)' }}>
                                         <FolderKanban size={32} />
                                     </div>
                                     <div className="stat-content">
@@ -183,12 +172,8 @@ const ManagerDashboard = () => {
                                     </div>
                                 </div>
 
-                                {/* Progression moyenne */}
                                 <div className="stat-card">
-                                    <div
-                                        className="stat-icon"
-                                        style={{ background: 'linear-gradient(135deg, #EC4899 0%, #BE185D 100%)' }}
-                                    >
+                                    <div className="stat-icon" style={{ background: 'linear-gradient(135deg, #EC4899 0%, #BE185D 100%)' }}>
                                         <BarChart3 size={32} />
                                     </div>
                                     <div className="stat-content">
@@ -200,12 +185,8 @@ const ManagerDashboard = () => {
                                     </div>
                                 </div>
 
-                                {/* Tâches en retard */}
                                 <div className="stat-card">
-                                    <div
-                                        className="stat-icon"
-                                        style={{ background: 'linear-gradient(135deg, #EF4444 0%, #B91C1C 100%)' }}
-                                    >
+                                    <div className="stat-icon" style={{ background: 'linear-gradient(135deg, #EF4444 0%, #B91C1C 100%)' }}>
                                         <AlertTriangle size={32} />
                                     </div>
                                     <div className="stat-content">
@@ -217,12 +198,8 @@ const ManagerDashboard = () => {
                                     </div>
                                 </div>
 
-                                {/* Tâches en attente de validation */}
                                 <div className="stat-card">
-                                    <div
-                                        className="stat-icon"
-                                        style={{ background: 'linear-gradient(135deg, #8B5CF6 0%, #6D28D9 100%)' }}
-                                    >
+                                    <div className="stat-icon" style={{ background: 'linear-gradient(135deg, #8B5CF6 0%, #6D28D9 100%)' }}>
                                         <Clock size={32} />
                                     </div>
                                     <div className="stat-content">
@@ -235,31 +212,27 @@ const ManagerDashboard = () => {
                                 </div>
                             </div>
 
-                            {/* Actions rapides Manager */}
+                            {/* ====== ACTIONS RAPIDES ====== */}
                             <div style={{ marginTop: '3rem' }}>
-                                <h3
-                                    style={{
-                                        color: '#111827',
-                                        marginBottom: '1.5rem',
-                                        fontSize: '1.5rem',
-                                        fontWeight: '700'
-                                    }}
-                                >
+                                <h3 style={{
+                                    color: '#00A651',
+                                    marginBottom: '1.5rem',
+                                    fontSize: '1.5rem',
+                                    fontWeight: '700',
+                                    paddingBottom: '0.8rem',
+                                    borderBottom: '3px solid #00A651'
+                                }}>
                                     Actions rapides
                                 </h3>
-                                <div
-                                    style={{
-                                        display: 'grid',
-                                        gridTemplateColumns:
-                                            'repeat(auto-fit, minmax(250px, 1fr))',
-                                        gap: '1.5rem'
-                                    }}
-                                >
+                                <div style={{
+                                    display: 'grid',
+                                    gridTemplateColumns: 'repeat(auto-fit, minmax(250px, 1fr))',
+                                    gap: '1.5rem'
+                                }}>
                                     <a
                                         href="/manager/projects"
                                         style={{
-                                            background:
-                                                'linear-gradient(135deg, rgba(0,166,81,0.1) 0%, rgba(0,77,41,0.05) 100%)',
+                                            background: 'linear-gradient(135deg, rgba(0,166,81,0.1) 0%, rgba(0,77,41,0.05) 100%)',
                                             padding: '1.5rem',
                                             borderRadius: '16px',
                                             textDecoration: 'none',
@@ -267,35 +240,36 @@ const ManagerDashboard = () => {
                                             border: '2px solid rgba(0,166,81,0.2)',
                                             display: 'flex',
                                             alignItems: 'center',
-                                            gap: '1rem'
+                                            gap: '1rem',
+                                            transition: 'all 0.3s ease',
+                                            boxShadow: '0 2px 8px rgba(0,0,0,0.05)'
+                                        }}
+                                        onMouseEnter={(e) => {
+                                            e.currentTarget.style.transform = 'translateY(-4px)';
+                                            e.currentTarget.style.boxShadow = '0 8px 20px rgba(0,166,81,0.2)';
+                                            e.currentTarget.style.borderColor = '#00A651';
+                                        }}
+                                        onMouseLeave={(e) => {
+                                            e.currentTarget.style.transform = 'translateY(0)';
+                                            e.currentTarget.style.boxShadow = '0 2px 8px rgba(0,0,0,0.05)';
+                                            e.currentTarget.style.borderColor = 'rgba(0,166,81,0.2)';
                                         }}
                                     >
-                                        <FolderKanban size={24} style={{ color: '#00A651' }} />
+                                        <FolderKanban size={28} style={{ color: '#00A651', flexShrink: 0 }} />
                                         <div>
-                                            <div
-                                                style={{
-                                                    fontWeight: '700',
-                                                    fontSize: '1.1rem'
-                                                }}
-                                            >
+                                            <div style={{ fontWeight: '700', fontSize: '1.1rem' }}>
                                                 Gérer les projets
                                             </div>
-                                            <div
-                                                style={{
-                                                    fontSize: '0.9rem',
-                                                    color: '#666'
-                                                }}
-                                            >
+                                            <div style={{ fontSize: '0.9rem', color: '#666', marginTop: '4px' }}>
                                                 Voir tous les projets, PM et équipes
                                             </div>
                                         </div>
                                     </a>
 
                                     <a
-                                        href="/manager/teams"
+                                        href="/manager/team"
                                         style={{
-                                            background:
-                                                'linear-gradient(135deg, rgba(139,92,246,0.1) 0%, rgba(109,40,217,0.05) 100%)',
+                                            background: 'linear-gradient(135deg, rgba(139,92,246,0.1) 0%, rgba(109,40,217,0.05) 100%)',
                                             padding: '1.5rem',
                                             borderRadius: '16px',
                                             textDecoration: 'none',
@@ -303,26 +277,65 @@ const ManagerDashboard = () => {
                                             border: '2px solid rgba(139,92,246,0.2)',
                                             display: 'flex',
                                             alignItems: 'center',
-                                            gap: '1rem'
+                                            gap: '1rem',
+                                            transition: 'all 0.3s ease',
+                                            boxShadow: '0 2px 8px rgba(0,0,0,0.05)'
+                                        }}
+                                        onMouseEnter={(e) => {
+                                            e.currentTarget.style.transform = 'translateY(-4px)';
+                                            e.currentTarget.style.boxShadow = '0 8px 20px rgba(139,92,246,0.2)';
+                                            e.currentTarget.style.borderColor = '#8B5CF6';
+                                        }}
+                                        onMouseLeave={(e) => {
+                                            e.currentTarget.style.transform = 'translateY(0)';
+                                            e.currentTarget.style.boxShadow = '0 2px 8px rgba(0,0,0,0.05)';
+                                            e.currentTarget.style.borderColor = 'rgba(139,92,246,0.2)';
                                         }}
                                     >
-                                        <UsersRound size={24} style={{ color: '#8B5CF6' }} />
+                                        <UsersRound size={28} style={{ color: '#8B5CF6', flexShrink: 0 }} />
                                         <div>
-                                            <div
-                                                style={{
-                                                    fontWeight: '700',
-                                                    fontSize: '1.1rem'
-                                                }}
-                                            >
+                                            <div style={{ fontWeight: '700', fontSize: '1.1rem' }}>
                                                 Assigner les équipes
                                             </div>
-                                            <div
-                                                style={{
-                                                    fontSize: '0.9rem',
-                                                    color: '#666'
-                                                }}
-                                            >
+                                            <div style={{ fontSize: '0.9rem', color: '#666', marginTop: '4px' }}>
                                                 Affecter les équipes aux projets
+                                            </div>
+                                        </div>
+                                    </a>
+
+                                    <a
+                                        href="/manager/statistics"
+                                        style={{
+                                            background: 'linear-gradient(135deg, rgba(236,72,153,0.1) 0%, rgba(190,24,93,0.05) 100%)',
+                                            padding: '1.5rem',
+                                            borderRadius: '16px',
+                                            textDecoration: 'none',
+                                            color: '#333',
+                                            border: '2px solid rgba(236,72,153,0.2)',
+                                            display: 'flex',
+                                            alignItems: 'center',
+                                            gap: '1rem',
+                                            transition: 'all 0.3s ease',
+                                            boxShadow: '0 2px 8px rgba(0,0,0,0.05)'
+                                        }}
+                                        onMouseEnter={(e) => {
+                                            e.currentTarget.style.transform = 'translateY(-4px)';
+                                            e.currentTarget.style.boxShadow = '0 8px 20px rgba(236,72,153,0.2)';
+                                            e.currentTarget.style.borderColor = '#EC4899';
+                                        }}
+                                        onMouseLeave={(e) => {
+                                            e.currentTarget.style.transform = 'translateY(0)';
+                                            e.currentTarget.style.boxShadow = '0 2px 8px rgba(0,0,0,0.05)';
+                                            e.currentTarget.style.borderColor = 'rgba(236,72,153,0.2)';
+                                        }}
+                                    >
+                                        <BarChart3 size={28} style={{ color: '#EC4899', flexShrink: 0 }} />
+                                        <div>
+                                            <div style={{ fontWeight: '700', fontSize: '1.1rem' }}>
+                                                Statistiques globales
+                                            </div>
+                                            <div style={{ fontSize: '0.9rem', color: '#666', marginTop: '4px' }}>
+                                                Graphiques et rapports détaillés
                                             </div>
                                         </div>
                                     </a>

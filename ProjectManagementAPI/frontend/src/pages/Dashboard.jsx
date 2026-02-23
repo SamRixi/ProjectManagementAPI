@@ -19,7 +19,7 @@ const Dashboard = () => {
     if (!user) return <div>Loading...</div>;
 
     if (hasRole('Manager')) return <ManagerDashboard />;
-    if (hasRole('Reporting') || user.roleId === 4) return <ReportingDashboard />;
+    if (hasRole('Reporting')) return <ReportingDashboard />;
     if (hasRole('Developer')) return <DeveloperDashboard />;
     if (hasRole('Project Manager')) return <ProjectManagerDashboard />;
 

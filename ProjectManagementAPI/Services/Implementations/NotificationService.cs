@@ -15,6 +15,7 @@ namespace ProjectManagementAPI.Services.Implementations
             _context = context;
         }
 
+        // ============= CREATE NOTIFICATION =============
         public async Task<ApiResponse<bool>> CreateNotificationAsync(
             int userId, string title, string message, string? type = "Info",
             int? relatedProjectId = null, int? relatedTaskId = null)
@@ -23,13 +24,7 @@ namespace ProjectManagementAPI.Services.Implementations
             {
                 var user = await _context.Users.FindAsync(userId);
                 if (user == null)
-                {
-                    return new ApiResponse<bool>
-                    {
-                        Success = false,
-                        Message = "Utilisateur introuvable"
-                    };
-                }
+                    return new ApiResponse<bool> { Success = false, Message = "Utilisateur introuvable" };
 
                 var notification = new Notification
                 {
@@ -55,14 +50,11 @@ namespace ProjectManagementAPI.Services.Implementations
             }
             catch (Exception ex)
             {
-                return new ApiResponse<bool>
-                {
-                    Success = false,
-                    Message = $"Erreur : {ex.Message}"
-                };
+                return new ApiResponse<bool> { Success = false, Message = $"Erreur : {ex.Message}" };
             }
         }
 
+        // ============= GET USER NOTIFICATIONS =============
         public async Task<ApiResponse<List<NotificationDTO>>> GetUserNotificationsAsync(int userId)
         {
             try
@@ -80,7 +72,39 @@ namespace ProjectManagementAPI.Services.Implementations
                         RelatedProjectId = n.RelatedProjectId,
                         RelatedTaskId = n.RelatedTaskId,
                         CreatedAt = n.CreatedAt,
-                        ReadAt = n.ReadAt
+                        ReadAt = n.ReadAt,
+
+                        // ✅ Détails de la tâche
+                        Task = n.RelatedTaskId != null
+                            ? _context.ProjectTasks
+                                .Where(t => t.ProjectTaskId == n.RelatedTaskId)
+                                .Select(t => new NotificationTaskDTO
+                                {
+                                    TaskId = t.ProjectTaskId,
+                                    Title = t.TaskName,
+                                    Description = t.Description,
+                                    Priority = t.Priority.Name,
+                                    Deadline = t.DueDate,
+                                    Progression = t.Progress,
+                                    Status = t.ProjectTasksStatus.StatusName,
+                                    IsValidated = t.IsValidated,
+                                    RejectionReason = t.RejectionReason
+                                })
+                                .FirstOrDefault()
+                            : null,
+
+                        // ✅ Chef de Projet qui a créé/assigné la tâche
+                        AssignedBy = n.RelatedTaskId != null
+                            ? _context.ProjectTasks
+                                .Where(t => t.ProjectTaskId == n.RelatedTaskId)
+                                .Select(t => new AssignedByDTO
+                                {
+                                    UserId = t.CreatedByUser.UserId,
+                                    FirstName = t.CreatedByUser.FirstName,  
+                                    LastName = t.CreatedByUser.LastName     
+                                })
+                                .FirstOrDefault()
+                            : null
                     })
                     .ToListAsync();
 
@@ -101,6 +125,7 @@ namespace ProjectManagementAPI.Services.Implementations
             }
         }
 
+        // ============= GET UNREAD COUNT =============
         public async Task<ApiResponse<int>> GetUnreadCountAsync(int userId)
         {
             try
@@ -117,28 +142,18 @@ namespace ProjectManagementAPI.Services.Implementations
             }
             catch (Exception ex)
             {
-                return new ApiResponse<int>
-                {
-                    Success = false,
-                    Message = $"Erreur : {ex.Message}"
-                };
+                return new ApiResponse<int> { Success = false, Message = $"Erreur : {ex.Message}" };
             }
         }
 
+        // ============= MARK AS READ =============
         public async Task<ApiResponse<bool>> MarkAsReadAsync(int notificationId)
         {
             try
             {
                 var notification = await _context.Notifications.FindAsync(notificationId);
-
                 if (notification == null)
-                {
-                    return new ApiResponse<bool>
-                    {
-                        Success = false,
-                        Message = "Notification introuvable"
-                    };
-                }
+                    return new ApiResponse<bool> { Success = false, Message = "Notification introuvable" };
 
                 notification.IsRead = true;
                 notification.ReadAt = DateTime.UtcNow;
@@ -153,14 +168,11 @@ namespace ProjectManagementAPI.Services.Implementations
             }
             catch (Exception ex)
             {
-                return new ApiResponse<bool>
-                {
-                    Success = false,
-                    Message = $"Erreur : {ex.Message}"
-                };
+                return new ApiResponse<bool> { Success = false, Message = $"Erreur : {ex.Message}" };
             }
         }
 
+        // ============= MARK ALL AS READ =============
         public async Task<ApiResponse<bool>> MarkAllAsReadAsync(int userId)
         {
             try
@@ -186,28 +198,18 @@ namespace ProjectManagementAPI.Services.Implementations
             }
             catch (Exception ex)
             {
-                return new ApiResponse<bool>
-                {
-                    Success = false,
-                    Message = $"Erreur : {ex.Message}"
-                };
+                return new ApiResponse<bool> { Success = false, Message = $"Erreur : {ex.Message}" };
             }
         }
 
+        // ============= DELETE NOTIFICATION =============
         public async Task<ApiResponse<bool>> DeleteNotificationAsync(int notificationId)
         {
             try
             {
                 var notification = await _context.Notifications.FindAsync(notificationId);
-
                 if (notification == null)
-                {
-                    return new ApiResponse<bool>
-                    {
-                        Success = false,
-                        Message = "Notification introuvable"
-                    };
-                }
+                    return new ApiResponse<bool> { Success = false, Message = "Notification introuvable" };
 
                 _context.Notifications.Remove(notification);
                 await _context.SaveChangesAsync();
@@ -221,11 +223,7 @@ namespace ProjectManagementAPI.Services.Implementations
             }
             catch (Exception ex)
             {
-                return new ApiResponse<bool>
-                {
-                    Success = false,
-                    Message = $"Erreur : {ex.Message}"
-                };
+                return new ApiResponse<bool> { Success = false, Message = $"Erreur : {ex.Message}" };
             }
         }
     }

@@ -1,14 +1,7 @@
 ﻿import { useState, useEffect } from 'react';
 import {
-    UserPlus,
-    Edit,
-    Key,
-    Search,
-    X,
-    Check,
-    Trash2,
-    UserCheck,
-    UserX
+    UserPlus, Edit, Key, Search, X,
+    Check, Trash2, UserCheck, UserX
 } from 'lucide-react';
 import userService from '../../services/userService';
 import ReportingLayout from '../../components/layout/ReportingLayout';
@@ -24,32 +17,29 @@ const UsersManagement = () => {
     const [tempPassword, setTempPassword] = useState('');
     const [showPasswordModal, setShowPasswordModal] = useState(false);
 
+    // ✅ Nouveau — pour l'approbation avec rôle
+    const [showApproveModal, setShowApproveModal] = useState(false);
+    const [approveUserId, setApproveUserId] = useState(null);
+    const [approveUsername, setApproveUsername] = useState('');
+    const [selectedRoleId, setSelectedRoleId] = useState(1);
+
     const [formData, setFormData] = useState({
-        username: '',
-        email: '',
-        password: '',
-        firstName: '',
-        lastName: '',
-        roleId: 1
+        username: '', email: '', password: '',
+        firstName: '', lastName: '', roleId: 1
     });
 
-    useEffect(() => {
-        fetchUsers();
-    }, []);
+    useEffect(() => { fetchUsers(); }, []);
 
     const fetchUsers = async () => {
         try {
             setLoading(true);
             const response = await userService.getAllUsers();
-
             let usersArray = [];
             if (Array.isArray(response)) {
                 usersArray = response;
             } else if (response?.data && Array.isArray(response.data)) {
                 usersArray = response.data;
             }
-
-            console.log('✅ Setting users:', usersArray);
             setUsers(usersArray);
         } catch (error) {
             console.error('❌ ERROR:', error);
@@ -72,14 +62,7 @@ const UsersManagement = () => {
 
     const handleCreateUser = () => {
         setModalMode('create');
-        setFormData({
-            username: '',
-            email: '',
-            password: '',
-            firstName: '',
-            lastName: '',
-            roleId: 1
-        });
+        setFormData({ username: '', email: '', password: '', firstName: '', lastName: '', roleId: 1 });
         setShowModal(true);
     };
 
@@ -101,8 +84,7 @@ const UsersManagement = () => {
         try {
             if (modalMode === 'create') {
                 const response = await userService.createUser({
-                    ...formData,
-                    confirmPassword: formData.password
+                    ...formData, confirmPassword: formData.password
                 });
                 if (response.success) {
                     alert('Utilisateur créé avec succès !');
@@ -112,19 +94,13 @@ const UsersManagement = () => {
                     alert(response.message || 'Création échouée');
                 }
             } else {
-                const updateData = {
+                const response = await userService.updateUser(selectedUser.userId, {
                     userName: formData.username,
                     email: formData.email,
                     firstName: formData.firstName,
                     lastName: formData.lastName,
                     roleId: formData.roleId
-                };
-
-                const response = await userService.updateUser(
-                    selectedUser.userId,
-                    updateData
-                );
-
+                });
                 if (response.success) {
                     alert('Utilisateur modifié avec succès !');
                     fetchUsers();
@@ -134,21 +110,26 @@ const UsersManagement = () => {
                 }
             }
         } catch (error) {
-            console.error('❌ SUBMIT ERROR:', error);
             alert(error.message || 'Erreur lors de la sauvegarde');
         }
     };
 
-    // ============= APPROVE USER =============
-    const handleApprove = async (userId, username) => {
-        if (!window.confirm(`Approuver l'inscription de "${username}" ?`)) return;
+    // ✅ APPROVE — ouvre modal pour choisir le rôle
+    const handleApprove = (userId, username) => {
+        setApproveUserId(userId);
+        setApproveUsername(username);
+        setSelectedRoleId(1);
+        setShowApproveModal(true);
+    };
 
+    // ✅ CONFIRM APPROVE — envoie roleId au backend
+    const confirmApprove = async () => {
         try {
-            const response = await userService.approveUser(userId);
-
+            const response = await userService.approveUser(approveUserId, selectedRoleId);
             if (response.success) {
                 alert(`✅ ${response.message}`);
                 fetchUsers();
+                setShowApproveModal(false);
             } else {
                 alert(`❌ ${response.message}`);
             }
@@ -158,18 +139,11 @@ const UsersManagement = () => {
         }
     };
 
-    // ============= REJECT USER =============
+    // ✅ REJECT
     const handleReject = async (userId, username) => {
-        if (
-            !window.confirm(
-                `Rejeter l'inscription de "${username}" ?\n\nCette action est irréversible.`
-            )
-        )
-            return;
-
+        if (!window.confirm(`Rejeter l'inscription de "${username}" ?\n\nCette action est irréversible.`)) return;
         try {
             const response = await userService.rejectUser(userId);
-
             if (response.success) {
                 alert(`✅ ${response.message}`);
                 fetchUsers();
@@ -177,58 +151,48 @@ const UsersManagement = () => {
                 alert(`❌ ${response.message}`);
             }
         } catch (error) {
-            console.error('❌ Reject error:', error);
+            console.error('❌ Approve error:', error); 
             alert('Erreur lors du rejet');
         }
     };
 
-    // ============= TOGGLE ACTIVE/INACTIVE =============
+    // ✅ TOGGLE ACTIVE
     const handleToggleUserStatus = async (userId, userName, isActive) => {
         const action = isActive ? 'désactiver' : 'activer';
         if (!window.confirm(`Voulez-vous ${action} "${userName}" ?`)) return;
-
         try {
             const response = await userService.toggleUserActive(userId);
-
             if (response.success) {
                 alert(`✅ ${response.message}`);
                 fetchUsers();
             } else {
                 alert(`❌ ${response.message}`);
             }
-        } catch (error) {
-            console.error('❌ Toggle status error:', error);
+        } catch  {
+        
             alert('Erreur lors du changement de statut');
         }
     };
 
-    // ============= DELETE USER =============
+    // ✅ DELETE
     const handleDelete = async (userId, username) => {
-        if (
-            !window.confirm(
-                `⚠️ ATTENTION ⚠️\n\nSupprimer définitivement l'utilisateur "${username}" ?\n\nCette action est IRRÉVERSIBLE.`
-            )
-        )
-            return;
-
+        if (!window.confirm(`⚠️ Supprimer définitivement "${username}" ?\n\nCette action est IRRÉVERSIBLE.`)) return;
         try {
             const response = await userService.deleteUser(userId);
-
             if (response.success) {
                 alert(`✅ ${response.message}`);
                 fetchUsers();
             } else {
                 alert(`❌ ${response.message}`);
             }
-        } catch (error) {
-            console.error('❌ Delete error:', error);
+        } catch {
             alert('Erreur lors de la suppression');
         }
     };
 
+    // ✅ GENERATE TEMP PASSWORD
     const handleGenerateTempPassword = async (userId, userName) => {
-        if (!window.confirm(`Générer un mot de passe temporaire pour "${userName}" ?`))
-            return;
+        if (!window.confirm(`Générer un mot de passe temporaire pour "${userName}" ?`)) return;
         try {
             const response = await userService.generateTempPassword(userId);
             setTempPassword(response.data);
@@ -241,39 +205,29 @@ const UsersManagement = () => {
 
     const getRoleName = (roleId) => {
         if (roleId == null) return 'Aucun rôle';
-        const roles = {
-            1: 'Developer',
-            2: 'Project Manager',
-            3: 'Manager',
-            4: 'Reporting'
-        };
+        const roles = { 1: 'Developer', 2: 'Project Manager', 3: 'Manager', 4: 'Reporting' };
         return roles[roleId] || 'Unknown';
     };
 
     const getRoleBadgeClass = (roleId) => {
         if (roleId == null) return 'role-none';
-        const classes = {
-            1: 'role-developer',
-            2: 'role-project-manager',
-            3: 'role-manager',
-            4: 'role-reporting'
-        };
+        const classes = { 1: 'role-developer', 2: 'role-project-manager', 3: 'role-manager', 4: 'role-reporting' };
         return classes[roleId] || '';
     };
 
     return (
         <ReportingLayout>
             <div className="page-container">
-                {/* Page Header */}
+
+                {/* Header */}
                 <div className="page-header">
                     <h2>Gestion des Utilisateurs</h2>
                     <button className="btn-create" onClick={handleCreateUser}>
-                        <UserPlus size={20} />
-                        Créer un utilisateur
+                        <UserPlus size={20} /> Créer un utilisateur
                     </button>
                 </div>
 
-                {/* Search Bar */}
+                {/* Search */}
                 <div className="search-bar">
                     <Search size={20} />
                     <input
@@ -284,7 +238,7 @@ const UsersManagement = () => {
                     />
                 </div>
 
-                {/* Users Table */}
+                {/* Table */}
                 {loading ? (
                     <div className="loading">
                         <div className="spinner"></div>
@@ -306,35 +260,22 @@ const UsersManagement = () => {
                             <tbody>
                                 {filteredUsers.length > 0 ? (
                                     filteredUsers.map((u) => {
-                                        // 🔹 Nouveau: pending = inactif et jamais connecté
                                         const isPending = !u.isActive && !u.lastLoginAt;
-
                                         return (
                                             <tr key={u.userId}>
-                                                <td>
-                                                    {`${u.firstName || ''} ${u.lastName || ''}`
-                                                        .trim()
-                                                        .replace(/^$/, 'N/A')}
-                                                </td>
+                                                <td>{`${u.firstName || ''} ${u.lastName || ''}`.trim() || 'N/A'}</td>
                                                 <td>{u.userName || 'N/A'}</td>
                                                 <td>{u.email || 'N/A'}</td>
                                                 <td>
-                                                    <span
-                                                        className={`role-badge ${getRoleBadgeClass(u.roleId)}`}
-                                                    >
+                                                    <span className={`role-badge ${getRoleBadgeClass(u.roleId)}`}>
                                                         {u.roleName || getRoleName(u.roleId)}
                                                     </span>
                                                 </td>
                                                 <td>
                                                     {isPending ? (
-                                                        <span className="status-badge pending">
-                                                            ⏳ En attente
-                                                        </span>
+                                                        <span className="status-badge pending">⏳ En attente</span>
                                                     ) : (
-                                                        <span
-                                                            className={`status-badge ${u.isActive ? 'active' : 'inactive'
-                                                                }`}
-                                                        >
+                                                        <span className={`status-badge ${u.isActive ? 'active' : 'inactive'}`}>
                                                             {u.isActive ? 'Actif' : 'Désactivé'}
                                                         </span>
                                                     )}
@@ -343,101 +284,53 @@ const UsersManagement = () => {
                                                     <div className="action-buttons">
                                                         {isPending ? (
                                                             <>
-                                                                <button
-                                                                    className="btn-icon btn-approve"
-                                                                    onClick={() =>
-                                                                        handleApprove(u.userId, u.userName)
-                                                                    }
-                                                                    title="Approuver"
-                                                                >
+                                                                <button className="btn-icon btn-approve"
+                                                                    onClick={() => handleApprove(u.userId, u.userName)}
+                                                                    title="Approuver">
                                                                     <Check size={16} />
                                                                 </button>
-                                                                <button
-                                                                    className="btn-icon btn-reject"
-                                                                    onClick={() =>
-                                                                        handleReject(u.userId, u.userName)
-                                                                    }
-                                                                    title="Rejeter"
-                                                                >
+                                                                <button className="btn-icon btn-reject"
+                                                                    onClick={() => handleReject(u.userId, u.userName)}
+                                                                    title="Rejeter">
                                                                     <X size={16} />
                                                                 </button>
                                                             </>
                                                         ) : !u.isActive ? (
                                                             <>
-                                                                <button
-                                                                    className="btn-icon btn-edit"
-                                                                    onClick={() => handleEditUser(u)}
-                                                                    title="Modifier"
-                                                                >
+                                                                <button className="btn-icon btn-edit"
+                                                                    onClick={() => handleEditUser(u)} title="Modifier">
                                                                     <Edit size={16} />
                                                                 </button>
-                                                                <button
-                                                                    className="btn-icon btn-key"
-                                                                    onClick={() =>
-                                                                        handleGenerateTempPassword(
-                                                                            u.userId,
-                                                                            u.userName
-                                                                        )
-                                                                    }
-                                                                    title="Générer mot de passe"
-                                                                >
+                                                                <button className="btn-icon btn-key"
+                                                                    onClick={() => handleGenerateTempPassword(u.userId, u.userName)}
+                                                                    title="Générer mot de passe">
                                                                     <Key size={16} />
                                                                 </button>
-                                                                <button
-                                                                    className="btn-icon btn-activate"
-                                                                    onClick={() =>
-                                                                        handleToggleUserStatus(
-                                                                            u.userId,
-                                                                            u.userName,
-                                                                            false
-                                                                        )
-                                                                    }
-                                                                    title="Activer"
-                                                                >
+                                                                <button className="btn-icon btn-activate"
+                                                                    onClick={() => handleToggleUserStatus(u.userId, u.userName, false)}
+                                                                    title="Activer">
                                                                     <UserCheck size={16} />
                                                                 </button>
-                                                                <button
-                                                                    className="btn-icon btn-delete"
-                                                                    onClick={() =>
-                                                                        handleDelete(u.userId, u.userName)
-                                                                    }
-                                                                    title="Supprimer"
-                                                                >
+                                                                <button className="btn-icon btn-delete"
+                                                                    onClick={() => handleDelete(u.userId, u.userName)}
+                                                                    title="Supprimer">
                                                                     <Trash2 size={16} />
                                                                 </button>
                                                             </>
                                                         ) : (
                                                             <>
-                                                                <button
-                                                                    className="btn-icon btn-edit"
-                                                                    onClick={() => handleEditUser(u)}
-                                                                    title="Modifier"
-                                                                >
+                                                                <button className="btn-icon btn-edit"
+                                                                    onClick={() => handleEditUser(u)} title="Modifier">
                                                                     <Edit size={16} />
                                                                 </button>
-                                                                <button
-                                                                    className="btn-icon btn-key"
-                                                                    onClick={() =>
-                                                                        handleGenerateTempPassword(
-                                                                            u.userId,
-                                                                            u.userName
-                                                                        )
-                                                                    }
-                                                                    title="Générer mot de passe"
-                                                                >
+                                                                <button className="btn-icon btn-key"
+                                                                    onClick={() => handleGenerateTempPassword(u.userId, u.userName)}
+                                                                    title="Générer mot de passe">
                                                                     <Key size={16} />
                                                                 </button>
-                                                                <button
-                                                                    className="btn-icon btn-deactivate"
-                                                                    onClick={() =>
-                                                                        handleToggleUserStatus(
-                                                                            u.userId,
-                                                                            u.userName,
-                                                                            true
-                                                                        )
-                                                                    }
-                                                                    title="Désactiver"
-                                                                >
+                                                                <button className="btn-icon btn-deactivate"
+                                                                    onClick={() => handleToggleUserStatus(u.userId, u.userName, true)}
+                                                                    title="Désactiver">
                                                                     <UserX size={16} />
                                                                 </button>
                                                             </>
@@ -450,9 +343,7 @@ const UsersManagement = () => {
                                 ) : (
                                     <tr>
                                         <td colSpan="6" className="no-data">
-                                            {searchTerm
-                                                ? 'Aucun utilisateur trouvé'
-                                                : 'Aucun utilisateur'}
+                                            {searchTerm ? 'Aucun utilisateur trouvé' : 'Aucun utilisateur'}
                                         </td>
                                     </tr>
                                 )}
@@ -461,114 +352,23 @@ const UsersManagement = () => {
                     </div>
                 )}
 
-                {/* Create/Edit Modal */}
-                {showModal && (
-                    <div className="modal-overlay" onClick={() => setShowModal(false)}>
-                        <div
-                            className="modal-content"
-                            onClick={(e) => e.stopPropagation()}
-                        >
+                {/* ✅ APPROVE MODAL — avec sélection du rôle */}
+                {showApproveModal && (
+                    <div className="modal-overlay" onClick={() => setShowApproveModal(false)}>
+                        <div className="modal-content" onClick={(e) => e.stopPropagation()}>
                             <div className="modal-header">
-                                <h3>
-                                    {modalMode === 'create'
-                                        ? 'Créer un utilisateur'
-                                        : 'Modifier un utilisateur'}
-                                </h3>
-                                <button
-                                    className="modal-close"
-                                    onClick={() => setShowModal(false)}
-                                >
+                                <h3>✅ Approuver l'inscription</h3>
+                                <button className="modal-close" onClick={() => setShowApproveModal(false)}>
                                     <X size={24} />
                                 </button>
                             </div>
-                            <form onSubmit={handleSubmit} className="modal-form">
-                                <div className="form-row">
-                                    <div className="form-group">
-                                        <label>Prénom *</label>
-                                        <input
-                                            type="text"
-                                            required
-                                            value={formData.firstName}
-                                            onChange={(e) =>
-                                                setFormData({
-                                                    ...formData,
-                                                    firstName: e.target.value
-                                                })
-                                            }
-                                        />
-                                    </div>
-                                    <div className="form-group">
-                                        <label>Nom *</label>
-                                        <input
-                                            type="text"
-                                            required
-                                            value={formData.lastName}
-                                            onChange={(e) =>
-                                                setFormData({
-                                                    ...formData,
-                                                    lastName: e.target.value
-                                                })
-                                            }
-                                        />
-                                    </div>
-                                </div>
+                            <div className="modal-form">
+                                <p>Approuver le compte de <strong>{approveUsername}</strong> ?</p>
                                 <div className="form-group">
-                                    <label>Username *</label>
-                                    <input
-                                        type="text"
-                                        required
-                                        value={formData.username}
-                                        onChange={(e) =>
-                                            setFormData({
-                                                ...formData,
-                                                username: e.target.value
-                                            })
-                                        }
-                                        disabled={modalMode === 'edit'}
-                                    />
-                                </div>
-                                <div className="form-group">
-                                    <label>Email *</label>
-                                    <input
-                                        type="email"
-                                        required
-                                        value={formData.email}
-                                        onChange={(e) =>
-                                            setFormData({
-                                                ...formData,
-                                                email: e.target.value
-                                            })
-                                        }
-                                    />
-                                </div>
-                                {modalMode === 'create' && (
-                                    <div className="form-group">
-                                        <label>Mot de passe *</label>
-                                        <input
-                                            type="password"
-                                            required
-                                            value={formData.password}
-                                            onChange={(e) =>
-                                                setFormData({
-                                                    ...formData,
-                                                    password: e.target.value
-                                                })
-                                            }
-                                            minLength={6}
-                                        />
-                                    </div>
-                                )}
-                                <div className="form-group">
-                                    <label>Rôle *</label>
+                                    <label>Assigner un rôle *</label>
                                     <select
-                                        value={formData.roleId}
-                                        onChange={(e) =>
-                                            setFormData({
-                                                ...formData,
-                                                roleId: parseInt(e.target.value)
-                                            })
-                                        }
-                                        required
+                                        value={selectedRoleId}
+                                        onChange={(e) => setSelectedRoleId(parseInt(e.target.value))}
                                     >
                                         <option value={1}>Developer</option>
                                         <option value={2}>Project Manager</option>
@@ -577,11 +377,71 @@ const UsersManagement = () => {
                                     </select>
                                 </div>
                                 <div className="modal-actions">
-                                    <button
-                                        type="button"
-                                        className="btn-cancel"
-                                        onClick={() => setShowModal(false)}
-                                    >
+                                    <button className="btn-cancel" onClick={() => setShowApproveModal(false)}>
+                                        Annuler
+                                    </button>
+                                    <button className="btn-submit" onClick={confirmApprove}>
+                                        ✅ Approuver
+                                    </button>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                )}
+
+                {/* Create/Edit Modal */}
+                {showModal && (
+                    <div className="modal-overlay" onClick={() => setShowModal(false)}>
+                        <div className="modal-content" onClick={(e) => e.stopPropagation()}>
+                            <div className="modal-header">
+                                <h3>{modalMode === 'create' ? 'Créer un utilisateur' : 'Modifier un utilisateur'}</h3>
+                                <button className="modal-close" onClick={() => setShowModal(false)}>
+                                    <X size={24} />
+                                </button>
+                            </div>
+                            <form onSubmit={handleSubmit} className="modal-form">
+                                <div className="form-row">
+                                    <div className="form-group">
+                                        <label>Prénom *</label>
+                                        <input type="text" required value={formData.firstName}
+                                            onChange={(e) => setFormData({ ...formData, firstName: e.target.value })} />
+                                    </div>
+                                    <div className="form-group">
+                                        <label>Nom *</label>
+                                        <input type="text" required value={formData.lastName}
+                                            onChange={(e) => setFormData({ ...formData, lastName: e.target.value })} />
+                                    </div>
+                                </div>
+                                <div className="form-group">
+                                    <label>Username *</label>
+                                    <input type="text" required value={formData.username}
+                                        onChange={(e) => setFormData({ ...formData, username: e.target.value })}
+                                        disabled={modalMode === 'edit'} />
+                                </div>
+                                <div className="form-group">
+                                    <label>Email *</label>
+                                    <input type="email" required value={formData.email}
+                                        onChange={(e) => setFormData({ ...formData, email: e.target.value })} />
+                                </div>
+                                {modalMode === 'create' && (
+                                    <div className="form-group">
+                                        <label>Mot de passe *</label>
+                                        <input type="password" required value={formData.password} minLength={6}
+                                            onChange={(e) => setFormData({ ...formData, password: e.target.value })} />
+                                    </div>
+                                )}
+                                <div className="form-group">
+                                    <label>Rôle *</label>
+                                    <select value={formData.roleId} required
+                                        onChange={(e) => setFormData({ ...formData, roleId: parseInt(e.target.value) })}>
+                                        <option value={1}>Developer</option>
+                                        <option value={2}>Project Manager</option>
+                                        <option value={3}>Manager</option>
+                                        <option value={4}>Reporting</option>
+                                    </select>
+                                </div>
+                                <div className="modal-actions">
+                                    <button type="button" className="btn-cancel" onClick={() => setShowModal(false)}>
                                         Annuler
                                     </button>
                                     <button type="submit" className="btn-submit">
@@ -593,47 +453,35 @@ const UsersManagement = () => {
                     </div>
                 )}
 
-                {/* Password Display Modal */}
+                {/* Password Modal */}
                 {showPasswordModal && (
-                    <div
-                        className="modal-overlay"
-                        onClick={() => setShowPasswordModal(false)}
-                    >
-                        <div
-                            className="modal-content password-modal"
-                            onClick={(e) => e.stopPropagation()}
-                        >
+                    <div className="modal-overlay" onClick={() => setShowPasswordModal(false)}>
+                        <div className="modal-content password-modal" onClick={(e) => e.stopPropagation()}>
                             <div className="modal-header">
-                                <h3>Mot de passe temporaire généré</h3>
-                                <button
-                                    className="modal-close"
-                                    onClick={() => setShowPasswordModal(false)}
-                                >
+                                <h3>🔑 Mot de passe temporaire généré</h3>
+                                <button className="modal-close" onClick={() => setShowPasswordModal(false)}>
                                     <X size={24} />
                                 </button>
                             </div>
                             <div className="password-display">
-                                <p>Communiquez ce mot de passe à l'utilisateur :</p>
+                                <p>📱 Communiquez ce mot de passe à l'utilisateur par <strong>SMS ou appel</strong> :</p>
                                 <div className="password-box">
                                     <code>{tempPassword}</code>
-                                    <button
-                                        className="btn-copy"
-                                        onClick={() => {
-                                            navigator.clipboard.writeText(tempPassword);
-                                            alert('Mot de passe copié !');
-                                        }}
-                                    >
+                                    <button className="btn-copy" onClick={() => {
+                                        navigator.clipboard.writeText(tempPassword);
+                                        alert('✅ Mot de passe copié !');
+                                    }}>
                                         Copier
                                     </button>
                                 </div>
                                 <p className="password-note">
-                                    L'utilisateur devra changer ce mot de passe à la prochaine
-                                    connexion.
+                                    ⚠️ L'utilisateur devra changer ce mot de passe à la prochaine connexion.
                                 </p>
                             </div>
                         </div>
                     </div>
                 )}
+
             </div>
         </ReportingLayout>
     );

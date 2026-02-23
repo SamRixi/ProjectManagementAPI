@@ -10,6 +10,7 @@ import DeveloperProjects from './pages/developer/DeveloperProjects';
 import DeveloperDashboard from './pages/dashboards/DeveloperDashboard';
 import DeveloperTasks from './pages/developer/DeveloperTasks';
 import ProjectDetails from './pages/developer/ProjectDetails';
+import DeveloperNotifications from './pages/developer/DeveloperNotifications';
 
 // ========== REPORTING ==========
 import ReportingDashboard from "./pages/dashboards/ReportingDashboard";
@@ -27,7 +28,7 @@ import ProjectStats from './pages/project-manager/ProjectStats';
 // ========== MANAGER ==========//
 import ManagerDashboard from './pages/dashboards/ManagerDashboard';
 import ManagerProjects from './pages/manager/ManagerProjects';
-import ManagerStatistics from './pages/manager/ManagerStatistics';
+import ManagerStatistics from './pages/manager/ManagerStatsGlobales/';
 import ManagerTeams from './pages/manager/ManagerTeams';
 
 const ProtectedRoute = ({ children }) => {
@@ -50,6 +51,7 @@ function App() {
                     <Route path="/developer/projects/:projectId" element={<ProjectDetails />} />
                     <Route path="/developer/projects" element={<DeveloperProjects />} />
                     <Route path="/developer/tasks" element={<DeveloperTasks />} />
+                    <Route path="/developer/notifications" element={<DeveloperNotifications />} />
 
                     {/* ========== REPORTING ROUTES ========== */}
                     <Route path="/reporting/dashboard" element={<ReportingDashboard />} />
@@ -83,7 +85,7 @@ function App() {
                         }
                     />
                     <Route
-                        path="/manager/statistics"
+                        path="/manager/StatsGlobal"
                         element={
                             <ProtectedRoute allowedRoles={['Manager']}>
                                 <ManagerStatistics />

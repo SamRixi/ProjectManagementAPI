@@ -9,13 +9,17 @@ namespace ProjectManagementAPI.Services.Implementations
     public class ProjectTaskService : ITaskService
     {
         private readonly ApplicationDbContext _context;
+        private readonly INotificationService _notificationService;
 
-        public ProjectTaskService(ApplicationDbContext context)
+        public ProjectTaskService(
+            ApplicationDbContext context,
+            INotificationService notificationService)
         {
             _context = context;
+            _notificationService = notificationService;
         }
 
-        // GET all tasks
+        // ============= GET ALL TASKS =============
         public async Task<ApiResponse<List<TaskDTO>>> GetAllTasksAsync()
         {
             try
@@ -37,14 +41,11 @@ namespace ProjectManagementAPI.Services.Implementations
             catch (Exception ex)
             {
                 return new ApiResponse<List<TaskDTO>>
-                {
-                    Success = false,
-                    Message = $"Erreur : {ex.Message}"
-                };
+                { Success = false, Message = $"Erreur : {ex.Message}" };
             }
         }
 
-        // GET task by ID
+        // ============= GET TASK BY ID =============
         public async Task<ApiResponse<TaskDTO>> GetTaskByIdAsync(int taskId)
         {
             try
@@ -74,7 +75,7 @@ namespace ProjectManagementAPI.Services.Implementations
             }
         }
 
-        // CREATE task
+        // ============= CREATE TASK ============= ✅ + Notification
         public async Task<ApiResponse<TaskDTO>> CreateTaskAsync(CreateTaskDTO dto, int createdByUserId)
         {
             try
@@ -108,11 +109,27 @@ namespace ProjectManagementAPI.Services.Implementations
 
                 _context.ProjectTasks.Add(task);
 
-                // Si projet "Planifié" → passe en "En cours"
                 if (project.ProjectStatusId == 1)
                     project.ProjectStatusId = 2;
 
                 await _context.SaveChangesAsync();
+
+                // ✅ Notification — Tâche assignée au développeur
+                if (dto.AssignedToUserId.HasValue)
+                {
+                    var chef = await _context.Users.FindAsync(createdByUserId);
+                    var chefNom = chef != null
+                        ? $"{chef.FirstName} {chef.LastName}"
+                        : "Chef de Projet";
+
+                    await _notificationService.CreateNotificationAsync(
+                        userId: dto.AssignedToUserId.Value,
+                        title: "📋 Nouvelle tâche assignée",
+                        message: $"Vous avez une nouvelle tâche assignée par {chefNom} : \"{dto.TaskName}\"",
+                        type: "TASK_ASSIGNED",
+                        relatedTaskId: task.ProjectTaskId
+                    );
+                }
 
                 var createdTask = await _context.ProjectTasks
                     .Include(t => t.ProjectTasksStatus)
@@ -134,7 +151,7 @@ namespace ProjectManagementAPI.Services.Implementations
             }
         }
 
-        // UPDATE task progress (Développeur)
+        // ============= UPDATE PROGRESS =============
         public async Task<ApiResponse<TaskDTO>> UpdateTaskProgressAsync(int taskId, int progress, int userId)
         {
             try
@@ -149,7 +166,6 @@ namespace ProjectManagementAPI.Services.Implementations
                     return new ApiResponse<TaskDTO>
                     { Success = false, Message = "Tâche non trouvée" };
 
-                // Seulement le dev assigné peut modifier
                 if (task.AssignedToUserId != userId)
                     return new ApiResponse<TaskDTO>
                     { Success = false, Message = "Vous ne pouvez modifier que vos propres tâches" };
@@ -158,27 +174,22 @@ namespace ProjectManagementAPI.Services.Implementations
                     return new ApiResponse<TaskDTO>
                     { Success = false, Message = "La progression doit être entre 0 et 100" };
 
-                // Tâche déjà validée → bloquée
                 if (task.IsValidated)
                     return new ApiResponse<TaskDTO>
                     { Success = false, Message = "Tâche déjà validée, modification impossible" };
 
                 task.Progress = progress;
-
-                // Statut automatique selon progression
                 task.TaskStatusId = progress switch
                 {
-                    0 => 1,    // À faire
-                    100 => 4,  // En attente de validation
-                    _ => 2     // En cours
+                    0 => 1, // À faire
+                    100 => 4, // En attente de validation
+                    _ => 2  // En cours
                 };
 
-                // Reset validation si le dev revient en arrière
                 if (progress < 100)
                     task.IsValidated = false;
 
                 await _context.SaveChangesAsync();
-
                 await RecalculateProjectProgressAsync(task.ProjectId);
 
                 return new ApiResponse<TaskDTO>
@@ -195,7 +206,7 @@ namespace ProjectManagementAPI.Services.Implementations
             }
         }
 
-        // UPDATE task status (compatibilité)
+        // ============= UPDATE STATUS =============
         public async Task<ApiResponse<TaskDTO>> UpdateTaskStatusAsync(int taskId, int statusId, int userId)
         {
             try
@@ -215,7 +226,6 @@ namespace ProjectManagementAPI.Services.Implementations
 
                 task.TaskStatusId = statusId;
 
-                // Si dev met "Terminé" → forcer 100% + En attente de validation
                 if (statusId == 3)
                 {
                     task.Progress = 100;
@@ -224,7 +234,6 @@ namespace ProjectManagementAPI.Services.Implementations
                 }
 
                 await _context.SaveChangesAsync();
-
                 await RecalculateProjectProgressAsync(task.ProjectId);
 
                 return new ApiResponse<TaskDTO>
@@ -241,7 +250,7 @@ namespace ProjectManagementAPI.Services.Implementations
             }
         }
 
-        // VALIDATE task (Chef de Projet)
+        // ============= VALIDATE TASK ============= ✅ + Notification
         public async Task<ApiResponse<TaskDTO>> ValidateTaskAsync(int taskId, int userId)
         {
             try
@@ -270,8 +279,24 @@ namespace ProjectManagementAPI.Services.Implementations
                 task.ValidatedAt = DateTime.UtcNow;
 
                 await _context.SaveChangesAsync();
-
                 await RecalculateProjectProgressAsync(task.ProjectId);
+
+                // ✅ Notification — Tâche validée
+                if (task.AssignedToUserId.HasValue)
+                {
+                    var chef = await _context.Users.FindAsync(userId);
+                    var chefNom = chef != null
+                        ? $"{chef.FirstName} {chef.LastName}"
+                        : "Chef de Projet";
+
+                    await _notificationService.CreateNotificationAsync(
+                        userId: task.AssignedToUserId.Value,
+                        title: "✅ Tâche validée",
+                        message: $"Votre tâche \"{task.TaskName}\" a été validée par {chefNom}",
+                        type: "TASK_VALIDATED",
+                        relatedTaskId: task.ProjectTaskId
+                    );
+                }
 
                 return new ApiResponse<TaskDTO>
                 {
@@ -287,7 +312,74 @@ namespace ProjectManagementAPI.Services.Implementations
             }
         }
 
-        // GET tasks by project
+        // ============= REJECT TASK ============= ✅ + Notification
+        public async Task<ApiResponse<TaskDTO>> RejectTaskAsync(int taskId, int userId, string? reason)
+        {
+            try
+            {
+                var task = await _context.ProjectTasks
+                    .Include(t => t.Project)
+                    .Include(t => t.ProjectTasksStatus)
+                    .Include(t => t.Priority)
+                    .FirstOrDefaultAsync(t => t.ProjectTaskId == taskId);
+
+                if (task == null)
+                    return new ApiResponse<TaskDTO>
+                    { Success = false, Message = "Tâche non trouvée" };
+
+                if (task.Project.ProjectManagerId != userId)
+                    return new ApiResponse<TaskDTO>
+                    { Success = false, Message = "Seul le Chef de Projet peut rejeter une tâche" };
+
+                if (task.TaskStatusId != 4)
+                    return new ApiResponse<TaskDTO>
+                    { Success = false, Message = "La tâche doit être en attente de validation" };
+
+                // ✅ Reset → En cours pour que le dev puisse retravailler
+                task.IsValidated = false;
+                task.TaskStatusId = 2; // En cours
+                task.Progress = 0;
+                task.RejectionReason = reason;
+
+                await _context.SaveChangesAsync();
+                await RecalculateProjectProgressAsync(task.ProjectId);
+
+                // ✅ Notification — Tâche rejetée + cause
+                if (task.AssignedToUserId.HasValue)
+                {
+                    var chef = await _context.Users.FindAsync(userId);
+                    var chefNom = chef != null
+                        ? $"{chef.FirstName} {chef.LastName}"
+                        : "Chef de Projet";
+
+                    var message = string.IsNullOrEmpty(reason)
+                        ? $"Votre tâche \"{task.TaskName}\" a été rejetée par {chefNom}"
+                        : $"Votre tâche \"{task.TaskName}\" a été rejetée par {chefNom}. Cause : {reason}";
+
+                    await _notificationService.CreateNotificationAsync(
+                        userId: task.AssignedToUserId.Value,
+                        title: "❌ Tâche rejetée",
+                        message: message,
+                        type: "TASK_REJECTED",
+                        relatedTaskId: task.ProjectTaskId
+                    );
+                }
+
+                return new ApiResponse<TaskDTO>
+                {
+                    Success = true,
+                    Data = MapToDto(task),
+                    Message = "Tâche rejetée avec succès"
+                };
+            }
+            catch (Exception ex)
+            {
+                return new ApiResponse<TaskDTO>
+                { Success = false, Message = $"Erreur : {ex.Message}" };
+            }
+        }
+
+        // ============= GET BY PROJECT =============
         public async Task<ApiResponse<List<TaskDTO>>> GetTasksByProjectAsync(int projectId)
         {
             try
@@ -313,7 +405,7 @@ namespace ProjectManagementAPI.Services.Implementations
             }
         }
 
-        // GET tasks by user
+        // ============= GET BY USER =============
         public async Task<ApiResponse<List<TaskDTO>>> GetTasksByUserAsync(int userId)
         {
             try
@@ -339,7 +431,7 @@ namespace ProjectManagementAPI.Services.Implementations
             }
         }
 
-        // DELETE task
+        // ============= DELETE TASK =============
         public async Task<ApiResponse<bool>> DeleteTaskAsync(int taskId)
         {
             try
@@ -366,7 +458,7 @@ namespace ProjectManagementAPI.Services.Implementations
             }
         }
 
-        // HELPER: Recalculate project progress
+        // ============= RECALCUL PROGRESSION =============
         private async Task RecalculateProjectProgressAsync(int projectId)
         {
             var tasks = await _context.ProjectTasks
@@ -376,36 +468,26 @@ namespace ProjectManagementAPI.Services.Implementations
             var project = await _context.Projects.FindAsync(projectId);
             if (project == null) return;
 
-            // Ne pas toucher si déjà Terminé ou Annulé (chef a décidé)
             if (project.ProjectStatusId == 3 || project.ProjectStatusId == 4)
                 return;
 
             if (tasks.Count == 0)
             {
                 project.Progress = 0;
-                project.ProjectStatusId = 1; // Planifié
+                project.ProjectStatusId = 1;
             }
             else
             {
                 project.Progress = (int)Math.Round(
                     tasks.Average(t => (double)t.Progress)
                 );
-
-                if (project.Progress == 0)
-                {
-                    project.ProjectStatusId = 1; // Planifié
-                }
-                else
-                {
-                    // Même à 100%, on reste "En cours" → le chef décide quand Terminé
-                    project.ProjectStatusId = 2; // En cours
-                }
+                project.ProjectStatusId = project.Progress == 0 ? 1 : 2;
             }
 
             await _context.SaveChangesAsync();
         }
 
-        // HELPER: Map ProjectTask to DTO
+        // ============= MAP TO DTO =============
         private TaskDTO MapToDto(ProjectTask task)
         {
             return new TaskDTO

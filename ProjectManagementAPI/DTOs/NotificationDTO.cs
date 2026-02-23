@@ -11,5 +11,7 @@
         public int? RelatedTaskId { get; set; }
         public DateTime CreatedAt { get; set; }
         public DateTime? ReadAt { get; set; }
+        public NotificationTaskDTO? Task { get; set; }
+        public AssignedByDTO? AssignedBy { get; set; }
     }
 }

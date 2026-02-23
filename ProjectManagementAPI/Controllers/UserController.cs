@@ -14,15 +14,20 @@ namespace ProjectManagementAPI.Controllers
     public class UserController : ControllerBase
     {
         private readonly IUserService _userService;
-        private readonly ApplicationDbContext _context; // ✅ AJOUTÉ
+        private readonly ApplicationDbContext _context;
+        private readonly INotificationService _notificationService; // ✅ NOUVEAU
 
-        public UserController(IUserService userService, ApplicationDbContext context) // ✅ MODIFIÉ
+        public UserController(
+            IUserService userService,
+            ApplicationDbContext context,
+            INotificationService notificationService) // ✅ NOUVEAU
         {
             _userService = userService;
-            _context = context; // ✅ AJOUTÉ
+            _context = context;
+            _notificationService = notificationService; // ✅ NOUVEAU
         }
 
-        // ============= CRUD (Reporting uniquement) =============
+        // ============= CRUD =============
 
         [HttpPost]
         [Authorize(Roles = "Manager,Reporting")]
@@ -57,7 +62,7 @@ namespace ProjectManagementAPI.Controllers
             return result.Success ? Ok(result) : NotFound(result);
         }
 
-        // ============= GET USERS BY ROLE ID ============= ✅ NOUVEAU
+        // ============= GET USERS BY ROLE ID =============
         [HttpGet("by-role/{roleId}")]
         [Authorize]
         public async Task<IActionResult> GetUsersByRole(int roleId)
@@ -96,7 +101,7 @@ namespace ProjectManagementAPI.Controllers
             }
         }
 
-        // ============= GET USERS BY ROLE NAME ============= ✅ NOUVEAU
+        // ============= GET USERS BY ROLE NAME =============
         [HttpGet("by-role-name/{roleName}")]
         [Authorize]
         public async Task<IActionResult> GetUsersByRoleName(string roleName)
@@ -143,51 +148,35 @@ namespace ProjectManagementAPI.Controllers
             return result.Success ? Ok(result) : BadRequest(result);
         }
 
-        // ============= Account Management (Reporting) =============
+        // ============= Account Management =============
 
-        /// <summary>
-        /// Toggle le statut actif/inactif d'un utilisateur (automatique)
-        /// </summary>
         [HttpPatch("{userId}/toggle-active")]
         [Authorize(Roles = "Manager,Reporting")]
         public async Task<IActionResult> ToggleUserActive(int userId)
         {
             try
             {
-                // Récupère l'utilisateur pour connaître son statut actuel
                 var userResult = await _userService.GetUserByIdAsync(userId);
-
                 if (!userResult.Success)
-                {
-                    return NotFound(new
-                    {
-                        success = false,
-                        message = "Utilisateur introuvable"
-                    });
-                }
+                    return NotFound(new { success = false, message = "Utilisateur introuvable" });
 
-                // Extrait le statut actuel
                 var userData = userResult.Data;
                 bool currentStatus = false;
-
                 var isActiveProp = userData?.GetType().GetProperty("IsActive");
                 if (isActiveProp != null)
-                {
                     currentStatus = (bool)(isActiveProp.GetValue(userData) ?? false);
-                }
 
-                // Toggle le statut (inverse)
                 var result = await _userService.ToggleUserActiveAsync(userId, !currentStatus);
 
                 if (result.Success)
-                {
                     return Ok(new
                     {
                         success = true,
-                        message = !currentStatus ? "Utilisateur activé avec succès" : "Utilisateur désactivé avec succès",
+                        message = !currentStatus
+                            ? "Utilisateur activé avec succès"
+                            : "Utilisateur désactivé avec succès",
                         data = result.Data
                     });
-                }
 
                 return BadRequest(result);
             }
@@ -226,7 +215,7 @@ namespace ProjectManagementAPI.Controllers
         public async Task<IActionResult> ForgotPassword([FromBody] ForgotPasswordRequest dto)
         {
             var result = await _userService.ForgotPasswordAsync(dto.Email);
-            return Ok(result); // Always return 200 for security
+            return Ok(result);
         }
 
         [HttpPost("reset-password")]
@@ -237,55 +226,62 @@ namespace ProjectManagementAPI.Controllers
             return result.Success ? Ok(result) : BadRequest(result);
         }
 
-        // ============= Temporary Password (Reporting / Manager) =============
+        // ============= Temporary Password =============
 
         [HttpPost("{userId}/generate-temp-password")]
         [Authorize(Roles = "Manager,Reporting")]
         public async Task<IActionResult> GenerateTemporaryPassword(int userId)
         {
             var result = await _userService.GenerateTemporaryPasswordAsync(userId);
-
-            if (!result.Success)
-                return BadRequest(result);
-
+            if (!result.Success) return BadRequest(result);
             return Ok(result);
         }
 
-        // ============= APPROVE/REJECT NEW REGISTRATIONS =============
-
-        /// <summary>
-        /// Approuve un utilisateur en attente (active son compte)
-        /// </summary>
+        // ============= APPROVE USER ============= ✅ + Notification
         [HttpPut("{userId}/approve")]
         [Authorize(Roles = "Manager,Reporting")]
-        public async Task<IActionResult> ApproveUser(int userId)
+        public async Task<IActionResult> ApproveUser(int userId, [FromBody] ApproveUserDTO dto)
         {
             try
             {
-                var userResult = await _userService.GetUserByIdAsync(userId);
+                var user = await _context.Users
+                    .Include(u => u.Role)
+                    .FirstOrDefaultAsync(u => u.UserId == userId);
 
-                if (!userResult.Success)
+                if (user == null)
+                    return NotFound(new { success = false, message = "Utilisateur introuvable" });
+
+                if (user.IsActive)
+                    return BadRequest(new { success = false, message = "Utilisateur déjà approuvé" });
+
+                user.RoleId = dto.RoleId;
+                user.IsActive = true;
+                user.MustChangePassword = true;
+                user.UpdatedAt = DateTime.UtcNow;
+                await _context.SaveChangesAsync();
+
+                await _context.Entry(user).Reference(u => u.Role).LoadAsync();
+
+                // ✅ Notification — Compte approuvé
+                await _notificationService.CreateNotificationAsync(
+                    userId: user.UserId,
+                    title: "✅ Compte approuvé !",
+                    message: $"Bienvenue {user.FirstName} {user.LastName} ! Votre compte a été approuvé avec le rôle {user.Role?.RoleName}. Vous pouvez maintenant vous connecter.",
+                    type: "Success"
+                );
+
+                return Ok(new
                 {
-                    return NotFound(new
+                    success = true,
+                    message = $"Compte de {user.UserName} approuvé avec le rôle {user.Role?.RoleName}",
+                    data = new
                     {
-                        success = false,
-                        message = "Utilisateur introuvable"
-                    });
-                }
-
-                // Activate the user account
-                var result = await _userService.ToggleUserActiveAsync(userId, true);
-
-                if (result.Success)
-                {
-                    return Ok(new
-                    {
-                        success = true,
-                        message = "Compte approuvé et activé avec succès"
-                    });
-                }
-
-                return BadRequest(result);
+                        userId = user.UserId,
+                        userName = user.UserName,
+                        roleName = user.Role?.RoleName,
+                        mustChangePassword = user.MustChangePassword
+                    }
+                });
             }
             catch (Exception ex)
             {
@@ -298,57 +294,34 @@ namespace ProjectManagementAPI.Controllers
             }
         }
 
-        /// <summary>
-        /// Rejette une demande d'inscription (supprime l'utilisateur inactif)
-        /// </summary>
+        // ============= REJECT USER =============
         [HttpDelete("{userId}/reject")]
         [Authorize(Roles = "Manager,Reporting")]
         public async Task<IActionResult> RejectUser(int userId)
         {
             try
             {
-                var userResult = await _userService.GetUserByIdAsync(userId);
+                var user = await _context.Users.FindAsync(userId);
 
-                if (!userResult.Success)
-                {
-                    return NotFound(new
+                if (user == null)
+                    return NotFound(new { success = false, message = "Utilisateur introuvable" });
+
+                if (user.IsActive)
+                    return BadRequest(new
                     {
                         success = false,
-                        message = "Utilisateur introuvable"
+                        message = "Impossible de rejeter un utilisateur déjà actif"
                     });
-                }
 
-                // Check if user is already active (can't reject active users)
-                var userData = userResult.Data;
-                var isActiveProp = userData?.GetType().GetProperty("IsActive");
+                // ❌ Pas de notification — utilisateur supprimé
+                _context.Users.Remove(user);
+                await _context.SaveChangesAsync();
 
-                if (isActiveProp != null)
+                return Ok(new
                 {
-                    bool isActive = (bool)(isActiveProp.GetValue(userData) ?? false);
-
-                    if (isActive)
-                    {
-                        return BadRequest(new
-                        {
-                            success = false,
-                            message = "Impossible de rejeter un utilisateur déjà actif"
-                        });
-                    }
-                }
-
-                // Delete the pending registration
-                var result = await _userService.DeleteUserAsync(userId);
-
-                if (result.Success)
-                {
-                    return Ok(new
-                    {
-                        success = true,
-                        message = "Demande d'inscription rejetée avec succès"
-                    });
-                }
-
-                return BadRequest(result);
+                    success = true,
+                    message = $"Demande de {user.UserName} rejetée avec succès"
+                });
             }
             catch (Exception ex)
             {
@@ -361,11 +334,7 @@ namespace ProjectManagementAPI.Controllers
             }
         }
 
-        // ============= DELETE USER (Permanent Delete) =============
-
-        /// <summary>
-        /// Supprime définitivement un utilisateur (seulement si inactif)
-        /// </summary>
+        // ============= DELETE USER =============
         [HttpDelete("{userId}")]
         [Authorize(Roles = "Manager,Reporting")]
         public async Task<IActionResult> DeleteUser(int userId)
@@ -373,45 +342,26 @@ namespace ProjectManagementAPI.Controllers
             try
             {
                 var userResult = await _userService.GetUserByIdAsync(userId);
-
                 if (!userResult.Success)
-                {
-                    return NotFound(new
-                    {
-                        success = false,
-                        message = "Utilisateur introuvable"
-                    });
-                }
+                    return NotFound(new { success = false, message = "Utilisateur introuvable" });
 
-                // Vérifier que l'utilisateur n'est pas actif (sécurité)
                 var userData = userResult.Data;
                 var isActiveProp = userData?.GetType().GetProperty("IsActive");
 
                 if (isActiveProp != null)
                 {
                     bool isActive = (bool)(isActiveProp.GetValue(userData) ?? false);
-
                     if (isActive)
-                    {
                         return BadRequest(new
                         {
                             success = false,
                             message = "Impossible de supprimer un utilisateur actif. Désactivez-le d'abord."
                         });
-                    }
                 }
 
-                // Suppression permanente
                 var result = await _userService.DeleteUserAsync(userId);
-
                 if (result.Success)
-                {
-                    return Ok(new
-                    {
-                        success = true,
-                        message = "Utilisateur supprimé définitivement"
-                    });
-                }
+                    return Ok(new { success = true, message = "Utilisateur supprimé définitivement" });
 
                 return BadRequest(result);
             }

@@ -5,6 +5,7 @@ import {
     LayoutDashboard,
     FolderKanban,
     BarChart3,
+    Users,
     LogOut,
     Menu,
     RefreshCw
@@ -30,31 +31,28 @@ const ManagerLayout = ({ children }) => {
     const menuItems = [
         { icon: LayoutDashboard, label: 'Dashboard', path: '/manager/dashboard' },
         { icon: FolderKanban, label: 'Projets', path: '/manager/projects' },
+        { icon: Users, label: 'Équipe', path: '/manager/team' },
         { icon: BarChart3, label: 'Statistiques', path: '/manager/statistics' },
     ];
 
     return (
-        <>
-            {/* TOP HEADER */}
-            <header
-                style={{
-                    position: 'fixed',
-                    top: 0,
-                    left: 0,
-                    right: 0,
-                    width: '100%',
-                    height: '70px',
-                    background: 'linear-gradient(135deg, #111827 0%, #1f2937 100%)',
-                    color: 'white',
-                    display: 'flex',
-                    justifyContent: 'space-between',
-                    alignItems: 'center',
-                    padding: '0 30px',
-                    boxShadow: '0 4px 12px rgba(0, 0, 0, 0.15)',
-                    zIndex: 1001,
-                    boxSizing: 'border-box'
-                }}
-            >
+        <div style={{ display: 'flex', minHeight: '100vh', backgroundColor: '#f5f5f5' }}>
+
+            {/* ====== TOP HEADER ====== */}
+            <header style={{
+                position: 'fixed',
+                top: 0, left: 0, right: 0,
+                width: '100vw',
+                height: '70px',
+                background: 'linear-gradient(135deg, #00A651 0%, #004D29 100%)',
+                color: 'white',
+                display: 'flex',
+                justifyContent: 'space-between',
+                alignItems: 'center',
+                padding: '0 30px',
+                boxShadow: '0 4px 12px rgba(0, 0, 0, 0.15)',
+                zIndex: 1001
+            }}>
                 <div style={{ display: 'flex', alignItems: 'center', gap: '20px' }}>
                     <button
                         onClick={() => setSidebarOpen(!sidebarOpen)}
@@ -69,24 +67,18 @@ const ManagerLayout = ({ children }) => {
                             alignItems: 'center',
                             transition: 'all 0.3s'
                         }}
-                        onMouseEnter={(e) =>
-                            (e.currentTarget.style.background = 'rgba(255, 255, 255, 0.3)')
-                        }
-                        onMouseLeave={(e) =>
-                            (e.currentTarget.style.background = 'rgba(255, 255, 255, 0.2)')
-                        }
+                        onMouseEnter={(e) => e.currentTarget.style.background = 'rgba(255, 255, 255, 0.3)'}
+                        onMouseLeave={(e) => e.currentTarget.style.background = 'rgba(255, 255, 255, 0.2)'}
                     >
                         <Menu size={24} />
                     </button>
-                    <h1
-                        style={{
-                            margin: 0,
-                            fontSize: '24px',
-                            fontWeight: '700',
-                            textTransform: 'uppercase',
-                            letterSpacing: '2px'
-                        }}
-                    >
+                    <h1 style={{
+                        margin: 0,
+                        fontSize: '24px',
+                        fontWeight: '700',
+                        textTransform: 'uppercase',
+                        letterSpacing: '2px'
+                    }}>
                         MANAGER DASHBOARD
                     </h1>
                 </div>
@@ -95,7 +87,7 @@ const ManagerLayout = ({ children }) => {
                     onClick={handleRefresh}
                     style={{
                         background: 'white',
-                        color: '#111827',
+                        color: '#00A651',
                         border: '2px solid white',
                         padding: '10px 20px',
                         borderRadius: '8px',
@@ -122,47 +114,38 @@ const ManagerLayout = ({ children }) => {
                 </button>
             </header>
 
-            {/* SIDEBAR */}
-            <aside
-                style={{
-                    width: sidebarOpen ? '280px' : '80px',
-                    background: 'linear-gradient(180deg, #111827 0%, #020617 100%)',
-                    color: 'white',
-                    transition: 'width 0.3s ease',
-                    position: 'fixed',
-                    height: 'calc(100vh - 70px)',
-                    top: '70px',
-                    left: 0,
-                    zIndex: 1000,
-                    overflow: 'hidden',
-                    boxShadow: '4px 0 10px rgba(0, 0, 0, 0.1)',
-                    display: 'flex',
-                    flexDirection: 'column'
-                }}
-            >
+            {/* ====== SIDEBAR ====== */}
+            <aside style={{
+                width: sidebarOpen ? '280px' : '80px',
+                background: 'linear-gradient(180deg, #00B050 0%, #008f3f 100%)',
+                color: 'white',
+                transition: 'width 0.3s ease',
+                position: 'fixed',
+                height: 'calc(100vh - 70px)',
+                top: '70px',
+                left: 0,
+                zIndex: 1000,
+                overflow: 'hidden',
+                boxShadow: '4px 0 10px rgba(0, 0, 0, 0.1)',
+                display: 'flex',
+                flexDirection: 'column'
+            }}>
                 {/* USER INFO */}
                 {sidebarOpen ? (
-                    <div
-                        style={{
-                            padding: '30px 20px',
-                            borderBottom: '1px solid rgba(255, 255, 255, 0.2)'
-                        }}
-                    >
-                        <div
-                            style={{
-                                width: '50px',
-                                height: '50px',
-                                background: 'white',
-                                borderRadius: '50%',
-                                display: 'flex',
-                                alignItems: 'center',
-                                justifyContent: 'center',
-                                fontSize: '24px',
-                                marginBottom: '15px',
-                                boxShadow: '0 4px 8px rgba(0, 0, 0, 0.1)'
-                            }}
-                        >
-                            📈
+                    <div style={{
+                        padding: '30px 20px',
+                        borderBottom: '1px solid rgba(255, 255, 255, 0.2)'
+                    }}>
+                        <div style={{
+                            width: '50px', height: '50px',
+                            background: 'white',
+                            borderRadius: '50%',
+                            display: 'flex', alignItems: 'center', justifyContent: 'center',
+                            fontSize: '24px',
+                            marginBottom: '15px',
+                            boxShadow: '0 4px 8px rgba(0, 0, 0, 0.1)'
+                        }}>
+                            👔
                         </div>
                         <p style={{ margin: '0 0 5px 0', fontSize: '0.85rem', opacity: 0.9 }}>
                             Connecté en tant que
@@ -172,27 +155,20 @@ const ManagerLayout = ({ children }) => {
                         </p>
                     </div>
                 ) : (
-                    <div
-                        style={{
-                            padding: '30px 0',
-                            display: 'flex',
-                            justifyContent: 'center',
-                            borderBottom: '1px solid rgba(255, 255, 255, 0.2)'
-                        }}
-                    >
-                        <div
-                            style={{
-                                width: '40px',
-                                height: '40px',
-                                background: 'white',
-                                borderRadius: '50%',
-                                display: 'flex',
-                                alignItems: 'center',
-                                justifyContent: 'center',
-                                fontSize: '20px'
-                            }}
-                        >
-                            📈
+                    <div style={{
+                        padding: '30px 0',
+                        display: 'flex',
+                        justifyContent: 'center',
+                        borderBottom: '1px solid rgba(255, 255, 255, 0.2)'
+                    }}>
+                        <div style={{
+                            width: '40px', height: '40px',
+                            background: 'white',
+                            borderRadius: '50%',
+                            display: 'flex', alignItems: 'center', justifyContent: 'center',
+                            fontSize: '20px'
+                        }}>
+                            👔
                         </div>
                     </div>
                 )}
@@ -212,7 +188,7 @@ const ManagerLayout = ({ children }) => {
                                     width: '100%',
                                     padding: '16px 20px',
                                     backgroundColor: isActive ? 'white' : 'transparent',
-                                    color: isActive ? '#111827' : 'white',
+                                    color: isActive ? '#00B050' : 'white',
                                     border: 'none',
                                     borderRadius: '10px',
                                     cursor: 'pointer',
@@ -239,21 +215,14 @@ const ManagerLayout = ({ children }) => {
                                     }
                                 }}
                             >
-                                <div
-                                    style={{
-                                        width: '40px',
-                                        height: '40px',
-                                        background: isActive
-                                            ? '#111827'
-                                            : 'rgba(255, 255, 255, 0.2)',
-                                        color: 'white',
-                                        borderRadius: '8px',
-                                        display: 'flex',
-                                        alignItems: 'center',
-                                        justifyContent: 'center',
-                                        flexShrink: 0
-                                    }}
-                                >
+                                <div style={{
+                                    width: '40px', height: '40px',
+                                    background: isActive ? '#00B050' : 'rgba(255, 255, 255, 0.2)',
+                                    color: 'white',
+                                    borderRadius: '8px',
+                                    display: 'flex', alignItems: 'center', justifyContent: 'center',
+                                    flexShrink: 0
+                                }}>
                                     <Icon size={20} />
                                 </div>
                                 {sidebarOpen && <span>{item.label}</span>}
@@ -263,13 +232,11 @@ const ManagerLayout = ({ children }) => {
                 </nav>
 
                 {/* LOGOUT */}
-                <div
-                    style={{
-                        padding: '20px 10px',
-                        borderTop: '1px solid rgba(255, 255, 255, 0.2)',
-                        marginTop: 'auto'
-                    }}
-                >
+                <div style={{
+                    padding: '20px 10px',
+                    borderTop: '1px solid rgba(255, 255, 255, 0.2)',
+                    marginTop: 'auto'
+                }}>
                     <button
                         onClick={handleLogout}
                         title={!sidebarOpen ? 'Déconnexion' : ''}
@@ -277,7 +244,7 @@ const ManagerLayout = ({ children }) => {
                             width: '100%',
                             padding: sidebarOpen ? '14px 20px' : '16px',
                             background: 'white',
-                            color: '#111827',
+                            color: '#00B050',
                             border: 'none',
                             borderRadius: '10px',
                             cursor: 'pointer',
@@ -307,23 +274,17 @@ const ManagerLayout = ({ children }) => {
                 </div>
             </aside>
 
-            {/* MAIN CONTENT */}
-            <main
-                style={{
-                    position: 'fixed',
-                    left: sidebarOpen ? '280px' : '80px',
-                    right: 0,
-                    top: '70px',
-                    bottom: 0,
-                    transition: 'left 0.3s ease',
-                    backgroundColor: '#f5f5f5',
-                    overflowY: 'auto',
-                    overflowX: 'hidden'
-                }}
-            >
+            {/* ====== MAIN CONTENT ====== */}
+            <main style={{
+                marginLeft: sidebarOpen ? '280px' : '80px',
+                marginTop: '70px',
+                width: `calc(100% - ${sidebarOpen ? '280px' : '80px'})`,
+                minHeight: 'calc(100vh - 70px)',
+                transition: 'margin-left 0.3s ease, width 0.3s ease'
+            }}>
                 {children}
             </main>
-        </>
+        </div>
     );
 };
 

@@ -19,6 +19,8 @@ namespace ProjectManagementAPI.Services.Interfaces
         // VALIDATE
         Task<ApiResponse<TaskDTO>> ValidateTaskAsync(int taskId, int userId);
 
+        Task<ApiResponse<TaskDTO>> RejectTaskAsync(int taskId, int userId, string? reason);
+
         // DELETE
         Task<ApiResponse<bool>> DeleteTaskAsync(int taskId);
         Task<ApiResponse<TaskDTO>> UpdateTaskProgressAsync(int taskId, int progress, int userId);

@@ -31,6 +31,7 @@ namespace ProjectManagementAPI.Models
         public User? ValidatedByUser { get; set; }  // Navigation property
         public ICollection<Comment> Comments { get; set; }
         public User CreatedByUser { get; set; } = null!;
-       
+        public string? RejectionReason { get; set; }
+
     }
 }

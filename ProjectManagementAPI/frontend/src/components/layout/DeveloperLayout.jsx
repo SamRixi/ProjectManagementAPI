@@ -8,6 +8,7 @@ import {
     Menu,
     RefreshCw
 } from 'lucide-react';
+import NotificationBell from '../NotificationBell';
 
 const DeveloperLayout = ({ children }) => {
     const navigate = useNavigate();
@@ -34,6 +35,7 @@ const DeveloperLayout = ({ children }) => {
 
     return (
         <div style={{ display: 'flex', minHeight: '100vh', backgroundColor: '#f5f5f5' }}>
+
             {/* TOP HEADER - FIXED */}
             <header style={{
                 position: 'fixed',
@@ -51,6 +53,7 @@ const DeveloperLayout = ({ children }) => {
                 boxShadow: '0 4px 12px rgba(0, 0, 0, 0.15)',
                 zIndex: 1001
             }}>
+                {/* LEFT SIDE */}
                 <div style={{ display: 'flex', alignItems: 'center', gap: '20px' }}>
                     <button
                         onClick={() => setSidebarOpen(!sidebarOpen)}
@@ -81,38 +84,54 @@ const DeveloperLayout = ({ children }) => {
                     </h1>
                 </div>
 
-                <button
-                    onClick={handleRefresh}
-                    style={{
-                        background: 'white',
-                        color: '#00A651',
-                        border: '2px solid white',
-                        padding: '10px 20px',
+                {/* RIGHT SIDE — 🔔 Notification + Actualiser */}
+                <div style={{ display: 'flex', alignItems: 'center', gap: '15px' }}>
+
+                    {/* 🔔 NOTIFICATION BELL */}
+                    <div style={{
+                        background: 'rgba(255, 255, 255, 0.2)',
                         borderRadius: '8px',
-                        cursor: 'pointer',
-                        fontWeight: '600',
-                        fontSize: '14px',
+                        padding: '4px 8px',
                         display: 'flex',
-                        alignItems: 'center',
-                        gap: '8px',
-                        transition: 'all 0.3s',
-                        boxShadow: '0 2px 8px rgba(0, 0, 0, 0.1)'
-                    }}
-                    onMouseEnter={(e) => {
-                        e.currentTarget.style.background = 'rgba(255, 255, 255, 0.95)';
-                        e.currentTarget.style.transform = 'translateY(-2px)';
-                    }}
-                    onMouseLeave={(e) => {
-                        e.currentTarget.style.background = 'white';
-                        e.currentTarget.style.transform = 'translateY(0)';
-                    }}
-                >
-                    <RefreshCw size={16} />
-                    <span>Actualiser</span>
-                </button>
+                        alignItems: 'center'
+                    }}>
+                        <NotificationBell />
+                    </div>
+
+                    {/* 🔄 BOUTON ACTUALISER */}
+                    <button
+                        onClick={handleRefresh}
+                        style={{
+                            background: 'white',
+                            color: '#00A651',
+                            border: '2px solid white',
+                            padding: '10px 20px',
+                            borderRadius: '8px',
+                            cursor: 'pointer',
+                            fontWeight: '600',
+                            fontSize: '14px',
+                            display: 'flex',
+                            alignItems: 'center',
+                            gap: '8px',
+                            transition: 'all 0.3s',
+                            boxShadow: '0 2px 8px rgba(0, 0, 0, 0.1)'
+                        }}
+                        onMouseEnter={(e) => {
+                            e.currentTarget.style.background = 'rgba(255, 255, 255, 0.95)';
+                            e.currentTarget.style.transform = 'translateY(-2px)';
+                        }}
+                        onMouseLeave={(e) => {
+                            e.currentTarget.style.background = 'white';
+                            e.currentTarget.style.transform = 'translateY(0)';
+                        }}
+                    >
+                        <RefreshCw size={16} />
+                        <span>Actualiser</span>
+                    </button>
+                </div>
             </header>
 
-            {/* SIDEBAR - GREEN, STARTS BELOW HEADER */}
+            {/* SIDEBAR */}
             <aside style={{
                 width: sidebarOpen ? '280px' : '80px',
                 background: 'linear-gradient(180deg, #00B050 0%, #008f3f 100%)',
@@ -128,7 +147,7 @@ const DeveloperLayout = ({ children }) => {
                 display: 'flex',
                 flexDirection: 'column'
             }}>
-                {/* USER INFO */}
+                {/* USER INFO — OPEN */}
                 {sidebarOpen && (
                     <div style={{
                         padding: '30px 20px',
@@ -157,6 +176,7 @@ const DeveloperLayout = ({ children }) => {
                     </div>
                 )}
 
+                {/* USER INFO — CLOSED */}
                 {!sidebarOpen && (
                     <div style={{
                         padding: '30px 0',
@@ -184,7 +204,6 @@ const DeveloperLayout = ({ children }) => {
                     {menuItems.map((item) => {
                         const Icon = item.icon;
                         const isActive = location.pathname === item.path;
-
                         return (
                             <button
                                 key={item.path}
@@ -240,7 +259,7 @@ const DeveloperLayout = ({ children }) => {
                     })}
                 </nav>
 
-                {/* LOGOUT - FIXED VERSION */}
+                {/* LOGOUT */}
                 <div style={{
                     padding: '20px 10px',
                     borderTop: '1px solid rgba(255, 255, 255, 0.2)',

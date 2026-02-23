@@ -59,6 +59,18 @@ namespace ProjectManagementAPI.Controllers
 
             return Ok(result);
         }
+        // ✅ PUT api/Task/{taskId}/reject
+        [HttpPut("{taskId}/reject")]
+        public async Task<IActionResult> RejectTask(int taskId, [FromBody] RejectTaskDTO dto)
+        {
+            var userId = GetCurrentUserId();
+            var result = await _taskService.RejectTaskAsync(taskId, userId, dto.Reason);
+
+            if (!result.Success)
+                return BadRequest(result);
+
+            return Ok(result);
+        }
 
         // PUT api/Task/{taskId}/status/{statusId}
         [HttpPut("{taskId}/status/{statusId}")]
