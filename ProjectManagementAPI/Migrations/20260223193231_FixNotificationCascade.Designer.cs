@@ -3,6 +3,7 @@ using System;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Infrastructure;
 using Microsoft.EntityFrameworkCore.Metadata;
+using Microsoft.EntityFrameworkCore.Migrations;
 using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 using ProjectManagementAPI.Data;
 
@@ -11,9 +12,11 @@ using ProjectManagementAPI.Data;
 namespace ProjectManagementAPI.Migrations
 {
     [DbContext(typeof(ApplicationDbContext))]
-    partial class ApplicationDbContextModelSnapshot : ModelSnapshot
+    [Migration("20260223193231_FixNotificationCascade")]
+    partial class FixNotificationCascade
     {
-        protected override void BuildModel(ModelBuilder modelBuilder)
+        /// <inheritdoc />
+        protected override void BuildTargetModel(ModelBuilder modelBuilder)
         {
 #pragma warning disable 612, 618
             modelBuilder
@@ -109,9 +112,6 @@ namespace ProjectManagementAPI.Migrations
                     b.Property<int?>("RelatedTaskId")
                         .HasColumnType("int");
 
-                    b.Property<int?>("RelatedUserId")
-                        .HasColumnType("int");
-
                     b.Property<string>("Title")
                         .IsRequired()
                         .HasMaxLength(200)
@@ -131,8 +131,6 @@ namespace ProjectManagementAPI.Migrations
                     b.HasIndex("RelatedProjectId");
 
                     b.HasIndex("RelatedTaskId");
-
-                    b.HasIndex("RelatedUserId");
 
                     b.HasIndex("UserId");
 
@@ -545,10 +543,6 @@ namespace ProjectManagementAPI.Migrations
                         .HasForeignKey("RelatedTaskId")
                         .OnDelete(DeleteBehavior.SetNull);
 
-                    b.HasOne("ProjectManagementAPI.Models.User", "RelatedUser")
-                        .WithMany()
-                        .HasForeignKey("RelatedUserId");
-
                     b.HasOne("ProjectManagementAPI.Models.User", "User")
                         .WithMany("Notifications")
                         .HasForeignKey("UserId")
@@ -558,8 +552,6 @@ namespace ProjectManagementAPI.Migrations
                     b.Navigation("RelatedProject");
 
                     b.Navigation("RelatedTask");
-
-                    b.Navigation("RelatedUser");
 
                     b.Navigation("User");
                 });

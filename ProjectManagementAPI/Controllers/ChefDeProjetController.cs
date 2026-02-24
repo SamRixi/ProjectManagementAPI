@@ -37,7 +37,7 @@ namespace ProjectManagementAPI.Controllers
             int validatedTasks,
             int totalTasks,
             bool isDelayed,
-            int notFinishedTasks,       // ✅ NOUVEAU paramètre
+            int notFinishedTasks,
             string? dbStatusName,
             string? dbStatusColor)
         {
@@ -45,16 +45,15 @@ namespace ProjectManagementAPI.Controllers
             if (projectStatusId == 4)
                 return ("Annulé", "#9E9E9E");
 
-            // PRIORITÉ 2 — Officiellement terminé par PM + toutes validées
+            // PRIORITÉ 2 — Finalisé → affiche "Terminé" (StatusId = 3 en DB)
             if (projectStatusId == 3 && totalTasks > 0 && validatedTasks == totalTasks)
-                return ("Terminé", "#00C853");
+                return ("Terminé", "#00C853"); // ✅ correspond à ta DB
 
-            // PRIORITÉ 3 — Toutes validées, pas encore clôturé
+            // PRIORITÉ 3 — Toutes validées, pas encore finalisé
             if (totalTasks > 0 && validatedTasks == totalTasks && pendingValidationTasks == 0)
-                return ("✅ Prêt à clôturer", "#00BFA5");
+                return ("✅ Prêt à finaliser", "#00BFA5");
 
-            // PRIORITÉ 4 — TOUTES les tâches sont à 100% ET au moins une en attente
-            // ✅ notFinishedTasks == 0 garantit qu'il ne reste PAS de tâches < 100%
+            // PRIORITÉ 4 — Toutes à 100%, en attente de validation
             if (notFinishedTasks == 0 && pendingValidationTasks > 0)
                 return ("⏳ En attente de validation", "#FFA500");
 
@@ -62,7 +61,7 @@ namespace ProjectManagementAPI.Controllers
             if (isDelayed)
                 return ("🔴 En retard", "#FF0000");
 
-            // PRIORITÉ 6 — En cours normal
+            // PRIORITÉ 6 — Statut normal de la DB (En cours, Sans planifier...)
             return (dbStatusName ?? "En cours", dbStatusColor ?? "#2196F3");
         }
 
@@ -118,7 +117,6 @@ namespace ProjectManagementAPI.Controllers
                     var todo = tasks.Count(t => t.Progress == 0);
                     var pendingValidation = tasks.Count(t => t.TaskStatusId == 4);
                     var validated = tasks.Count(t => t.IsValidated);
-                    // ✅ Tâches pas encore à 100%
                     var notFinished = tasks.Count(t => t.Progress < 100);
 
                     int progress = totalTasksCount > 0
@@ -132,7 +130,7 @@ namespace ProjectManagementAPI.Controllers
                     var (statusName, statusColor) = GetDynamicStatus(
                         p.ProjectStatusId, pendingValidation, progress,
                         validated, totalTasksCount, isDelayed,
-                        notFinished,   // ✅ nouveau paramètre
+                        notFinished,
                         p.ProjectStatus?.StatusName, p.ProjectStatus?.Color);
 
                     return new
@@ -200,7 +198,6 @@ namespace ProjectManagementAPI.Controllers
                     var inProgressTasks = tasks.Count(t => t.Progress > 0 && t.Progress < 100);
                     var todoTasks = tasks.Count(t => t.Progress == 0);
                     var pendingValidationTasks = tasks.Count(t => t.TaskStatusId == 4);
-                    // ✅ Tâches pas encore à 100%
                     var notFinishedTasks = tasks.Count(t => t.Progress < 100);
 
                     int progress = totalTasks > 0
@@ -214,7 +211,7 @@ namespace ProjectManagementAPI.Controllers
                     var (statusName, statusColor) = GetDynamicStatus(
                         p.ProjectStatusId, pendingValidationTasks, progress,
                         validatedTasks, totalTasks, isDelayed,
-                        notFinishedTasks,  // ✅ nouveau paramètre
+                        notFinishedTasks,
                         p.ProjectStatus?.StatusName, p.ProjectStatus?.Color);
 
                     return new
@@ -274,7 +271,6 @@ namespace ProjectManagementAPI.Controllers
                 var inProgressTasks = tasks.Count(t => t.Progress > 0 && t.Progress < 100);
                 var todoTasks = tasks.Count(t => t.Progress == 0);
                 var pendingValidationTasks = tasks.Count(t => t.TaskStatusId == 4);
-                // ✅ Tâches pas encore à 100%
                 var notFinishedTasks = tasks.Count(t => t.Progress < 100);
 
                 int progress = totalTasks > 0
@@ -288,7 +284,7 @@ namespace ProjectManagementAPI.Controllers
                 var (statusName, statusColor) = GetDynamicStatus(
                     project.ProjectStatusId, pendingValidationTasks, progress,
                     validatedTasks, totalTasks, isDelayed,
-                    notFinishedTasks,  // ✅ nouveau paramètre
+                    notFinishedTasks,
                     project.ProjectStatus?.StatusName, project.ProjectStatus?.Color);
 
                 return Ok(new
@@ -402,6 +398,61 @@ namespace ProjectManagementAPI.Controllers
             }
         }
 
+        // ============= SUPPRIMER UNE TÂCHE =============
+        [HttpDelete("tasks/{taskId}")]
+        public async Task<IActionResult> DeleteTask(int taskId)
+        {
+            try
+            {
+                var userId = GetCurrentUserId();
+
+                var task = await _context.ProjectTasks
+                    .Include(t => t.Project)
+                    .FirstOrDefaultAsync(t => t.ProjectTaskId == taskId);
+
+                if (task == null)
+                    return NotFound(new { success = false, message = "Tâche non trouvée" });
+
+                if (task.Project.ProjectManagerId != userId)
+                    return StatusCode(403, new { success = false, message = "Non autorisé" });
+
+                if (task.IsValidated)
+                    return BadRequest(new
+                    {
+                        success = false,
+                        message = $"❌ Impossible de supprimer : la tâche '{task.TaskName}' est déjà validée."
+                    });
+
+                if (task.Progress > 0)
+                    return BadRequest(new
+                    {
+                        success = false,
+                        message = $"❌ Impossible de supprimer : la tâche '{task.TaskName}' est en cours ({task.Progress}% complétée)."
+                    });
+
+                if (task.TaskStatusId == 4)
+                    return BadRequest(new
+                    {
+                        success = false,
+                        message = $"❌ Impossible de supprimer : la tâche '{task.TaskName}' est en attente de validation."
+                    });
+
+                var notifications = await _context.Notifications
+                    .Where(n => n.RelatedTaskId == taskId)
+                    .ToListAsync();
+                _context.Notifications.RemoveRange(notifications);
+
+                _context.ProjectTasks.Remove(task);
+                await _context.SaveChangesAsync();
+
+                return Ok(new { success = true, message = $"✅ Tâche '{task.TaskName}' supprimée avec succès" });
+            }
+            catch (Exception ex)
+            {
+                return StatusCode(500, new { success = false, message = "Erreur suppression tâche", error = ex.Message });
+            }
+        }
+
         // ============= ASSIGNER UNE TÂCHE =============
         [HttpPut("tasks/{taskId}/assign")]
         public async Task<IActionResult> AssignTask(int taskId, [FromBody] AssignTaskDTO dto)
@@ -422,9 +473,15 @@ namespace ProjectManagementAPI.Controllers
                 if (task.Project.ProjectManagerId != userId)
                     return StatusCode(403, new { success = false, message = "Non autorisé" });
 
-                var user = await _context.Users.FindAsync(dto.AssignedToUserId);
+                var user = await _context.Users
+                    .Include(u => u.Role)
+                    .FirstOrDefaultAsync(u => u.UserId == dto.AssignedToUserId);
+
                 if (user == null)
                     return BadRequest(new { success = false, message = "Utilisateur non trouvé" });
+
+                if (user.Role.RoleName != "Developer")
+                    return BadRequest(new { success = false, message = "❌ Seuls les développeurs peuvent être assignés à une tâche." });
 
                 task.AssignedToUserId = dto.AssignedToUserId;
                 await _context.SaveChangesAsync();
@@ -437,7 +494,7 @@ namespace ProjectManagementAPI.Controllers
             }
         }
 
-        // ============= MEMBRES D'ÉQUIPE =============
+        // ============= MEMBRES D'ÉQUIPE (Developers uniquement) =============
         [HttpGet("projects/{projectId}/team-members")]
         public async Task<IActionResult> GetProjectTeamMembers(int projectId)
         {
@@ -457,19 +514,21 @@ namespace ProjectManagementAPI.Controllers
                 if (project.ProjectManagerId != userId)
                     return StatusCode(403, new { success = false, message = "Non autorisé" });
 
-                var members = project.Team?.TeamMembers.Select(tm => new
-                {
-                    userId = tm.UserId,
-                    fullName = tm.User.FirstName + " " + tm.User.LastName,
-                    email = tm.User.Email,
-                    roleName = tm.User.Role.RoleName,
-                    isProjectManager = tm.IsProjectManager
-                }).ToList();
+                var members = project.Team?.TeamMembers
+                    .Where(tm => tm.User.Role.RoleName == "Developer")
+                    .Select(tm => new
+                    {
+                        userId = tm.UserId,
+                        fullName = tm.User.FirstName + " " + tm.User.LastName,
+                        email = tm.User.Email,
+                        roleName = tm.User.Role.RoleName,
+                        isProjectManager = tm.IsProjectManager
+                    }).ToList();
 
                 return Ok(new
                 {
                     success = true,
-                    message = members?.Any() == true ? "Membres récupérés" : "Aucun membre trouvé",
+                    message = members?.Any() == true ? "Membres récupérés" : "Aucun développeur trouvé",
                     data = members ?? new List<object>() as object
                 });
             }
@@ -536,25 +595,71 @@ namespace ProjectManagementAPI.Controllers
         {
             try
             {
-                var userId = GetCurrentUserId();
+                var userId = GetCurrentUserId(); // Chef de projet
+                Console.WriteLine($"🔔 ValidateTask called -> taskId={taskId}, pmId={userId}");
+
                 var task = await _context.ProjectTasks
                     .Include(t => t.Project)
                         .ThenInclude(p => p.ProjectTasks)
+                    .Include(t => t.AssignedToUser)
                     .FirstOrDefaultAsync(t => t.ProjectTaskId == taskId);
 
                 if (task == null)
+                {
+                    Console.WriteLine($"❌ ValidateTask -> Task {taskId} not found");
                     return NotFound(new { success = false, message = "Tâche non trouvée" });
+                }
+
+                Console.WriteLine(
+                    $"✅ Task loaded: id={task.ProjectTaskId}, name={task.TaskName}, " +
+                    $"assignedTo={task.AssignedToUserId}, pmIdForProject={task.Project.ProjectManagerId}"
+                );
 
                 if (task.Project.ProjectManagerId != userId)
+                {
+                    Console.WriteLine("❌ ValidateTask -> PM not owner of project");
                     return StatusCode(403, new { success = false, message = "Non autorisé" });
+                }
 
+                // Mettre la tâche en "terminée / validée"
                 task.TaskStatusId = 5;
                 task.Progress = 100;
                 task.IsValidated = true;
                 task.ValidatedByUserId = userId;
                 task.ValidatedAt = DateTime.UtcNow;
 
+                // 🔔 NOTIFICATION POUR LE DÉVELOPPEUR ASSIGNÉ
+                if (task.AssignedToUserId.HasValue)
+                {
+                    var devId = task.AssignedToUserId.Value;
+                    var pm = await _context.Users.FindAsync(userId);
+
+                    Console.WriteLine(
+                        $"📨 Creating TASK_VALIDATED notification -> devId={devId}, taskId={task.ProjectTaskId}"
+                    );
+
+                    _context.Notifications.Add(new Notification
+                    {
+                        UserId = devId,
+                        Title = "✅ Tâche validée",
+                        Message =
+                            $"Votre tâche '{task.TaskName}' a été validée par " +
+                            $"{pm?.FirstName} {pm?.LastName}.",
+                        Type = "TASK_VALIDATED",
+                        RelatedTaskId = task.ProjectTaskId,
+                        RelatedProjectId = task.ProjectId,
+                        RelatedUserId = userId, // le chef de projet
+                        IsRead = false,
+                        CreatedAt = DateTime.UtcNow
+                    });
+                }
+                else
+                {
+                    Console.WriteLine($"⚠️ Task {taskId} has no AssignedToUserId -> no dev notification");
+                }
+
                 await _context.SaveChangesAsync();
+                Console.WriteLine("💾 ValidateTask -> changes saved (task + notification)");
 
                 var allTasks = task.Project.ProjectTasks ?? new List<ProjectTask>();
                 var allValidated = allTasks.All(t => t.IsValidated);
@@ -574,11 +679,13 @@ namespace ProjectManagementAPI.Controllers
             }
             catch (Exception ex)
             {
+                Console.WriteLine($"❌ ValidateTask exception: {ex.Message}");
                 return StatusCode(500, new { success = false, message = "Erreur validation tâche", error = ex.Message });
             }
         }
 
-        // ============= CLÔTURER UN PROJET =============
+
+        // ============= FINALISER UN PROJET =============
         [HttpPut("projects/{projectId}/close")]
         public async Task<IActionResult> CloseProject(int projectId)
         {
@@ -604,42 +711,64 @@ namespace ProjectManagementAPI.Controllers
                     return BadRequest(new
                     {
                         success = false,
-                        message = $"❌ Impossible de clôturer : {pendingTasks} tâche(s) encore en attente de validation."
+                        message = $"❌ Impossible de finaliser : {pendingTasks} tâche(s) encore en attente de validation."
                     });
 
                 if (totalTasks > 0 && validatedTasks < totalTasks)
                     return BadRequest(new
                     {
                         success = false,
-                        message = $"❌ Impossible de clôturer : {validatedTasks}/{totalTasks} tâche(s) validées seulement."
+                        message = $"❌ Impossible de finaliser : {validatedTasks}/{totalTasks} tâche(s) validées seulement."
                     });
 
                 project.Progress = 100;
-                project.ProjectStatusId = 3;
+                project.ProjectStatusId = 3; // "Terminé"
+                await _context.SaveChangesAsync();
+
+                // 🔔 NOTIFICATION POUR TOUS LES REPORTING
+                var reportingUsers = await _context.Users
+                    .Include(u => u.Role)
+                    .Where(u => u.Role.RoleName == "Reporting")
+                    .ToListAsync();
+
+                foreach (var reportingUser in reportingUsers)
+                {
+                    _context.Notifications.Add(new Notification
+                    {
+                        UserId = reportingUser.UserId,
+                        Title = "🏁 Projet terminé",
+                        Message = $"Le projet '{project.ProjectName}' a été finalisé par le chef de projet.",
+                        Type = "PROJECT_FINISHED",
+                        RelatedProjectId = project.ProjectId,
+                        IsRead = false,
+                        CreatedAt = DateTime.UtcNow
+                    });
+                }
+
                 await _context.SaveChangesAsync();
 
                 return Ok(new
                 {
                     success = true,
-                    message = "✅ Projet clôturé avec succès",
+                    message = "✅ Projet finalisé avec succès",
                     data = new { projectId = project.ProjectId, statusId = project.ProjectStatusId }
                 });
             }
             catch (Exception ex)
             {
-                return StatusCode(500, new { success = false, message = "Erreur clôture projet", error = ex.Message });
+                return StatusCode(500, new { success = false, message = "Erreur finalisation projet", error = ex.Message });
             }
         }
-
         // ============= REFUSER UNE TÂCHE =============
         [HttpPut("tasks/{taskId}/reject")]
         public async Task<IActionResult> RejectTask(int taskId, [FromBody] RejectTaskDTO dto)
         {
             try
             {
-                var userId = GetCurrentUserId();
+                var userId = GetCurrentUserId(); // Chef de projet
                 var task = await _context.ProjectTasks
                     .Include(t => t.Project)
+                    .Include(t => t.AssignedToUser)
                     .FirstOrDefaultAsync(t => t.ProjectTaskId == taskId);
 
                 if (task == null)
@@ -648,12 +777,38 @@ namespace ProjectManagementAPI.Controllers
                 if (task.Project.ProjectManagerId != userId)
                     return StatusCode(403, new { success = false, message = "Non autorisé" });
 
+                // Remettre la tâche "en cours"
                 task.TaskStatusId = 2;
                 task.IsValidated = false;
                 task.Progress = 0;
 
                 if (!string.IsNullOrEmpty(dto.Reason))
-                    task.Description += $"\n\n⚠️ Refusé le {DateTime.Now:dd/MM/yyyy HH:mm}: {dto.Reason}";
+                    task.Description += $"\\n\\n⚠️ Refusé le {DateTime.Now:dd/MM/yyyy HH:mm}: {dto.Reason}";
+
+                // 🔔 NOTIFICATION POUR LE DÉVELOPPEUR ASSIGNÉ
+                if (task.AssignedToUserId.HasValue)
+                {
+                    var devId = task.AssignedToUserId.Value;
+                    var pm = await _context.Users.FindAsync(userId);
+
+                    _context.Notifications.Add(new Notification
+                    {
+                        UserId = devId,
+                        Title = "❌ Tâche refusée",
+                        Message =
+                            $"Votre tâche '{task.TaskName}' a été refusée par " +
+                            $"{pm?.FirstName} {pm?.LastName}. " +
+                            (!string.IsNullOrWhiteSpace(dto.Reason)
+                                ? $"Raison : {dto.Reason}"
+                                : "Merci de corriger et de la soumettre à nouveau."),
+                        Type = "TASK_REJECTED",
+                        RelatedTaskId = task.ProjectTaskId,
+                        RelatedProjectId = task.ProjectId,
+                        RelatedUserId = userId, // le chef de projet
+                        IsRead = false,
+                        CreatedAt = DateTime.UtcNow
+                    });
+                }
 
                 await _context.SaveChangesAsync();
 
@@ -664,5 +819,6 @@ namespace ProjectManagementAPI.Controllers
                 return StatusCode(500, new { success = false, message = "Erreur refus tâche", error = ex.Message });
             }
         }
+
     }
 }

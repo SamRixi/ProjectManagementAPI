@@ -164,7 +164,7 @@ namespace ProjectManagementAPI.Data
                 .HasOne(n => n.RelatedTask)
                 .WithMany()
                 .HasForeignKey(n => n.RelatedTaskId)
-                .OnDelete(DeleteBehavior.Restrict);  // ✅ FIXED: Changed from SetNull to avoid conflicts
+                  .OnDelete(DeleteBehavior.SetNull);   // ✅ FIXED: Changed from SetNull to avoid conflicts
 
             // ========== Comment - ProjectTask ==========
             modelBuilder.Entity<Comment>()

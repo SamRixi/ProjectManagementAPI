@@ -42,7 +42,7 @@ const authService = {
     login: async (credentials) => {
         try {
             const payload = {
-                username: credentials.username,
+                userName: credentials.username,
                 password: credentials.password
             };
 

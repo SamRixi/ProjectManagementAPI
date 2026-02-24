@@ -13,14 +13,30 @@ const notificationService = {
     getMyNotifications: async () => {
         try {
             const response = await axios.get(
-                `${API_URL}/Notification`,  // ✅ GET api/Notification
+                `${API_URL}/Notification`,
                 getHeaders()
             );
+
+            // 🔍 Log brut de la réponse API
+            console.log('🔔 API /Notification raw response:', response.data);
+
+            // Si tu veux voir chaque notif une par une
+            if (Array.isArray(response.data.data)) {
+                response.data.data.forEach((n, i) => {
+                    console.log(
+                        `🔹 notif[${i}] => id=${n.notificationId}, type=${n.type}, title=${n.title}`
+                    );
+                });
+            } else {
+                console.warn('⚠️ response.data.data is not an array:', response.data.data);
+            }
+
             return {
                 success: true,
                 data: Array.isArray(response.data.data) ? response.data.data : []
             };
         } catch (error) {
+            console.error('❌ Error /Notification:', error.response?.data || error);
             return {
                 success: false,
                 data: [],

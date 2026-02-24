@@ -190,7 +190,7 @@ const taskService = {
     deleteTask: async (taskId) => {
         try {
             console.log(`🗑️ Deleting task with ID: ${taskId}`);
-            const response = await api.delete(`/task/${taskId}`);
+            const response = await api.delete(`/ProjectManager/tasks/${taskId}`); // ✅ route corrigée
             console.log('✅ Delete task response:', response.data);
             return {
                 success: response.data.success,

@@ -24,6 +24,7 @@ namespace ProjectManagementAPI.Models
 
         public int? RelatedProjectId { get; set; }  // Optional: Link to project
         public int? RelatedTaskId { get; set; }     // Optional: Link to task
+        public int? RelatedUserId { get; set; }
 
         [Required]
         public DateTime CreatedAt { get; set; }
@@ -34,5 +35,6 @@ namespace ProjectManagementAPI.Models
         public User User { get; set; }
         public Project? RelatedProject { get; set; }
         public ProjectTask? RelatedTask { get; set; }
+        public User? RelatedUser { get; set; }
     }
 }

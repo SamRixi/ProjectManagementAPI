@@ -38,7 +38,7 @@ const DeveloperTasks = () => {
 
                 loadedTasks.forEach((t) => {
                     console.log(
-                        `Task "${t.taskName}" - Status: "${t.status}" - Progress: ${t.progress}%`
+                        `Task "${t.taskName}" - Status: "${t.status}" - Progress: ${t.progress}% - isValidated=${t.isValidated}`
                     );
                 });
 
@@ -103,7 +103,11 @@ const DeveloperTasks = () => {
         }
     };
 
-    const isTaskValidated = (status) => {
+    // ✅ Utilise aussi isValidated, pas seulement le texte du statut
+    const isTaskValidated = (task) => {
+        if (task.isValidated) return true;
+
+        const status = task.status || '';
         const validatedStatuses = [
             'Validée',
             'Validé',
@@ -111,44 +115,34 @@ const DeveloperTasks = () => {
             'Complété'
         ];
         return validatedStatuses.some((s) =>
-            status?.toLowerCase().includes(s.toLowerCase())
+            status.toLowerCase().includes(s.toLowerCase())
         );
     };
 
-    const isTaskPending = (status) => {
-        return status?.toLowerCase().includes('attente');
+    const isTaskPending = (task) => {
+        const status = task.status || '';
+        return status.toLowerCase().includes('attente');
     };
 
-    const getDisplayStatus = (status) => {
-        const s = status?.toLowerCase() || '';
+    const getDisplayStatus = (task) => {
+        const status = task.status?.toLowerCase() || '';
 
-        if (s.includes('valid')) return 'Validée';
-        if (s.includes('attente'))
+        if (task.isValidated) return 'Validée';
+        if (status.includes('attente'))
             return 'Terminé · En attente de validation';
-        if (s.includes('terminé')) return 'Terminé';
-        if (s.includes('cours')) return 'En cours';
-        if (s.includes('faire')) return 'À faire';
-        return status || '—';
+        if (status.includes('terminé')) return 'Terminé';
+        if (status.includes('cours')) return 'En cours';
+        if (status.includes('faire')) return 'À faire';
+        return task.status || '—';
     };
 
-    const getStatusClass = (status) => {
-        const statusLower = status?.toLowerCase() || '';
+    const getStatusClass = (task) => {
+        const statusLower = task.status?.toLowerCase() || '';
 
-        if (
-            statusLower.includes('validé') ||
-            statusLower.includes('complété')
-        ) {
-            return 'completed';
-        }
-        if (statusLower.includes('attente')) {
-            return 'pending-validation';
-        }
-        if (statusLower.includes('cours')) {
-            return 'in-progress';
-        }
-        if (statusLower.includes('terminé')) {
-            return 'completed';
-        }
+        if (task.isValidated) return 'completed';
+        if (statusLower.includes('attente')) return 'pending-validation';
+        if (statusLower.includes('cours')) return 'in-progress';
+        if (statusLower.includes('terminé')) return 'completed';
         return 'pending';
     };
 
@@ -178,12 +172,8 @@ const DeveloperTasks = () => {
         });
     };
 
-    const isTaskOverdue = (deadline, status) => {
-        if (
-            !deadline ||
-            isTaskValidated(status) ||
-            isTaskPending(status)
-        )
+    const isTaskOverdue = (deadline, task) => {
+        if (!deadline || isTaskValidated(task) || isTaskPending(task))
             return false;
         return new Date(deadline) < new Date();
     };
@@ -220,7 +210,8 @@ const DeveloperTasks = () => {
                                         opacity: 0.9
                                     }}
                                 >
-                                    Gérez et mettez à jour toutes vos tâches assignées
+                                    Gérez et mettez à jour toutes vos tâches
+                                    assignées
                                 </p>
                             </div>
                         </div>
@@ -247,24 +238,25 @@ const DeveloperTasks = () => {
                             {tasks.length > 0 ? (
                                 <div className="task-list">
                                     {tasks.map((task) => {
-                                        const isValidated = isTaskValidated(task.status);
-                                        const isPending = isTaskPending(task.status);
-                                        const isLocked = isValidated || isPending;
+                                        const validated = isTaskValidated(task);
+                                        const pending = isTaskPending(task);
+                                        const isLocked = validated || pending;
 
                                         return (
                                             <div
                                                 className={`task-item ${isTaskOverdue(
                                                     task.deadline,
-                                                    task.status
+                                                    task
                                                 )
                                                         ? 'overdue'
                                                         : ''
-                                                    } ${isLocked ? 'locked' : ''}`}
+                                                    } ${isLocked ? 'locked' : ''
+                                                    }`}
                                                 key={task.taskId}
                                             >
                                                 <div
                                                     className={`task-status ${getStatusClass(
-                                                        task.status
+                                                        task
                                                     )}`}
                                                 ></div>
 
@@ -272,27 +264,38 @@ const DeveloperTasks = () => {
                                                     <div
                                                         style={{
                                                             display: 'flex',
-                                                            alignItems: 'center',
+                                                            alignItems:
+                                                                'center',
                                                             gap: '10px'
                                                         }}
                                                     >
                                                         <h4 style={{ margin: 0 }}>
-                                                            {task.taskName || 'Sans titre'}
+                                                            {task.taskName ||
+                                                                'Sans titre'}
                                                         </h4>
 
-                                                        {isValidated && (
+                                                        {validated && (
                                                             <span
                                                                 style={{
-                                                                    display: 'inline-flex',
-                                                                    alignItems: 'center',
+                                                                    display:
+                                                                        'inline-flex',
+                                                                    alignItems:
+                                                                        'center',
                                                                     gap: '5px',
-                                                                    padding: '4px 12px',
-                                                                    background: '#10b981',
-                                                                    color: 'white',
-                                                                    borderRadius: '12px',
-                                                                    fontSize: '0.75rem',
-                                                                    fontWeight: '700',
-                                                                    textTransform: 'uppercase'
+                                                                    padding:
+                                                                        '4px 12px',
+                                                                    background:
+                                                                        '#10b981',
+                                                                    color:
+                                                                        'white',
+                                                                    borderRadius:
+                                                                        '12px',
+                                                                    fontSize:
+                                                                        '0.75rem',
+                                                                    fontWeight:
+                                                                        '700',
+                                                                    textTransform:
+                                                                        'uppercase'
                                                                 }}
                                                             >
                                                                 <CheckCircle size={14} />
@@ -300,19 +303,28 @@ const DeveloperTasks = () => {
                                                             </span>
                                                         )}
 
-                                                        {isPending && (
+                                                        {pending && (
                                                             <span
                                                                 style={{
-                                                                    display: 'inline-flex',
-                                                                    alignItems: 'center',
+                                                                    display:
+                                                                        'inline-flex',
+                                                                    alignItems:
+                                                                        'center',
                                                                     gap: '5px',
-                                                                    padding: '4px 12px',
-                                                                    background: '#f59e0b',
-                                                                    color: 'white',
-                                                                    borderRadius: '12px',
-                                                                    fontSize: '0.75rem',
-                                                                    fontWeight: '700',
-                                                                    textTransform: 'uppercase'
+                                                                    padding:
+                                                                        '4px 12px',
+                                                                    background:
+                                                                        '#f59e0b',
+                                                                    color:
+                                                                        'white',
+                                                                    borderRadius:
+                                                                        '12px',
+                                                                    fontSize:
+                                                                        '0.75rem',
+                                                                    fontWeight:
+                                                                        '700',
+                                                                    textTransform:
+                                                                        'uppercase'
                                                                 }}
                                                             >
                                                                 <Clock size={14} />
@@ -325,36 +337,48 @@ const DeveloperTasks = () => {
                                                         style={{
                                                             fontSize: '0.85rem',
                                                             color: '#4b5563',
-                                                            margin: '0.2rem 0 0.4rem'
+                                                            margin:
+                                                                '0.2rem 0 0.4rem'
                                                         }}
                                                     >
                                                         Statut :{' '}
-                                                        {getDisplayStatus(task.status)}
+                                                        {getDisplayStatus(task)}
                                                     </p>
 
-                                                    {lastComments[task.taskId] && (
-                                                        <p
-                                                            style={{
-                                                                fontSize: '0.85rem',
-                                                                color: '#b91c1c',
-                                                                margin: '0.2rem 0 0.4rem',
-                                                                fontWeight: 600
-                                                            }}
-                                                        >
-                                                            Raison du refus :{' '}
-                                                            {lastComments[task.taskId]}
-                                                        </p>
-                                                    )}
+                                                    {lastComments[
+                                                        task.taskId
+                                                    ] && (
+                                                            <p
+                                                                style={{
+                                                                    fontSize:
+                                                                        '0.85rem',
+                                                                    color:
+                                                                        '#b91c1c',
+                                                                    margin:
+                                                                        '0.2rem 0 0.4rem',
+                                                                    fontWeight: 600
+                                                                }}
+                                                            >
+                                                                Raison du refus :{' '}
+                                                                {
+                                                                    lastComments[
+                                                                    task.taskId
+                                                                    ]
+                                                                }
+                                                            </p>
+                                                        )}
 
                                                     <p>
                                                         Projet:{' '}
-                                                        {task.projectName || 'N/A'}
+                                                        {task.projectName ||
+                                                            'N/A'}
                                                     </p>
                                                     <p
                                                         style={{
                                                             fontSize: '0.85rem',
                                                             color: '#666',
-                                                            marginTop: '0.25rem'
+                                                            marginTop:
+                                                                '0.25rem'
                                                         }}
                                                     >
                                                         Chef de projet:{' '}
@@ -366,13 +390,15 @@ const DeveloperTasks = () => {
                                                             task.priority
                                                         )}`}
                                                     >
-                                                        {task.priority || 'Moyenne'} Priorité
+                                                        {task.priority ||
+                                                            'Moyenne'}{' '}
+                                                        Priorité
                                                     </span>
                                                 </div>
 
                                                 <div className="task-meta">
                                                     <span className="task-deadline">
-                                                        {isValidated
+                                                        {validated
                                                             ? `Complété: ${formatDate(
                                                                 task.completedDate
                                                             )}`
@@ -383,41 +409,48 @@ const DeveloperTasks = () => {
 
                                                     {isTaskOverdue(
                                                         task.deadline,
-                                                        task.status
+                                                        task
                                                     ) && (
                                                             <span className="overdue-badge">
                                                                 ⚠️ EN RETARD
                                                             </span>
                                                         )}
 
-                                                    {task.progress !== undefined && (
-                                                        <div className="progress-wrapper">
-                                                            <div className="progress-container">
-                                                                <div
-                                                                    className={`progress-fill ${getProgressClass(
+                                                    {task.progress !==
+                                                        undefined && (
+                                                            <div className="progress-wrapper">
+                                                                <div className="progress-container">
+                                                                    <div
+                                                                        className={`progress-fill ${getProgressClass(
+                                                                            task.progress
+                                                                        )}`}
+                                                                        style={{
+                                                                            width: `${task.progress}%`
+                                                                        }}
+                                                                    ></div>
+                                                                </div>
+                                                                <span className="progress-text">
+                                                                    {
                                                                         task.progress
-                                                                    )}`}
-                                                                    style={{
-                                                                        width: `${task.progress}%`
-                                                                    }}
-                                                                ></div>
+                                                                    }
+                                                                    % complété
+                                                                </span>
                                                             </div>
-                                                            <span className="progress-text">
-                                                                {task.progress}% complété
-                                                            </span>
-                                                        </div>
-                                                    )}
+                                                        )}
 
                                                     <button
                                                         className="btn-update-task"
                                                         onClick={() =>
                                                             !isLocked &&
-                                                            setSelectedTask(task)
+                                                            setSelectedTask(
+                                                                task
+                                                            )
                                                         }
                                                         disabled={isLocked}
                                                         style={{
                                                             marginTop: '1rem',
-                                                            padding: '8px 16px',
+                                                            padding:
+                                                                '8px 16px',
                                                             background: isLocked
                                                                 ? '#d1d5db'
                                                                 : '#00A651',
@@ -431,20 +464,23 @@ const DeveloperTasks = () => {
                                                                 : 'pointer',
                                                             fontSize: '0.9rem',
                                                             fontWeight: '600',
-                                                            transition: 'all 0.3s',
-                                                            opacity: isLocked ? 0.6 : 1
+                                                            transition:
+                                                                'all 0.3s',
+                                                            opacity: isLocked
+                                                                ? 0.6
+                                                                : 1
                                                         }}
                                                         title={
-                                                            isValidated
+                                                            validated
                                                                 ? '✅ Tâche validée par le chef de projet - Modification impossible'
-                                                                : isPending
+                                                                : pending
                                                                     ? '⏳ Tâche en attente de validation par le chef de projet'
                                                                     : 'Mettre à jour la tâche'
                                                         }
                                                     >
-                                                        {isValidated
+                                                        {validated
                                                             ? '🔒 Validée'
-                                                            : isPending
+                                                            : pending
                                                                 ? '⏳ En attente'
                                                                 : '✏️ Mettre à jour'}
                                                     </button>

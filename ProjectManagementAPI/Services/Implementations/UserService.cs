@@ -20,7 +20,6 @@ namespace ProjectManagementAPI.Services.Implementations
         {
             try
             {
-                // Vérifier si username existe
                 var existingUser = await _context.Users
                     .FirstOrDefaultAsync(u => u.UserName == dto.UserName || u.Email == dto.Email);
 
@@ -362,8 +361,6 @@ namespace ProjectManagementAPI.Services.Implementations
 
                 await _context.SaveChangesAsync();
 
-                // TODO: Envoyer email avec token
-
                 return new ApiResponse<bool>
                 {
                     Success = true,
@@ -530,7 +527,7 @@ namespace ProjectManagementAPI.Services.Implementations
             }
         }
 
-        // ============= DELETE USER ============= ✅ IMPLÉMENTÉ
+        // ============= DELETE USER =============
         public async Task<ApiResponse<bool>> DeleteUserAsync(int userId)
         {
             try
@@ -548,13 +545,23 @@ namespace ProjectManagementAPI.Services.Implementations
                     };
                 }
 
-                // Optional: Remove user from teams first
+                // 1) Supprimer les TeamMembers
                 if (user.TeamMembers != null && user.TeamMembers.Any())
                 {
                     _context.TeamMembers.RemoveRange(user.TeamMembers);
                 }
 
-                // Delete the user
+                // 2) Supprimer les notifications liées
+                var relatedNotifs = await _context.Notifications
+                    .Where(n => n.UserId == userId || n.RelatedUserId == userId)
+                    .ToListAsync();
+
+                if (relatedNotifs.Any())
+                {
+                    _context.Notifications.RemoveRange(relatedNotifs);
+                }
+
+                // 3) Supprimer l'utilisateur
                 _context.Users.Remove(user);
                 await _context.SaveChangesAsync();
 
