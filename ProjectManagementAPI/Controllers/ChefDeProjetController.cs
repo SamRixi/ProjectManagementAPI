@@ -41,27 +41,21 @@ namespace ProjectManagementAPI.Controllers
             string? dbStatusName,
             string? dbStatusColor)
         {
-            // PRIORITÉ 1 — Annulé
             if (projectStatusId == 4)
                 return ("Annulé", "#9E9E9E");
 
-            // PRIORITÉ 2 — Finalisé → affiche "Terminé" (StatusId = 3 en DB)
             if (projectStatusId == 3 && totalTasks > 0 && validatedTasks == totalTasks)
-                return ("Terminé", "#00C853"); // ✅ correspond à ta DB
+                return ("Terminé", "#00C853");
 
-            // PRIORITÉ 3 — Toutes validées, pas encore finalisé
             if (totalTasks > 0 && validatedTasks == totalTasks && pendingValidationTasks == 0)
                 return ("✅ Prêt à finaliser", "#00BFA5");
 
-            // PRIORITÉ 4 — Toutes à 100%, en attente de validation
             if (notFinishedTasks == 0 && pendingValidationTasks > 0)
                 return ("⏳ En attente de validation", "#FFA500");
 
-            // PRIORITÉ 5 — En retard
             if (isDelayed)
                 return ("🔴 En retard", "#FF0000");
 
-            // PRIORITÉ 6 — Statut normal de la DB (En cours, Sans planifier...)
             return (dbStatusName ?? "En cours", dbStatusColor ?? "#2196F3");
         }
 
@@ -355,7 +349,9 @@ namespace ProjectManagementAPI.Controllers
                             : "Non assigné",
                         progress = t.Progress,
                         isValidated = t.IsValidated,
-                        isOverdue = t.DueDate < DateTime.Now && t.TaskStatusId != 4 && t.TaskStatusId != 5
+                        isOverdue = t.DueDate < DateTime.Now && t.TaskStatusId != 4 && t.TaskStatusId != 5,
+                        rejectionReason = t.RejectionReason,
+                        rejectedAt = t.RejectedAt
                     })
                     .ToListAsync();
 
@@ -569,7 +565,9 @@ namespace ProjectManagementAPI.Controllers
                         status = t.ProjectTasksStatus.StatusName,
                         priority = t.Priority.Name,
                         deadline = t.DueDate,
-                        progress = t.Progress
+                        progress = t.Progress,
+                        rejectionReason = t.RejectionReason,
+                        rejectedAt = t.RejectedAt
                     })
                     .ToListAsync();
 
@@ -595,8 +593,7 @@ namespace ProjectManagementAPI.Controllers
         {
             try
             {
-                var userId = GetCurrentUserId(); // Chef de projet
-                Console.WriteLine($"🔔 ValidateTask called -> taskId={taskId}, pmId={userId}");
+                var userId = GetCurrentUserId();
 
                 var task = await _context.ProjectTasks
                     .Include(t => t.Project)
@@ -605,38 +602,25 @@ namespace ProjectManagementAPI.Controllers
                     .FirstOrDefaultAsync(t => t.ProjectTaskId == taskId);
 
                 if (task == null)
-                {
-                    Console.WriteLine($"❌ ValidateTask -> Task {taskId} not found");
                     return NotFound(new { success = false, message = "Tâche non trouvée" });
-                }
-
-                Console.WriteLine(
-                    $"✅ Task loaded: id={task.ProjectTaskId}, name={task.TaskName}, " +
-                    $"assignedTo={task.AssignedToUserId}, pmIdForProject={task.Project.ProjectManagerId}"
-                );
 
                 if (task.Project.ProjectManagerId != userId)
-                {
-                    Console.WriteLine("❌ ValidateTask -> PM not owner of project");
                     return StatusCode(403, new { success = false, message = "Non autorisé" });
-                }
 
-                // Mettre la tâche en "terminée / validée"
                 task.TaskStatusId = 5;
                 task.Progress = 100;
                 task.IsValidated = true;
                 task.ValidatedByUserId = userId;
                 task.ValidatedAt = DateTime.UtcNow;
 
-                // 🔔 NOTIFICATION POUR LE DÉVELOPPEUR ASSIGNÉ
+                // reset éventuelle info de rejet
+                task.RejectionReason = null;
+                task.RejectedAt = null;
+
                 if (task.AssignedToUserId.HasValue)
                 {
                     var devId = task.AssignedToUserId.Value;
                     var pm = await _context.Users.FindAsync(userId);
-
-                    Console.WriteLine(
-                        $"📨 Creating TASK_VALIDATED notification -> devId={devId}, taskId={task.ProjectTaskId}"
-                    );
 
                     _context.Notifications.Add(new Notification
                     {
@@ -648,18 +632,13 @@ namespace ProjectManagementAPI.Controllers
                         Type = "TASK_VALIDATED",
                         RelatedTaskId = task.ProjectTaskId,
                         RelatedProjectId = task.ProjectId,
-                        RelatedUserId = userId, // le chef de projet
+                        RelatedUserId = userId,
                         IsRead = false,
                         CreatedAt = DateTime.UtcNow
                     });
                 }
-                else
-                {
-                    Console.WriteLine($"⚠️ Task {taskId} has no AssignedToUserId -> no dev notification");
-                }
 
                 await _context.SaveChangesAsync();
-                Console.WriteLine("💾 ValidateTask -> changes saved (task + notification)");
 
                 var allTasks = task.Project.ProjectTasks ?? new List<ProjectTask>();
                 var allValidated = allTasks.All(t => t.IsValidated);
@@ -679,11 +658,9 @@ namespace ProjectManagementAPI.Controllers
             }
             catch (Exception ex)
             {
-                Console.WriteLine($"❌ ValidateTask exception: {ex.Message}");
                 return StatusCode(500, new { success = false, message = "Erreur validation tâche", error = ex.Message });
             }
         }
-
 
         // ============= FINALISER UN PROJET =============
         [HttpPut("projects/{projectId}/close")]
@@ -722,10 +699,9 @@ namespace ProjectManagementAPI.Controllers
                     });
 
                 project.Progress = 100;
-                project.ProjectStatusId = 3; // "Terminé"
+                project.ProjectStatusId = 3;
                 await _context.SaveChangesAsync();
 
-                // 🔔 NOTIFICATION POUR TOUS LES REPORTING
                 var reportingUsers = await _context.Users
                     .Include(u => u.Role)
                     .Where(u => u.Role.RoleName == "Reporting")
@@ -759,13 +735,14 @@ namespace ProjectManagementAPI.Controllers
                 return StatusCode(500, new { success = false, message = "Erreur finalisation projet", error = ex.Message });
             }
         }
+
         // ============= REFUSER UNE TÂCHE =============
         [HttpPut("tasks/{taskId}/reject")]
         public async Task<IActionResult> RejectTask(int taskId, [FromBody] RejectTaskDTO dto)
         {
             try
             {
-                var userId = GetCurrentUserId(); // Chef de projet
+                var userId = GetCurrentUserId();
                 var task = await _context.ProjectTasks
                     .Include(t => t.Project)
                     .Include(t => t.AssignedToUser)
@@ -777,15 +754,22 @@ namespace ProjectManagementAPI.Controllers
                 if (task.Project.ProjectManagerId != userId)
                     return StatusCode(403, new { success = false, message = "Non autorisé" });
 
-                // Remettre la tâche "en cours"
-                task.TaskStatusId = 2;
+                // Remettre la tâche "À faire"
+                task.TaskStatusId = 1;
                 task.IsValidated = false;
                 task.Progress = 0;
 
-                if (!string.IsNullOrEmpty(dto.Reason))
-                    task.Description += $"\\n\\n⚠️ Refusé le {DateTime.Now:dd/MM/yyyy HH:mm}: {dto.Reason}";
+                if (!string.IsNullOrWhiteSpace(dto.Reason))
+                {
+                    task.RejectionReason = dto.Reason;
+                    task.RejectedAt = DateTime.UtcNow;
+                }
+                else
+                {
+                    task.RejectionReason = "Aucune raison fournie";
+                    task.RejectedAt = DateTime.UtcNow;
+                }
 
-                // 🔔 NOTIFICATION POUR LE DÉVELOPPEUR ASSIGNÉ
                 if (task.AssignedToUserId.HasValue)
                 {
                     var devId = task.AssignedToUserId.Value;
@@ -804,7 +788,7 @@ namespace ProjectManagementAPI.Controllers
                         Type = "TASK_REJECTED",
                         RelatedTaskId = task.ProjectTaskId,
                         RelatedProjectId = task.ProjectId,
-                        RelatedUserId = userId, // le chef de projet
+                        RelatedUserId = userId,
                         IsRead = false,
                         CreatedAt = DateTime.UtcNow
                     });
@@ -812,13 +796,12 @@ namespace ProjectManagementAPI.Controllers
 
                 await _context.SaveChangesAsync();
 
-                return Ok(new { success = true, message = $"Tâche '{task.TaskName}' refusée et remise en cours" });
+                return Ok(new { success = true, message = $"Tâche '{task.TaskName}' refusée et remise à faire" });
             }
             catch (Exception ex)
             {
                 return StatusCode(500, new { success = false, message = "Erreur refus tâche", error = ex.Message });
             }
         }
-
     }
 }

@@ -53,13 +53,17 @@ const ProjectManagerTasks = () => {
 
     useEffect(() => {
         let filtered = [...allTasks];
+
         if (searchQuery) {
+            const q = searchQuery.toLowerCase();
             filtered = filtered.filter(
                 (task) =>
-                    task.taskName.toLowerCase().includes(searchQuery.toLowerCase()) ||
-                    task.description?.toLowerCase().includes(searchQuery.toLowerCase())
+                    task.taskName.toLowerCase().includes(q) ||
+                    task.description?.toLowerCase().includes(q) ||
+                    task.rejectionReason?.toLowerCase().includes(q)
             );
         }
+
         if (filterStatus !== 'all') {
             filtered = filtered.filter((task) => {
                 const s = task.status?.toLowerCase() || '';
@@ -72,6 +76,7 @@ const ProjectManagerTasks = () => {
                 return true;
             });
         }
+
         setFilteredTasks(filtered);
     }, [allTasks, searchQuery, filterStatus]);
 
@@ -217,6 +222,14 @@ const ProjectManagerTasks = () => {
         task.progress === 0 &&
         !task.status?.toLowerCase().includes('attente');
 
+    const formatRejected = (task) => {
+        if (!task.rejectionReason) return null;
+        const dateText = task.rejectedAt
+            ? ` le ${new Date(task.rejectedAt).toLocaleString('fr-FR')}`
+            : '';
+        return `⚠️ Refusé${dateText} : ${task.rejectionReason}`;
+    };
+
     return (
         <ProjectManagerLayout>
             <div className="dashboard-container">
@@ -265,7 +278,13 @@ const ProjectManagerTasks = () => {
                                 <select
                                     value={selectedProject}
                                     onChange={(e) => setSelectedProject(e.target.value)}
-                                    style={{ width: '100%', padding: '0.7rem', borderRadius: '8px', border: '1px solid #d1d5db', fontSize: '0.95rem' }}
+                                    style={{
+                                        width: '100%',
+                                        padding: '0.7rem',
+                                        borderRadius: '8px',
+                                        border: '1px solid #d1d5db',
+                                        fontSize: '0.95rem'
+                                    }}
                                 >
                                     {projects.map((project) => (
                                         <option key={project.projectId} value={project.projectId}>
@@ -282,7 +301,13 @@ const ProjectManagerTasks = () => {
                                 <select
                                     value={filterStatus}
                                     onChange={(e) => setFilterStatus(e.target.value)}
-                                    style={{ width: '100%', padding: '0.7rem', borderRadius: '8px', border: '1px solid #d1d5db', fontSize: '0.95rem' }}
+                                    style={{
+                                        width: '100%',
+                                        padding: '0.7rem',
+                                        borderRadius: '8px',
+                                        border: '1px solid #d1d5db',
+                                        fontSize: '0.95rem'
+                                    }}
                                 >
                                     <option value="all">📋 Tous</option>
                                     <option value="todo">📋 À faire</option>
@@ -304,7 +329,13 @@ const ProjectManagerTasks = () => {
                                     placeholder="Nom de la tâche..."
                                     value={searchQuery}
                                     onChange={(e) => setSearchQuery(e.target.value)}
-                                    style={{ width: '100%', padding: '0.7rem', borderRadius: '8px', border: '1px solid #d1d5db', fontSize: '0.95rem' }}
+                                    style={{
+                                        width: '100%',
+                                        padding: '0.7rem',
+                                        borderRadius: '8px',
+                                        border: '1px solid #d1d5db',
+                                        fontSize: '0.95rem'
+                                    }}
                                 />
                             </div>
                         </div>
@@ -321,6 +352,7 @@ const ProjectManagerTasks = () => {
                             {filteredTasks.map((task) => {
                                 const badge = getStatusBadge(task.status);
                                 const canDelete = isDeletable(task);
+                                const rejectedText = formatRejected(task);
                                 return (
                                     <div
                                         key={task.taskId}
@@ -337,6 +369,11 @@ const ProjectManagerTasks = () => {
                                             <p style={{ margin: '0.3rem 0 0 0', color: '#6b7280' }}>
                                                 {task.description || 'Aucune description'}
                                             </p>
+                                            {rejectedText && (
+                                                <p style={{ margin: '0.2rem 0 0 0', color: '#b45309', fontSize: '0.85rem' }}>
+                                                    {rejectedText}
+                                                </p>
+                                            )}
                                             <div style={{ display: 'flex', gap: '0.8rem', alignItems: 'center', marginTop: '0.5rem' }}>
                                                 <span className={`task-priority ${getPriorityClass(task.priority)}`}>
                                                     {task.priority || 'Moyenne'}
@@ -367,7 +404,6 @@ const ProjectManagerTasks = () => {
                                                 </span>
                                             )}
 
-                                            {/* ✅ BOUTON SUPPRIMER */}
                                             <button
                                                 onClick={() => handleDeleteTask(task)}
                                                 disabled={!canDelete}
@@ -485,17 +521,20 @@ const ProjectManagerTasks = () => {
                                     className="form-select"
                                 >
                                     <option value="">Non assigné</option>
-                                    {/* ✅ FIX — backend retourne uniquement les Developers */}
                                     {teamMembers.map((member) => (
                                         <option key={member.userId} value={member.userId}>
-                                            {member.fullName} {/* ✅ Sans (roleName) — toujours Developer */}
+                                            {member.fullName}
                                         </option>
                                     ))}
                                 </select>
                             </div>
 
                             <div className="modal-footer">
-                                <button type="button" onClick={() => { setShowCreateModal(false); resetForm(); }} className="btn-cancel">
+                                <button
+                                    type="button"
+                                    onClick={() => { setShowCreateModal(false); resetForm(); }}
+                                    className="btn-cancel"
+                                >
                                     Annuler
                                 </button>
                                 <button type="submit" className="btn-save">

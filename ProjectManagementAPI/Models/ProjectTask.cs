@@ -32,6 +32,7 @@ namespace ProjectManagementAPI.Models
         public ICollection<Comment> Comments { get; set; }
         public User CreatedByUser { get; set; } = null!;
         public string? RejectionReason { get; set; }
+        public DateTime? RejectedAt { get; set; }
 
     }
 }
