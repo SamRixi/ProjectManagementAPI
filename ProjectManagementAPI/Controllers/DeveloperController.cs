@@ -3,6 +3,7 @@ using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 using ProjectManagementAPI.Data;
 using ProjectManagementAPI.DTOs;
+using ProjectManagementAPI.Models;
 using ProjectManagementAPI.Services.Interfaces;
 using System;
 using System.Linq;
@@ -260,7 +261,10 @@ namespace ProjectManagementAPI.Controllers
                 if (string.IsNullOrEmpty(userIdClaim) || !int.TryParse(userIdClaim, out int userId))
                     return Unauthorized(new { success = false, message = "Utilisateur non authentifié" });
 
-                var task = await _context.ProjectTasks.FindAsync(taskId);
+                var task = await _context.ProjectTasks
+                    .Include(t => t.Project) // ✅ pour accéder au ProjectManagerId
+                    .FirstOrDefaultAsync(t => t.ProjectTaskId == taskId);
+
                 if (task == null)
                     return NotFound(new { success = false, message = "Tâche introuvable" });
 
@@ -273,12 +277,16 @@ namespace ProjectManagementAPI.Controllers
                 if (task.TaskStatusId == 4 && dto.TaskStatusId != 2)
                     return StatusCode(403, new { success = false, message = "Tâche en attente de validation. Contactez votre chef de projet." });
 
+                // 🔍 avant modification
+                var oldStatus = task.TaskStatusId;
+                var oldProgress = task.Progress;
+
                 if (dto.Progress.HasValue)
                     task.Progress = dto.Progress.Value;
 
                 if (task.Progress == 100 || dto.TaskStatusId == 3)
                 {
-                    // ✅ Progress 100% → soumettre au PM, pas "Terminé" automatiquement
+                    // ✅ Progress 100% → soumettre au PM
                     task.TaskStatusId = 4; // En attente de validation
                     task.Progress = 100;
                     task.IsValidated = false;
@@ -290,8 +298,38 @@ namespace ProjectManagementAPI.Controllers
 
                 await _context.SaveChangesAsync();
 
-                // ✅ Recalcule la progression du projet SANS changer le statut automatiquement
+                // ✅ Recalcule la progression du projet
                 await RecalculateProjectProgressAsync(task.ProjectId);
+
+                // 🔔 NOTIFICATION PM : uniquement si on vient de passer en attente de validation
+                if (task.TaskStatusId == 4 && (oldStatus != 4 || oldProgress != 100))
+                {
+                    // Récupérer le PM du projet
+                    var project = task.Project;
+                    if (project != null && project.ProjectManagerId.HasValue)
+                    {
+                        var pmId = project.ProjectManagerId.Value;
+                        var dev = await _context.Users.FindAsync(userId);
+                        var devNom = dev != null
+                            ? $"{dev.FirstName} {dev.LastName}"
+                            : "Un développeur";
+
+                        // ⚠️ ici on utilise directement DbContext, donc on crée une Notification manuellement
+                        _context.Notifications.Add(new Notification
+                        {
+                            UserId = pmId,
+                            Title = "⏳ Tâche en attente de validation",
+                            Message = $"{devNom} a terminé la tâche \"{task.TaskName}\" (projet \"{project.ProjectName}\"). Elle attend votre validation.",
+                            Type = "Success",
+                            RelatedProjectId = project.ProjectId,
+                            RelatedTaskId = task.ProjectTaskId,
+                            IsRead = false,
+                            CreatedAt = DateTime.UtcNow
+                        });
+
+                        await _context.SaveChangesAsync();
+                    }
+                }
 
                 string statusName = task.TaskStatusId switch
                 {

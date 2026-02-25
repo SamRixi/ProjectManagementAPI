@@ -17,7 +17,6 @@ const UsersManagement = () => {
     const [tempPassword, setTempPassword] = useState('');
     const [showPasswordModal, setShowPasswordModal] = useState(false);
 
-    // ✅ Nouveau — pour l'approbation avec rôle
     const [showApproveModal, setShowApproveModal] = useState(false);
     const [approveUserId, setApproveUserId] = useState(null);
     const [approveUsername, setApproveUsername] = useState('');
@@ -122,7 +121,6 @@ const UsersManagement = () => {
         setShowApproveModal(true);
     };
 
-    // ✅ CONFIRM APPROVE — envoie roleId au backend
     const confirmApprove = async () => {
         try {
             const response = await userService.approveUser(approveUserId, selectedRoleId);
@@ -151,26 +149,40 @@ const UsersManagement = () => {
                 alert(`❌ ${response.message}`);
             }
         } catch (error) {
-            console.error('❌ Approve error:', error); 
+            console.error('❌ Reject error:', error);
             alert('Erreur lors du rejet');
         }
     };
 
-    // ✅ TOGGLE ACTIVE
-    const handleToggleUserStatus = async (userId, userName, isActive) => {
-        const action = isActive ? 'désactiver' : 'activer';
-        if (!window.confirm(`Voulez-vous ${action} "${userName}" ?`)) return;
+    // ✅ DEACTIVATE — endpoint séparé, pas de notification
+    const handleDeactivate = async (userId, userName) => {
+        if (!window.confirm(`Voulez-vous désactiver "${userName}" ?\n\nL'utilisateur verra un message sur la page Login.`)) return;
         try {
-            const response = await userService.toggleUserActive(userId);
+            const response = await userService.deactivateUser(userId);
             if (response.success) {
                 alert(`✅ ${response.message}`);
                 fetchUsers();
             } else {
                 alert(`❌ ${response.message}`);
             }
-        } catch  {
-        
-            alert('Erreur lors du changement de statut');
+        } catch {
+            alert('Erreur lors de la désactivation');
+        }
+    };
+
+    // ✅ ACTIVATE — endpoint séparé + notification stockée en DB
+    const handleActivate = async (userId, userName) => {
+        if (!window.confirm(`Voulez-vous réactiver "${userName}" ?`)) return;
+        try {
+            const response = await userService.activateUser(userId);
+            if (response.success) {
+                alert(`✅ ${response.message}\n\n⚠️ N'oubliez pas de générer un mot de passe temporaire !`);
+                fetchUsers();
+            } else {
+                alert(`❌ ${response.message}`);
+            }
+        } catch {
+            alert('Erreur lors de la réactivation');
         }
     };
 
@@ -236,6 +248,11 @@ const UsersManagement = () => {
                         value={searchTerm}
                         onChange={(e) => setSearchTerm(e.target.value)}
                     />
+                    {searchTerm && (
+                        <button className="clear-search" onClick={() => setSearchTerm('')}>
+                            <X size={18} />
+                        </button>
+                    )}
                 </div>
 
                 {/* Table */}
@@ -283,6 +300,7 @@ const UsersManagement = () => {
                                                 <td>
                                                     <div className="action-buttons">
                                                         {isPending ? (
+                                                            // ⏳ EN ATTENTE — Approuver ou Rejeter
                                                             <>
                                                                 <button className="btn-icon btn-approve"
                                                                     onClick={() => handleApprove(u.userId, u.userName)}
@@ -296,41 +314,45 @@ const UsersManagement = () => {
                                                                 </button>
                                                             </>
                                                         ) : !u.isActive ? (
+                                                            // 🔴 DÉSACTIVÉ — Modifier + Réactiver + MDP + Supprimer
                                                             <>
                                                                 <button className="btn-icon btn-edit"
-                                                                    onClick={() => handleEditUser(u)} title="Modifier">
+                                                                    onClick={() => handleEditUser(u)}
+                                                                    title="Modifier">
                                                                     <Edit size={16} />
+                                                                </button>
+                                                                <button className="btn-icon btn-activate"
+                                                                    onClick={() => handleActivate(u.userId, u.userName)}
+                                                                    title="Réactiver le compte">
+                                                                    <UserCheck size={16} />
                                                                 </button>
                                                                 <button className="btn-icon btn-key"
                                                                     onClick={() => handleGenerateTempPassword(u.userId, u.userName)}
-                                                                    title="Générer mot de passe">
+                                                                    title="Générer mot de passe temporaire">
                                                                     <Key size={16} />
-                                                                </button>
-                                                                <button className="btn-icon btn-activate"
-                                                                    onClick={() => handleToggleUserStatus(u.userId, u.userName, false)}
-                                                                    title="Activer">
-                                                                    <UserCheck size={16} />
                                                                 </button>
                                                                 <button className="btn-icon btn-delete"
                                                                     onClick={() => handleDelete(u.userId, u.userName)}
-                                                                    title="Supprimer">
+                                                                    title="Supprimer définitivement">
                                                                     <Trash2 size={16} />
                                                                 </button>
                                                             </>
                                                         ) : (
+                                                            // 🟢 ACTIF — Modifier + MDP + Désactiver
                                                             <>
                                                                 <button className="btn-icon btn-edit"
-                                                                    onClick={() => handleEditUser(u)} title="Modifier">
+                                                                    onClick={() => handleEditUser(u)}
+                                                                    title="Modifier">
                                                                     <Edit size={16} />
                                                                 </button>
                                                                 <button className="btn-icon btn-key"
                                                                     onClick={() => handleGenerateTempPassword(u.userId, u.userName)}
-                                                                    title="Générer mot de passe">
+                                                                    title="Générer mot de passe temporaire">
                                                                     <Key size={16} />
                                                                 </button>
                                                                 <button className="btn-icon btn-deactivate"
-                                                                    onClick={() => handleToggleUserStatus(u.userId, u.userName, true)}
-                                                                    title="Désactiver">
+                                                                    onClick={() => handleDeactivate(u.userId, u.userName)}
+                                                                    title="Désactiver le compte">
                                                                     <UserX size={16} />
                                                                 </button>
                                                             </>
@@ -352,7 +374,7 @@ const UsersManagement = () => {
                     </div>
                 )}
 
-                {/* ✅ APPROVE MODAL — avec sélection du rôle */}
+                {/* ✅ APPROVE MODAL */}
                 {showApproveModal && (
                     <div className="modal-overlay" onClick={() => setShowApproveModal(false)}>
                         <div className="modal-content" onClick={(e) => e.stopPropagation()}>
@@ -453,7 +475,7 @@ const UsersManagement = () => {
                     </div>
                 )}
 
-                {/* Password Modal */}
+                {/* ✅ Password Modal */}
                 {showPasswordModal && (
                     <div className="modal-overlay" onClick={() => setShowPasswordModal(false)}>
                         <div className="modal-content password-modal" onClick={(e) => e.stopPropagation()}>

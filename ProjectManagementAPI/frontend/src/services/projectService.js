@@ -82,7 +82,29 @@ const projectService = {
             console.error('❌ Assign team error:', error);
             return {
                 success: false,
-                message: error.response?.data?.message || error.response?.data?.Message || 'Erreur lors de l\'assignation de l\'équipe'
+                message: error.response?.data?.message || error.response?.data?.Message || "Erreur lors de l'assignation de l'équipe"
+            };
+        }
+    },
+
+    // ✅ NOUVEAU : assigner une EDB à un projet existant
+    assignEdbToProject: async (projectId, edbId) => {
+        try {
+            console.log(`📤 Assigning EDB ${edbId} to project ${projectId}`);
+            const response = await api.put(`/project/${projectId}/assign-edb`, edbId, {
+                headers: { 'Content-Type': 'application/json' }
+            });
+            console.log('✅ Assign EDB response:', response.data);
+            return {
+                success: response.data.success,
+                data: response.data.data,
+                message: response.data.message || 'EDB assignée avec succès'
+            };
+        } catch (error) {
+            console.error('❌ Assign EDB error:', error);
+            return {
+                success: false,
+                message: error.response?.data?.message || error.response?.data?.Message || "Erreur lors de l'assignation de l'EDB"
             };
         }
     },
@@ -101,7 +123,7 @@ const projectService = {
             console.error('❌ Assign project manager error:', error);
             return {
                 success: false,
-                message: error.response?.data?.message || error.response?.data?.Message || 'Erreur lors de l\'assignation du chef de projet'
+                message: error.response?.data?.message || error.response?.data?.Message || "Erreur lors de l'assignation du chef de projet"
             };
         }
     },
@@ -181,7 +203,7 @@ const projectService = {
             return {
                 success: false,
                 data: [],
-                message: error.response?.data?.message || error.response?.data?.Message || 'Erreur lors de la récupération des projets de l\'équipe'
+                message: error.response?.data?.message || error.response?.data?.Message || "Erreur lors de la récupération des projets de l'équipe"
             };
         }
     },
@@ -201,7 +223,7 @@ const projectService = {
             return {
                 success: false,
                 data: [],
-                message: error.response?.data?.message || error.response?.data?.Message || 'Erreur lors de la récupération des projets de l\'utilisateur'
+                message: error.response?.data?.message || error.response?.data?.Message || "Erreur lors de la récupération des projets de l'utilisateur"
             };
         }
     },
@@ -242,7 +264,7 @@ const projectService = {
             return {
                 success: false,
                 data: [],
-                message: error.response?.data?.message || error.response?.data?.Message || 'Erreur lors de la récupération des membres de l\'équipe'
+                message: error.response?.data?.message || error.response?.data?.Message || "Erreur lors de la récupération des membres de l'équipe"
             };
         }
     },
@@ -266,7 +288,6 @@ const projectService = {
         }
     },
 
-    // ✅ Nouvelle méthode : annuler un projet (statut Annulé)
     cancelProject: async (projectId) => {
         try {
             console.log(`🚫 Cancelling project with ID: ${projectId}`);
@@ -280,15 +301,11 @@ const projectService = {
             console.error('❌ Cancel project error:', error);
             return {
                 success: false,
-                message:
-                    error.response?.data?.message ||
-                    error.response?.data?.Message ||
-                    'Erreur lors de l\'annulation du projet'
+                message: error.response?.data?.message || error.response?.data?.Message || "Erreur lors de l'annulation du projet"
             };
         }
     },
 
-    // Optionnel : suppression physique (si tu en as encore besoin)
     deleteProject: async (projectId) => {
         try {
             console.log(`🗑️ Deleting project with ID: ${projectId}`);

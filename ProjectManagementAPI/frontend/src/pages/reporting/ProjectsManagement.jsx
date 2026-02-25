@@ -34,7 +34,6 @@ const getPriorityLabel = (id) => {
 const getStatusBadge = (statusId, statusName) => {
     const id = parseInt(statusId);
 
-    // Adapte ces IDs à ta table ProjectStatus :
     // 1 = Planifié, 2 = En cours, 3 = Terminé, 4 = Annulé (par ex.)
 
     if (id === 1) {
@@ -259,6 +258,16 @@ const ProjectManagement = () => {
                         selectedProject.projectId, selectedTeamId
                     );
                 }
+
+                // ✅ assigner EDB si choisi
+                const selectedEdbId = parseInt(formData.edbId);
+                if (selectedEdbId > 0) {
+                    await projectService.assignEdbToProject(
+                        selectedProject.projectId,
+                        selectedEdbId
+                    );
+                }
+
                 alert('✅ Projet mis à jour avec succès !');
                 setShowEditModal(false);
                 setSelectedProject(null);
@@ -283,6 +292,7 @@ const ProjectManagement = () => {
             startDate: project.startDate ? project.startDate.split('T')[0] : '',
             endDate: project.endDate ? project.endDate.split('T')[0] : '',
             teamId: project.teamId || 0,
+            // si plus tard tu as project.edbId, mets edbId: project.edbId || 0
             edbId: 0,
             projectManagerId: project.projectManagerId || 0,
             priorityId: project.priorityId || 0,
@@ -693,6 +703,24 @@ const ProjectManagement = () => {
                                         <label>Date de fin *</label>
                                         <input type="date" name="endDate" value={formData.endDate} onChange={handleInputChange} disabled={submitting} required />
                                     </div>
+                                </div>
+
+                                {/* ✅ EDB dans le modal d'édition */}
+                                <div className="form-group">
+                                    <label>EDB assignée (optionnel)</label>
+                                    <select
+                                        name="edbId"
+                                        value={formData.edbId}
+                                        onChange={handleInputChange}
+                                        disabled={submitting}
+                                    >
+                                        <option value="0">Aucun EDB</option>
+                                        {getAvailableEdbs().map(e => (
+                                            <option key={e.edbId} value={e.edbId}>
+                                                {e.fileName}
+                                            </option>
+                                        ))}
+                                    </select>
                                 </div>
 
                                 <div className="modal-actions">

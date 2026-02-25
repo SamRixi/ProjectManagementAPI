@@ -156,6 +156,8 @@ namespace ProjectManagementAPI.Services.Implementations
         {
             try
             {
+                Console.WriteLine($"[UpdateTaskProgress] taskId={taskId}, progress={progress}, userId={userId}");
+
                 var task = await _context.ProjectTasks
                     .Include(t => t.ProjectTasksStatus)
                     .Include(t => t.Priority)
@@ -178,19 +180,55 @@ namespace ProjectManagementAPI.Services.Implementations
                     return new ApiResponse<TaskDTO>
                     { Success = false, Message = "Tâche déjà validée, modification impossible" };
 
+                var oldStatus = task.TaskStatusId;
+
                 task.Progress = progress;
                 task.TaskStatusId = progress switch
                 {
-                    0 => 1, // À faire
+                    0 => 1,   // À faire
                     100 => 4, // En attente de validation
-                    _ => 2  // En cours
+                    _ => 2    // En cours
                 };
+
+                Console.WriteLine($"[UpdateTaskProgress] oldStatus={oldStatus}, newStatus={task.TaskStatusId}");
 
                 if (progress < 100)
                     task.IsValidated = false;
 
                 await _context.SaveChangesAsync();
                 await RecalculateProjectProgressAsync(task.ProjectId);
+
+                // 🔔 Notification PM si la tâche est en attente de validation
+                if (task.TaskStatusId == 4)
+                {
+                    Console.WriteLine($"[UpdateTaskProgress] Task now awaiting validation, sending notif for projectId={task.ProjectId}");
+
+                    var project = await _context.Projects
+                        .FirstOrDefaultAsync(p => p.ProjectId == task.ProjectId);
+
+                    if (project?.ProjectManagerId != null)
+                    {
+                        var dev = await _context.Users.FindAsync(userId);
+                        var devNom = dev != null
+                            ? $"{dev.FirstName} {dev.LastName}"
+                            : "Un développeur";
+
+                        Console.WriteLine($"[UpdateTaskProgress] Notif to PM userId={project.ProjectManagerId.Value}");
+
+                        await _notificationService.CreateNotificationAsync(
+                            userId: project.ProjectManagerId.Value,
+                            title: "⏳ Tâche en attente de validation",
+                            message: $"{devNom} a terminé la tâche \"{task.TaskName}\" (projet \"{project.ProjectName}\"). Elle attend votre validation.",
+                            type: "Success",
+                            relatedProjectId: project.ProjectId,
+                            relatedTaskId: task.ProjectTaskId
+                        );
+                    }
+                    else
+                    {
+                        Console.WriteLine("[UpdateTaskProgress] Aucun ProjectManagerId pour ce projet");
+                    }
+                }
 
                 return new ApiResponse<TaskDTO>
                 {
@@ -201,6 +239,7 @@ namespace ProjectManagementAPI.Services.Implementations
             }
             catch (Exception ex)
             {
+                Console.WriteLine($"[UpdateTaskProgress][ERROR] {ex}");
                 return new ApiResponse<TaskDTO>
                 { Success = false, Message = $"Erreur : {ex.Message}" };
             }
@@ -211,6 +250,8 @@ namespace ProjectManagementAPI.Services.Implementations
         {
             try
             {
+                Console.WriteLine($"[UpdateTaskStatus] taskId={taskId}, statusId={statusId}, userId={userId}");
+
                 var task = await _context.ProjectTasks
                     .Include(t => t.ProjectTasksStatus)
                     .Include(t => t.Priority)
@@ -231,6 +272,35 @@ namespace ProjectManagementAPI.Services.Implementations
                     task.Progress = 100;
                     task.TaskStatusId = 4;
                     task.IsValidated = false;
+
+                    Console.WriteLine("[UpdateTaskStatus] Status=3 → Progress=100, TaskStatus=4 (en attente de validation)");
+
+                    // 🔔 Notification PM — via changement de statut
+                    var project = await _context.Projects
+                        .FirstOrDefaultAsync(p => p.ProjectId == task.ProjectId);
+
+                    if (project?.ProjectManagerId != null)
+                    {
+                        var dev = await _context.Users.FindAsync(userId);
+                        var devNom = dev != null
+                            ? $"{dev.FirstName} {dev.LastName}"
+                            : "Un développeur";
+
+                        Console.WriteLine($"[UpdateTaskStatus] Notif to PM userId={project.ProjectManagerId.Value}");
+
+                        await _notificationService.CreateNotificationAsync(
+                            userId: project.ProjectManagerId.Value,
+                            title: "⏳ Tâche en attente de validation",
+                            message: $"{devNom} a terminé la tâche \"{task.TaskName}\" (projet \"{project.ProjectName}\"). Elle attend votre validation.",
+                            type: "Success",
+                            relatedProjectId: project.ProjectId,
+                            relatedTaskId: task.ProjectTaskId
+                        );
+                    }
+                    else
+                    {
+                        Console.WriteLine("[UpdateTaskStatus] Aucun ProjectManagerId pour ce projet");
+                    }
                 }
 
                 await _context.SaveChangesAsync();
@@ -245,6 +315,7 @@ namespace ProjectManagementAPI.Services.Implementations
             }
             catch (Exception ex)
             {
+                Console.WriteLine($"[UpdateTaskStatus][ERROR] {ex}");
                 return new ApiResponse<TaskDTO>
                 { Success = false, Message = $"Erreur : {ex.Message}" };
             }
@@ -335,9 +406,9 @@ namespace ProjectManagementAPI.Services.Implementations
                     return new ApiResponse<TaskDTO>
                     { Success = false, Message = "La tâche doit être en attente de validation" };
 
-                // ✅ Reset → En cours pour que le dev puisse retravailler
+                // Reset → En cours
                 task.IsValidated = false;
-                task.TaskStatusId = 2; // En cours
+                task.TaskStatusId = 2;
                 task.Progress = 0;
                 task.RejectionReason = reason;
 

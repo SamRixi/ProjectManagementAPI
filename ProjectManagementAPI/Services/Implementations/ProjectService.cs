@@ -102,6 +102,24 @@ public class ProjectService : IProjectService
             _context.Projects.Add(project);
             await _context.SaveChangesAsync();
 
+            // 🔔 NOTIFICATION PM : projet créé avec un chef de projet
+            if (project.ProjectManagerId.HasValue && project.ProjectManagerId.Value > 0)
+            {
+                _context.Notifications.Add(new Notification
+                {
+                    UserId = project.ProjectManagerId.Value,
+                    Title = "🆕 Nouveau projet assigné",
+                    Message = $"Vous avez été désigné chef de projet sur « {project.ProjectName} ».",
+                    Type = "PROJECT_ASSIGNED",
+                    RelatedProjectId = project.ProjectId,
+                    RelatedUserId = project.ProjectManagerId.Value,
+                    IsRead = false,
+                    CreatedAt = DateTime.UtcNow
+                });
+
+                await _context.SaveChangesAsync();
+            }
+
             var createdProject = await _context.Projects
                 .Include(p => p.Team)
                 .Include(p => p.ProjectStatus)
@@ -152,6 +170,24 @@ public class ProjectService : IProjectService
             edb.ProjectId = project.ProjectId;
             await _context.SaveChangesAsync();
 
+            // 🔔 NOTIFICATION PM : projet avec EDB créé et PM défini
+            if (project.ProjectManagerId.HasValue && project.ProjectManagerId.Value > 0)
+            {
+                _context.Notifications.Add(new Notification
+                {
+                    UserId = project.ProjectManagerId.Value,
+                    Title = "🆕 Nouveau projet (EDB) assigné",
+                    Message = $"Vous avez été désigné chef de projet sur « {project.ProjectName} » (avec EDB).",
+                    Type = "PROJECT_ASSIGNED",
+                    RelatedProjectId = project.ProjectId,
+                    RelatedUserId = project.ProjectManagerId.Value,
+                    IsRead = false,
+                    CreatedAt = DateTime.UtcNow
+                });
+
+                await _context.SaveChangesAsync();
+            }
+
             var createdProject = await _context.Projects
                 .Include(p => p.Team)
                 .Include(p => p.ProjectStatus)
@@ -181,14 +217,38 @@ public class ProjectService : IProjectService
             if (project == null)
                 return new ApiResponse<ProjectDTO> { Success = false, Message = "Projet introuvable" };
 
+            var oldPmId = project.ProjectManagerId; // pour détecter un changement
+
             project.ProjectName = dto.ProjectName;
             project.Description = dto.Description;
             project.StartDate = dto.StartDate;
             project.EndDate = dto.EndDate;
             project.ProjectStatusId = dto.ProjectStatusId;
             project.PriorityId = dto.PriorityId;
+            // si tu veux permettre de changer le PM via UpdateProjectDTO :
+            project.ProjectManagerId = dto.ProjectManagerId ?? project.ProjectManagerId;
 
             await _context.SaveChangesAsync();
+
+            // 🔔 NOTIFICATION PM : le chef de projet a changé
+            if (oldPmId != project.ProjectManagerId && project.ProjectManagerId.HasValue)
+            {
+                var newPmId = project.ProjectManagerId.Value;
+
+                _context.Notifications.Add(new Notification
+                {
+                    UserId = newPmId,
+                    Title = "📌 Projet assigné",
+                    Message = $"Vous êtes maintenant chef de projet sur « {project.ProjectName} ».",
+                    Type = "PROJECT_ASSIGNED",
+                    RelatedProjectId = project.ProjectId,
+                    RelatedUserId = newPmId,
+                    IsRead = false,
+                    CreatedAt = DateTime.UtcNow
+                });
+
+                await _context.SaveChangesAsync();
+            }
 
             var updatedProject = await _context.Projects
                 .Include(p => p.Team)
@@ -593,6 +653,21 @@ public class ProjectService : IProjectService
                 await _context.SaveChangesAsync();
             }
 
+            // 🔔 NOTIFICATION PM : assignation via endpoint dédié
+            _context.Notifications.Add(new Notification
+            {
+                UserId = userId,
+                Title = "📌 Nouveau projet assigné",
+                Message = $"Vous avez été désigné chef de projet sur « {project.ProjectName} ».",
+                Type = "PROJECT_ASSIGNED",
+                RelatedProjectId = project.ProjectId,
+                RelatedUserId = userId,
+                IsRead = false,
+                CreatedAt = DateTime.UtcNow
+            });
+
+            await _context.SaveChangesAsync();
+
             return new ApiResponse<bool> { Success = true, Message = "Chef de projet assigné avec succès", Data = true };
         }
         catch (Exception ex)
@@ -632,15 +707,13 @@ public class ProjectService : IProjectService
         }
     }
 
-    // ✅ SEUL ENDROIT MODIFIÉ — logique statut dynamique corrigée
+    // logique statut dynamique (inchangée)
     private ProjectDTO MapToProjectDTO(Project p)
     {
         var taskCount = p.ProjectTasks?.Count ?? 0;
         var completedTaskCount = p.ProjectTasks?.Count(t => t.Progress == 100) ?? 0;
         var validatedTaskCount = p.ProjectTasks?.Count(t => t.IsValidated) ?? 0;
         var pendingValidationCount = p.ProjectTasks?.Count(t => t.TaskStatusId == 4) ?? 0;
-
-        // ✅ Tâches pas encore soumises (progress < 100)
         var notFinishedCount = p.ProjectTasks?.Count(t => t.Progress < 100) ?? 0;
 
         int calculatedProgress = taskCount > 0
@@ -651,7 +724,6 @@ public class ProjectService : IProjectService
             && p.EndDate.Value < DateTime.UtcNow
             && calculatedProgress < 100;
 
-        // ✅ TOUTES les tâches sont à 100% (soumises ou validées)
         bool allTasksSubmitted = taskCount > 0 && notFinishedCount == 0;
 
         string statusName;
@@ -659,7 +731,6 @@ public class ProjectService : IProjectService
 
         if (p.ProjectStatusId == STATUS_ANNULE)
         {
-            // PRIORITÉ 1 — Annulé
             statusName = "Annulé";
             statusColor = "#9E9E9E";
         }
@@ -667,33 +738,26 @@ public class ProjectService : IProjectService
                  && taskCount > 0
                  && validatedTaskCount == taskCount)
         {
-            // PRIORITÉ 2 — Officiellement terminé par PM
             statusName = "Terminé";
             statusColor = "#00C853";
         }
         else if (taskCount > 0 && validatedTaskCount == taskCount && pendingValidationCount == 0)
         {
-            // PRIORITÉ 3 — Toutes validées, pas encore clôturé
             statusName = "✅ Prêt à clôturer";
             statusColor = "#00BFA5";
         }
         else if (allTasksSubmitted && pendingValidationCount > 0)
         {
-            // PRIORITÉ 4 — TOUTES à 100% ET au moins une en attente
-            // ✅ PAS juste une seule tâche soumise parmi d'autres non finies
             statusName = "⏳ En attente de validation";
             statusColor = "#FFA500";
         }
         else if (isDelayed)
         {
-            // PRIORITÉ 5 — En retard
             statusName = "🔴 En retard";
             statusColor = "#FF0000";
         }
         else
         {
-            // PRIORITÉ 6 — En cours normal
-            // ✅ Inclut le cas : tâche 1 = 100% soumise, tâche 2 = 5% → "En cours"
             statusName = p.ProjectStatus?.StatusName ?? "En cours";
             statusColor = p.ProjectStatus?.Color ?? "#2196F3";
         }
@@ -722,5 +786,52 @@ public class ProjectService : IProjectService
             CreatedAt = p.CreatedAt,
             HasEdb = p.EDBs?.Any() ?? false
         };
+    }
+
+    public async Task<ApiResponse<bool>> AssignEdbToProjectAsync(int projectId, int edbId)
+    {
+        try
+        {
+            var project = await _context.Projects
+                .Include(p => p.EDBs)
+                .FirstOrDefaultAsync(p => p.ProjectId == projectId);
+
+            if (project == null)
+            {
+                return new ApiResponse<bool>
+                {
+                    Success = false,
+                    Message = "Projet introuvable"
+                };
+            }
+
+            var edb = await _context.EDBs.FirstOrDefaultAsync(e => e.EdbId == edbId);
+            if (edb == null)
+            {
+                return new ApiResponse<bool>
+                {
+                    Success = false,
+                    Message = "EDB introuvable"
+                };
+            }
+
+            edb.ProjectId = projectId;
+            await _context.SaveChangesAsync();
+
+            return new ApiResponse<bool>
+            {
+                Success = true,
+                Message = "EDB assignée au projet avec succès",
+                Data = true
+            };
+        }
+        catch (Exception ex)
+        {
+            return new ApiResponse<bool>
+            {
+                Success = false,
+                Message = $"Erreur lors de l'assignation de l'EDB : {ex.Message}"
+            };
+        }
     }
 }

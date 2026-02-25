@@ -10,7 +10,7 @@ const mapStatusForDeveloper = (statusName) => {
     if (!statusName) return 'En cours';
 
     if (statusName.includes('✅ Prêt à clôturer')) {
-        return 'Terminé (en attente du chef de projet pour clôture)';
+        return 'Terminé (en attente du chef de projet pour finaliser)';
     }
 
     if (statusName.includes('⏳ En attente de validation')) {

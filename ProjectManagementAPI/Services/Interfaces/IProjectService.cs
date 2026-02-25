@@ -19,5 +19,6 @@ namespace ProjectManagementAPI.Services.Interfaces
         Task<ApiResponse<bool>> AssignProjectManagerAsync(int projectId, int userId);
         Task<ApiResponse<List<ProjectDTO>>> GetManagedProjectsAsync(int userId);
         Task<ApiResponse<bool>> CancelProjectAsync(int projectId);
+        Task<ApiResponse<bool>> AssignEdbToProjectAsync(int projectId, int edbId);
     }
 }

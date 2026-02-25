@@ -24,13 +24,7 @@ namespace ProjectManagementAPI.Services.Implementations
                     .FirstOrDefaultAsync(u => u.UserName == dto.UserName || u.Email == dto.Email);
 
                 if (existingUser != null)
-                {
-                    return new ApiResponse<UserDTO>
-                    {
-                        Success = false,
-                        Message = "Nom d'utilisateur ou email déjà utilisé"
-                    };
-                }
+                    return new ApiResponse<UserDTO> { Success = false, Message = "Nom d'utilisateur ou email déjà utilisé" };
 
                 var user = new User
                 {
@@ -58,11 +52,7 @@ namespace ProjectManagementAPI.Services.Implementations
             }
             catch (Exception ex)
             {
-                return new ApiResponse<UserDTO>
-                {
-                    Success = false,
-                    Message = $"Erreur: {ex.Message}"
-                };
+                return new ApiResponse<UserDTO> { Success = false, Message = $"Erreur: {ex.Message}" };
             }
         }
 
@@ -71,15 +61,8 @@ namespace ProjectManagementAPI.Services.Implementations
             try
             {
                 var user = await _context.Users.FindAsync(dto.UserId);
-
                 if (user == null)
-                {
-                    return new ApiResponse<UserDTO>
-                    {
-                        Success = false,
-                        Message = "Utilisateur introuvable"
-                    };
-                }
+                    return new ApiResponse<UserDTO> { Success = false, Message = "Utilisateur introuvable" };
 
                 if (dto.UserName != null) user.UserName = dto.UserName;
                 if (dto.Email != null) user.Email = dto.Email;
@@ -89,7 +72,6 @@ namespace ProjectManagementAPI.Services.Implementations
                 if (dto.AccountDeadline.HasValue) user.AccountDeadline = dto.AccountDeadline;
 
                 user.UpdatedAt = DateTime.UtcNow;
-
                 await _context.SaveChangesAsync();
 
                 return new ApiResponse<UserDTO>
@@ -101,11 +83,7 @@ namespace ProjectManagementAPI.Services.Implementations
             }
             catch (Exception ex)
             {
-                return new ApiResponse<UserDTO>
-                {
-                    Success = false,
-                    Message = $"Erreur: {ex.Message}"
-                };
+                return new ApiResponse<UserDTO> { Success = false, Message = $"Erreur: {ex.Message}" };
             }
         }
 
@@ -120,27 +98,13 @@ namespace ProjectManagementAPI.Services.Implementations
                     .FirstOrDefaultAsync(u => u.UserId == userId);
 
                 if (user == null)
-                {
-                    return new ApiResponse<UserDTO>
-                    {
-                        Success = false,
-                        Message = "Utilisateur introuvable"
-                    };
-                }
+                    return new ApiResponse<UserDTO> { Success = false, Message = "Utilisateur introuvable" };
 
-                return new ApiResponse<UserDTO>
-                {
-                    Success = true,
-                    Data = MapToUserDTO(user)
-                };
+                return new ApiResponse<UserDTO> { Success = true, Data = MapToUserDTO(user) };
             }
             catch (Exception ex)
             {
-                return new ApiResponse<UserDTO>
-                {
-                    Success = false,
-                    Message = $"Erreur: {ex.Message}"
-                };
+                return new ApiResponse<UserDTO> { Success = false, Message = $"Erreur: {ex.Message}" };
             }
         }
 
@@ -154,21 +118,15 @@ namespace ProjectManagementAPI.Services.Implementations
                         .ThenInclude(tm => tm.Team)
                     .ToListAsync();
 
-                var userDTOs = users.Select(u => MapToUserDTO(u)).ToList();
-
                 return new ApiResponse<List<UserDTO>>
                 {
                     Success = true,
-                    Data = userDTOs
+                    Data = users.Select(u => MapToUserDTO(u)).ToList()
                 };
             }
             catch (Exception ex)
             {
-                return new ApiResponse<List<UserDTO>>
-                {
-                    Success = false,
-                    Message = $"Erreur: {ex.Message}"
-                };
+                return new ApiResponse<List<UserDTO>> { Success = false, Message = $"Erreur: {ex.Message}" };
             }
         }
 
@@ -183,40 +141,29 @@ namespace ProjectManagementAPI.Services.Implementations
                     .AsQueryable();
 
                 if (!string.IsNullOrEmpty(dto.SearchTerm))
-                {
                     query = query.Where(u =>
                         u.UserName.Contains(dto.SearchTerm) ||
                         u.Email.Contains(dto.SearchTerm) ||
                         u.FirstName.Contains(dto.SearchTerm) ||
                         u.LastName.Contains(dto.SearchTerm));
-                }
 
                 if (dto.IsActive.HasValue)
-                {
                     query = query.Where(u => u.IsActive == dto.IsActive.Value);
-                }
 
                 if (dto.RoleId.HasValue)
-                {
                     query = query.Where(u => u.RoleId == dto.RoleId.Value);
-                }
 
                 var users = await query.ToListAsync();
-                var userDTOs = users.Select(u => MapToUserDTO(u)).ToList();
 
                 return new ApiResponse<List<UserDTO>>
                 {
                     Success = true,
-                    Data = userDTOs
+                    Data = users.Select(u => MapToUserDTO(u)).ToList()
                 };
             }
             catch (Exception ex)
             {
-                return new ApiResponse<List<UserDTO>>
-                {
-                    Success = false,
-                    Message = $"Erreur: {ex.Message}"
-                };
+                return new ApiResponse<List<UserDTO>> { Success = false, Message = $"Erreur: {ex.Message}" };
             }
         }
 
@@ -225,19 +172,11 @@ namespace ProjectManagementAPI.Services.Implementations
             try
             {
                 var user = await _context.Users.FindAsync(userId);
-
                 if (user == null)
-                {
-                    return new ApiResponse<bool>
-                    {
-                        Success = false,
-                        Message = "Utilisateur introuvable"
-                    };
-                }
+                    return new ApiResponse<bool> { Success = false, Message = "Utilisateur introuvable" };
 
                 user.IsActive = isActive;
                 user.UpdatedAt = DateTime.UtcNow;
-
                 await _context.SaveChangesAsync();
 
                 return new ApiResponse<bool>
@@ -249,11 +188,7 @@ namespace ProjectManagementAPI.Services.Implementations
             }
             catch (Exception ex)
             {
-                return new ApiResponse<bool>
-                {
-                    Success = false,
-                    Message = $"Erreur: {ex.Message}"
-                };
+                return new ApiResponse<bool> { Success = false, Message = $"Erreur: {ex.Message}" };
             }
         }
 
@@ -262,19 +197,11 @@ namespace ProjectManagementAPI.Services.Implementations
             try
             {
                 var user = await _context.Users.FindAsync(userId);
-
                 if (user == null)
-                {
-                    return new ApiResponse<bool>
-                    {
-                        Success = false,
-                        Message = "Utilisateur introuvable"
-                    };
-                }
+                    return new ApiResponse<bool> { Success = false, Message = "Utilisateur introuvable" };
 
                 user.AccountDeadline = deadline;
                 user.UpdatedAt = DateTime.UtcNow;
-
                 await _context.SaveChangesAsync();
 
                 return new ApiResponse<bool>
@@ -286,43 +213,56 @@ namespace ProjectManagementAPI.Services.Implementations
             }
             catch (Exception ex)
             {
-                return new ApiResponse<bool>
-                {
-                    Success = false,
-                    Message = $"Erreur: {ex.Message}"
-                };
+                return new ApiResponse<bool> { Success = false, Message = $"Erreur: {ex.Message}" };
             }
         }
 
+        // ✅ FIXED — Notifie Reporting quand Developer change MDP temporaire
         public async Task<ApiResponse<bool>> ChangePasswordAsync(int userId, ChangePasswordDTO dto)
         {
             try
             {
-                var user = await _context.Users.FindAsync(userId);
+                var user = await _context.Users
+                    .Include(u => u.Role)
+                    .FirstOrDefaultAsync(u => u.UserId == userId);
 
                 if (user == null)
-                {
-                    return new ApiResponse<bool>
-                    {
-                        Success = false,
-                        Message = "Utilisateur introuvable"
-                    };
-                }
+                    return new ApiResponse<bool> { Success = false, Message = "Utilisateur introuvable" };
 
                 if (!BC.Verify(dto.CurrentPassword, user.PasswordHash))
-                {
-                    return new ApiResponse<bool>
-                    {
-                        Success = false,
-                        Message = "Mot de passe actuel incorrect"
-                    };
-                }
+                    return new ApiResponse<bool> { Success = false, Message = "Mot de passe actuel incorrect" };
+
+                // ✅ Sauvegarder l'état AVANT de changer
+                bool wasMustChange = user.MustChangePassword;
 
                 user.PasswordHash = BC.HashPassword(dto.NewPassword);
                 user.MustChangePassword = false;
                 user.UpdatedAt = DateTime.UtcNow;
-
                 await _context.SaveChangesAsync();
+
+                // ✅ Notifier Reporting UNIQUEMENT si c'était un MDP temporaire
+                if (wasMustChange)
+                {
+                    var reportingUsers = await _context.Users
+                        .Include(u => u.Role)
+                        .Where(u => u.Role.RoleName == "Reporting" && u.IsActive)
+                        .ToListAsync();
+
+                    foreach (var reportingUser in reportingUsers)
+                    {
+                        _context.Notifications.Add(new Notification
+                        {
+                            UserId = reportingUser.UserId,
+                            Title = "🔔 Utilisateur reconnecté",
+                            Message = $"{user.FirstName} {user.LastName} est de retour et a changé son mot de passe avec succès.",
+                            Type = "Info",
+                            RelatedUserId = user.UserId,
+                            IsRead = false,
+                            CreatedAt = DateTime.UtcNow
+                        });
+                    }
+                    await _context.SaveChangesAsync();
+                }
 
                 return new ApiResponse<bool>
                 {
@@ -333,11 +273,7 @@ namespace ProjectManagementAPI.Services.Implementations
             }
             catch (Exception ex)
             {
-                return new ApiResponse<bool>
-                {
-                    Success = false,
-                    Message = $"Erreur: {ex.Message}"
-                };
+                return new ApiResponse<bool> { Success = false, Message = $"Erreur: {ex.Message}" };
             }
         }
 
@@ -347,19 +283,12 @@ namespace ProjectManagementAPI.Services.Implementations
             {
                 var user = await _context.Users.FirstOrDefaultAsync(u => u.Email == email);
 
-                if (user == null)
+                if (user != null)
                 {
-                    return new ApiResponse<bool>
-                    {
-                        Success = true,
-                        Message = "Si cet email existe, un lien de réinitialisation a été envoyé"
-                    };
+                    user.PasswordResetToken = Guid.NewGuid().ToString();
+                    user.PasswordResetTokenExpiry = DateTime.UtcNow.AddHours(1);
+                    await _context.SaveChangesAsync();
                 }
-
-                user.PasswordResetToken = Guid.NewGuid().ToString();
-                user.PasswordResetTokenExpiry = DateTime.UtcNow.AddHours(1);
-
-                await _context.SaveChangesAsync();
 
                 return new ApiResponse<bool>
                 {
@@ -370,11 +299,7 @@ namespace ProjectManagementAPI.Services.Implementations
             }
             catch (Exception ex)
             {
-                return new ApiResponse<bool>
-                {
-                    Success = false,
-                    Message = $"Erreur: {ex.Message}"
-                };
+                return new ApiResponse<bool> { Success = false, Message = $"Erreur: {ex.Message}" };
             }
         }
 
@@ -387,29 +312,16 @@ namespace ProjectManagementAPI.Services.Implementations
                     u.PasswordResetToken == dto.Token);
 
                 if (user == null)
-                {
-                    return new ApiResponse<bool>
-                    {
-                        Success = false,
-                        Message = "Token invalide ou expiré"
-                    };
-                }
+                    return new ApiResponse<bool> { Success = false, Message = "Token invalide ou expiré" };
 
                 if (user.PasswordResetTokenExpiry < DateTime.UtcNow)
-                {
-                    return new ApiResponse<bool>
-                    {
-                        Success = false,
-                        Message = "Token expiré"
-                    };
-                }
+                    return new ApiResponse<bool> { Success = false, Message = "Token expiré" };
 
                 user.PasswordHash = BC.HashPassword(dto.NewPassword);
                 user.PasswordResetToken = null;
                 user.PasswordResetTokenExpiry = null;
                 user.MustChangePassword = false;
                 user.UpdatedAt = DateTime.UtcNow;
-
                 await _context.SaveChangesAsync();
 
                 return new ApiResponse<bool>
@@ -421,11 +333,7 @@ namespace ProjectManagementAPI.Services.Implementations
             }
             catch (Exception ex)
             {
-                return new ApiResponse<bool>
-                {
-                    Success = false,
-                    Message = $"Erreur: {ex.Message}"
-                };
+                return new ApiResponse<bool> { Success = false, Message = $"Erreur: {ex.Message}" };
             }
         }
 
@@ -434,47 +342,20 @@ namespace ProjectManagementAPI.Services.Implementations
             try
             {
                 var user = await _context.Users.FindAsync(userId);
-
                 if (user == null)
-                {
-                    return new ApiResponse<bool>
-                    {
-                        Success = false,
-                        Message = "Utilisateur introuvable"
-                    };
-                }
+                    return new ApiResponse<bool> { Success = false, Message = "Utilisateur introuvable" };
 
                 if (!user.IsActive)
-                {
-                    return new ApiResponse<bool>
-                    {
-                        Success = false,
-                        Message = "Compte désactivé"
-                    };
-                }
+                    return new ApiResponse<bool> { Success = false, Message = "Compte désactivé" };
 
                 if (user.AccountDeadline.HasValue && user.AccountDeadline < DateTime.UtcNow)
-                {
-                    return new ApiResponse<bool>
-                    {
-                        Success = false,
-                        Message = "Compte expiré"
-                    };
-                }
+                    return new ApiResponse<bool> { Success = false, Message = "Compte expiré" };
 
-                return new ApiResponse<bool>
-                {
-                    Success = true,
-                    Data = true
-                };
+                return new ApiResponse<bool> { Success = true, Data = true };
             }
             catch (Exception ex)
             {
-                return new ApiResponse<bool>
-                {
-                    Success = false,
-                    Message = $"Erreur: {ex.Message}"
-                };
+                return new ApiResponse<bool> { Success = false, Message = $"Erreur: {ex.Message}" };
             }
         }
 
@@ -483,21 +364,13 @@ namespace ProjectManagementAPI.Services.Implementations
             try
             {
                 var user = await _context.Users.FindAsync(userId);
-
                 if (user == null)
-                {
-                    return new ApiResponse<string>
-                    {
-                        Success = false,
-                        Message = "Utilisateur introuvable"
-                    };
-                }
+                    return new ApiResponse<string> { Success = false, Message = "Utilisateur introuvable" };
 
                 string tempPassword = GenerateRandomPassword();
                 user.PasswordHash = BC.HashPassword(tempPassword);
                 user.MustChangePassword = true;
                 user.UpdatedAt = DateTime.UtcNow;
-
                 await _context.SaveChangesAsync();
 
                 return new ApiResponse<string>
@@ -509,11 +382,7 @@ namespace ProjectManagementAPI.Services.Implementations
             }
             catch (Exception ex)
             {
-                return new ApiResponse<string>
-                {
-                    Success = false,
-                    Message = $"Erreur: {ex.Message}"
-                };
+                return new ApiResponse<string> { Success = false, Message = $"Erreur: {ex.Message}" };
             }
         }
 
@@ -527,7 +396,6 @@ namespace ProjectManagementAPI.Services.Implementations
             }
         }
 
-        // ============= DELETE USER =============
         public async Task<ApiResponse<bool>> DeleteUserAsync(int userId)
         {
             try
@@ -537,31 +405,18 @@ namespace ProjectManagementAPI.Services.Implementations
                     .FirstOrDefaultAsync(u => u.UserId == userId);
 
                 if (user == null)
-                {
-                    return new ApiResponse<bool>
-                    {
-                        Success = false,
-                        Message = "Utilisateur introuvable"
-                    };
-                }
+                    return new ApiResponse<bool> { Success = false, Message = "Utilisateur introuvable" };
 
-                // 1) Supprimer les TeamMembers
                 if (user.TeamMembers != null && user.TeamMembers.Any())
-                {
                     _context.TeamMembers.RemoveRange(user.TeamMembers);
-                }
 
-                // 2) Supprimer les notifications liées
                 var relatedNotifs = await _context.Notifications
                     .Where(n => n.UserId == userId || n.RelatedUserId == userId)
                     .ToListAsync();
 
                 if (relatedNotifs.Any())
-                {
                     _context.Notifications.RemoveRange(relatedNotifs);
-                }
 
-                // 3) Supprimer l'utilisateur
                 _context.Users.Remove(user);
                 await _context.SaveChangesAsync();
 
@@ -577,12 +432,7 @@ namespace ProjectManagementAPI.Services.Implementations
             catch (Exception ex)
             {
                 Console.WriteLine($"❌ Delete user error: {ex.Message}");
-                return new ApiResponse<bool>
-                {
-                    Success = false,
-                    Message = $"Erreur lors de la suppression: {ex.Message}",
-                    Data = false
-                };
+                return new ApiResponse<bool> { Success = false, Message = $"Erreur: {ex.Message}", Data = false };
             }
         }
 

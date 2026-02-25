@@ -101,33 +101,53 @@ const userService = {
         }
     },
 
-    toggleUserActive: async (userId) => {
+    // ✅ DEACTIVATE — PUT /api/users/{id}/deactivate
+    deactivateUser: async (userId) => {
         try {
             const token = localStorage.getItem('token');
-            const response = await axios.patch(
-                `${API_URL}/users/${userId}/toggle-active`, {},
+            const response = await axios.put(
+                `${API_URL}/users/${userId}/deactivate`, {},
                 { headers: { Authorization: `Bearer ${token}` } }
             );
             return {
                 success: response.data.success,
-                message: response.data.message || 'Statut modifié avec succès',
-                data: response.data.data
+                message: response.data.message || 'Compte désactivé avec succès'
             };
         } catch (error) {
             return {
                 success: false,
-                message: error.response?.data?.message || 'Erreur lors du changement de statut'
+                message: error.response?.data?.message || 'Erreur lors de la désactivation'
             };
         }
     },
 
-    // ✅ CORRIGÉ — envoie roleId dans le body
+    // ✅ ACTIVATE — PUT /api/users/{id}/activate
+    activateUser: async (userId) => {
+        try {
+            const token = localStorage.getItem('token');
+            const response = await axios.put(
+                `${API_URL}/users/${userId}/activate`, {},
+                { headers: { Authorization: `Bearer ${token}` } }
+            );
+            return {
+                success: response.data.success,
+                message: response.data.message || 'Compte réactivé avec succès'
+            };
+        } catch (error) {
+            return {
+                success: false,
+                message: error.response?.data?.message || 'Erreur lors de la réactivation'
+            };
+        }
+    },
+
+    // ✅ APPROVE — PUT /api/users/{id}/approve
     approveUser: async (userId, roleId) => {
         try {
             const token = localStorage.getItem('token');
             const response = await axios.put(
                 `${API_URL}/users/${userId}/approve`,
-                { roleId }, // ✅ roleId envoyé ici !
+                { roleId },
                 { headers: { Authorization: `Bearer ${token}` } }
             );
             return {
@@ -143,6 +163,7 @@ const userService = {
         }
     },
 
+    // ✅ REJECT — DELETE /api/users/{id}/reject
     rejectUser: async (userId) => {
         try {
             const token = localStorage.getItem('token');
@@ -162,6 +183,7 @@ const userService = {
         }
     },
 
+    // ✅ DELETE — DELETE /api/users/{id}
     deleteUser: async (userId) => {
         try {
             const token = localStorage.getItem('token');
@@ -181,6 +203,7 @@ const userService = {
         }
     },
 
+    // ✅ GENERATE TEMP PASSWORD — POST /api/users/{id}/generate-temp-password
     generateTempPassword: async (userId) => {
         try {
             const token = localStorage.getItem('token');
@@ -194,6 +217,7 @@ const userService = {
         }
     },
 
+    // ✅ CHANGE PASSWORD — POST /api/users/change-password
     changePassword: async (currentPassword, newPassword) => {
         try {
             const token = localStorage.getItem('token');

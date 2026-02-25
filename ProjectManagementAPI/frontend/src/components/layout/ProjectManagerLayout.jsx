@@ -10,11 +10,14 @@ import {
     RefreshCw
 } from 'lucide-react';
 import api from '../../services/api';
+import NotificationBell from '../NotificationBell';
 
 const ProjectManagerLayout = ({ children }) => {
     const navigate = useNavigate();
     const location = useLocation();
-    const [sidebarOpen, setSidebarOpen] = useState(false); // ← CHANGÉ À false
+
+    const [sidebarOpen, setSidebarOpen] = useState(false);
+    const [awaitingCount, setAwaitingCount] = useState(0); // ✅ avant useEffect
 
     const user = JSON.parse(localStorage.getItem('user'));
 
@@ -22,7 +25,6 @@ const ProjectManagerLayout = ({ children }) => {
         const fetchAwaitingValidationCount = async () => {
             try {
                 const response = await api.get('/projectmanager/tasks/awaiting-validation');
-
                 if (response.data.success) {
                     setAwaitingCount(response.data.data.length);
                 }
@@ -36,8 +38,6 @@ const ProjectManagerLayout = ({ children }) => {
         return () => clearInterval(interval);
     }, []);
 
-    const [awaitingCount, setAwaitingCount] = useState(0);
-
     const handleLogout = () => {
         localStorage.removeItem('token');
         localStorage.removeItem('user');
@@ -49,21 +49,9 @@ const ProjectManagerLayout = ({ children }) => {
     };
 
     const menuItems = [
-        {
-            icon: LayoutDashboard,
-            label: 'Dashboard',
-            path: '/project-manager/dashboard'
-        },
-        {
-            icon: FolderKanban,
-            label: 'Mes Projets',
-            path: '/project-manager/projects'
-        },
-        {
-            icon: ListTodo,
-            label: 'Tâches',
-            path: '/project-manager/tasks'
-        },
+        { icon: LayoutDashboard, label: 'Dashboard', path: '/project-manager/dashboard' },
+        { icon: FolderKanban, label: 'Mes Projets', path: '/project-manager/projects' },
+        { icon: ListTodo, label: 'Tâches', path: '/project-manager/tasks' },
         {
             icon: CheckCircle,
             label: 'Validation',
@@ -121,35 +109,50 @@ const ProjectManagerLayout = ({ children }) => {
                     </h1>
                 </div>
 
-                <button
-                    onClick={handleRefresh}
-                    style={{
-                        background: 'white',
-                        color: '#00A651',
-                        border: '2px solid white',
-                        padding: '10px 20px',
+                {/* RIGHT : 🔔 + Actualiser */}
+                <div style={{ display: 'flex', alignItems: 'center', gap: '15px' }}>
+                    {/* 🔔 Notifications */}
+                    <div style={{
+                        background: 'rgba(255, 255, 255, 0.2)',
                         borderRadius: '8px',
-                        cursor: 'pointer',
-                        fontWeight: '600',
-                        fontSize: '14px',
+                        padding: '4px 8px',
                         display: 'flex',
-                        alignItems: 'center',
-                        gap: '8px',
-                        transition: 'all 0.3s',
-                        boxShadow: '0 2px 8px rgba(0, 0, 0, 0.1)'
-                    }}
-                    onMouseEnter={(e) => {
-                        e.currentTarget.style.background = 'rgba(255, 255, 255, 0.95)';
-                        e.currentTarget.style.transform = 'translateY(-2px)';
-                    }}
-                    onMouseLeave={(e) => {
-                        e.currentTarget.style.background = 'white';
-                        e.currentTarget.style.transform = 'translateY(0)';
-                    }}
-                >
-                    <RefreshCw size={16} />
-                    <span>Actualiser</span>
-                </button>
+                        alignItems: 'center'
+                    }}>
+                        <NotificationBell />
+                    </div>
+
+                    {/* 🔄 Actualiser */}
+                    <button
+                        onClick={handleRefresh}
+                        style={{
+                            background: 'white',
+                            color: '#00A651',
+                            border: '2px solid white',
+                            padding: '10px 20px',
+                            borderRadius: '8px',
+                            cursor: 'pointer',
+                            fontWeight: '600',
+                            fontSize: '14px',
+                            display: 'flex',
+                            alignItems: 'center',
+                            gap: '8px',
+                            transition: 'all 0.3s',
+                            boxShadow: '0 2px 8px rgba(0, 0, 0, 0.1)'
+                        }}
+                        onMouseEnter={(e) => {
+                            e.currentTarget.style.background = 'rgba(255, 255, 255, 0.95)';
+                            e.currentTarget.style.transform = 'translateY(-2px)';
+                        }}
+                        onMouseLeave={(e) => {
+                            e.currentTarget.style.background = 'white';
+                            e.currentTarget.style.transform = 'translateY(0)';
+                        }}
+                    >
+                        <RefreshCw size={16} />
+                        <span>Actualiser</span>
+                    </button>
+                </div>
             </header>
 
             {/* SIDEBAR - GREEN */}

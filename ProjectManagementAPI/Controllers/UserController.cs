@@ -15,16 +15,16 @@ namespace ProjectManagementAPI.Controllers
     {
         private readonly IUserService _userService;
         private readonly ApplicationDbContext _context;
-        private readonly INotificationService _notificationService; // ✅ NOUVEAU
+        private readonly INotificationService _notificationService;
 
         public UserController(
             IUserService userService,
             ApplicationDbContext context,
-            INotificationService notificationService) // ✅ NOUVEAU
+            INotificationService notificationService)
         {
             _userService = userService;
             _context = context;
-            _notificationService = notificationService; // ✅ NOUVEAU
+            _notificationService = notificationService;
         }
 
         // ============= CRUD =============
@@ -148,44 +148,96 @@ namespace ProjectManagementAPI.Controllers
             return result.Success ? Ok(result) : BadRequest(result);
         }
 
-        // ============= Account Management =============
-
-        [HttpPatch("{userId}/toggle-active")]
+        // ============= DEACTIVATE USER =============
+        [HttpPut("{userId}/deactivate")]
         [Authorize(Roles = "Manager,Reporting")]
-        public async Task<IActionResult> ToggleUserActive(int userId)
+        public async Task<IActionResult> DeactivateUser(int userId)
         {
             try
             {
-                var userResult = await _userService.GetUserByIdAsync(userId);
-                if (!userResult.Success)
+                var user = await _context.Users.FindAsync(userId);
+                if (user == null)
                     return NotFound(new { success = false, message = "Utilisateur introuvable" });
 
-                var userData = userResult.Data;
-                bool currentStatus = false;
-                var isActiveProp = userData?.GetType().GetProperty("IsActive");
-                if (isActiveProp != null)
-                    currentStatus = (bool)(isActiveProp.GetValue(userData) ?? false);
+                if (!user.IsActive)
+                    return BadRequest(new { success = false, message = "Compte déjà désactivé" });
 
-                var result = await _userService.ToggleUserActiveAsync(userId, !currentStatus);
+                user.IsActive = false;
+                user.UpdatedAt = DateTime.UtcNow;
+                await _context.SaveChangesAsync();
 
-                if (result.Success)
-                    return Ok(new
-                    {
-                        success = true,
-                        message = !currentStatus
-                            ? "Utilisateur activé avec succès"
-                            : "Utilisateur désactivé avec succès",
-                        data = result.Data
-                    });
-
-                return BadRequest(result);
+                // ❌ Pas de notification — Developer voit message sur page Login
+                return Ok(new
+                {
+                    success = true,
+                    message = $"Compte de {user.UserName} désactivé avec succès"
+                });
             }
             catch (Exception ex)
             {
                 return StatusCode(500, new
                 {
                     success = false,
-                    message = "Erreur lors du changement de statut",
+                    message = "Erreur lors de la désactivation",
+                    error = ex.Message
+                });
+            }
+        }
+
+        // ============= ACTIVATE USER =============
+        [HttpPut("{userId}/activate")]
+        [Authorize(Roles = "Manager,Reporting")]
+        public async Task<IActionResult> ActivateUser(int userId)
+        {
+            try
+            {
+                var user = await _context.Users.FindAsync(userId);
+                if (user == null)
+                    return NotFound(new { success = false, message = "Utilisateur introuvable" });
+
+                if (user.IsActive)
+                    return BadRequest(new { success = false, message = "Compte déjà actif" });
+
+                user.IsActive = true;
+                user.MustChangePassword = true;
+                user.UpdatedAt = DateTime.UtcNow;
+                await _context.SaveChangesAsync();
+
+                // ✅ Notifier TOUS les Reporting actifs — sans rappel MDP
+                var reportingUsers = await _context.Users
+                    .Include(u => u.Role)
+                    .Where(u => u.Role.RoleName == "Reporting" && u.IsActive)
+                    .ToListAsync();
+
+                foreach (var rep in reportingUsers)
+                {
+                    _context.Notifications.Add(new Notification
+                    {
+                        UserId = rep.UserId,
+                        Title = "🟢 Compte réactivé",
+                        // ✅ FIX 1 — message propre sans rappel MDP
+                        Message = $"Le compte de {user.FirstName} {user.LastName} (@{user.UserName}) a été réactivé avec succès.",
+                        Type = "Info",
+                        RelatedUserId = user.UserId,
+                        IsRead = false,
+                        CreatedAt = DateTime.UtcNow
+                    });
+                }
+                await _context.SaveChangesAsync();
+
+                // ✅ FIX 2 — m minuscule
+                return Ok(new
+                {
+                    success = true,
+                    message = $"Compte de {user.UserName} réactivé avec succès"
+                });
+            }
+            catch (Exception ex)
+            {
+                return StatusCode(500, new
+                {
+                    success = false,
+                    message = "Erreur lors de la réactivation",
                     error = ex.Message
                 });
             }
@@ -227,7 +279,6 @@ namespace ProjectManagementAPI.Controllers
         }
 
         // ============= Temporary Password =============
-
         [HttpPost("{userId}/generate-temp-password")]
         [Authorize(Roles = "Manager,Reporting")]
         public async Task<IActionResult> GenerateTemporaryPassword(int userId)
@@ -237,7 +288,7 @@ namespace ProjectManagementAPI.Controllers
             return Ok(result);
         }
 
-        // ============= APPROVE USER ============= ✅ + Notification
+        // ============= APPROVE USER =============
         [HttpPut("{userId}/approve")]
         [Authorize(Roles = "Manager,Reporting")]
         public async Task<IActionResult> ApproveUser(int userId, [FromBody] ApproveUserDTO dto)
@@ -262,7 +313,7 @@ namespace ProjectManagementAPI.Controllers
 
                 await _context.Entry(user).Reference(u => u.Role).LoadAsync();
 
-                // ✅ Notification — Compte approuvé
+                // ✅ Notification Developer — visible après première connexion
                 await _notificationService.CreateNotificationAsync(
                     userId: user.UserId,
                     title: "✅ Compte approuvé !",
@@ -313,7 +364,6 @@ namespace ProjectManagementAPI.Controllers
                         message = "Impossible de rejeter un utilisateur déjà actif"
                     });
 
-                // ❌ Pas de notification — utilisateur supprimé
                 _context.Users.Remove(user);
                 await _context.SaveChangesAsync();
 
