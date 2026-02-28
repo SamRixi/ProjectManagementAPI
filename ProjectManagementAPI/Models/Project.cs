@@ -16,6 +16,8 @@ namespace ProjectManagementAPI.Models
         public DateTime? EndDate { get; set; }    // ✅ Nullable
 
         public DateTime CreatedAt { get; set; } = DateTime.UtcNow;
+        public DateTime? UpdatedAt { get; set; }
+        public DateTime? CancelledAt { get; set; }
 
         public int? CreatedByUserId { get; set; }  // ✅ Nullable (déjà bon)
 
@@ -27,6 +29,7 @@ namespace ProjectManagementAPI.Models
         public int? ProjectStatusId { get; set; }
         public int? PriorityId { get; set; }
         public int? ProjectManagerId { get; set; }
+     
 
         // Navigation properties
         public User? CreatedByUser { get; set; }

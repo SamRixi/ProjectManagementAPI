@@ -15,6 +15,7 @@ const EDBManagement = () => {
     const [selectedFile, setSelectedFile] = useState(null);
     const [description, setDescription] = useState('');
     const [uploading, setUploading] = useState(false);
+    const [selectedProjectId, setSelectedProjectId] = useState(null); // ✅ projet choisi
 
     useEffect(() => {
         fetchData();
@@ -67,22 +68,34 @@ const EDBManagement = () => {
             return;
         }
 
+        if (!selectedProjectId) {
+            alert('Veuillez sélectionner un projet');
+            return;
+        }
+
         try {
             setUploading(true);
-            const response = await edbService.uploadEDB(selectedFile, description);
+            console.log('🧪 selectedProjectId =', selectedProjectId, typeof selectedProjectId);
+
+            const response = await edbService.uploadEDB(
+                selectedFile,
+                selectedProjectId, // ✅ projectId envoyé
+                description
+            );
 
             if (response.success) {
                 alert('✅ EDB uploadé avec succès !');
                 setShowUploadModal(false);
                 setSelectedFile(null);
                 setDescription('');
+                setSelectedProjectId(null);
                 fetchData();
             } else {
                 alert('❌ ' + response.message);
             }
         } catch (error) {
             console.error('❌ Upload error:', error);
-            alert('Erreur lors de l\'upload');
+            alert("Erreur lors de l'upload");
         } finally {
             setUploading(false);
         }
@@ -138,9 +151,15 @@ const EDBManagement = () => {
                 </div>
 
                 {/* Stats Cards */}
-                <div className="stats-grid" style={{ marginBottom: '2rem', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))' }}>
+                <div
+                    className="stats-grid"
+                    style={{ marginBottom: '2rem', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))' }}
+                >
                     <div className="stat-card">
-                        <div className="stat-icon" style={{ background: 'linear-gradient(135deg, #00A651 0%, #004D29 100%)' }}>
+                        <div
+                            className="stat-icon"
+                            style={{ background: 'linear-gradient(135deg, #00A651 0%, #004D29 100%)' }}
+                        >
                             <FileText size={28} />
                         </div>
                         <div className="stat-content">
@@ -151,7 +170,10 @@ const EDBManagement = () => {
                     </div>
 
                     <div className="stat-card">
-                        <div className="stat-icon" style={{ background: 'linear-gradient(135deg, #F59E0B 0%, #D97706 100%)' }}>
+                        <div
+                            className="stat-icon"
+                            style={{ background: 'linear-gradient(135deg, #F59E0B 0%, #D97706 100%)' }}
+                        >
                             <FolderOpen size={28} />
                         </div>
                         <div className="stat-content">
@@ -164,7 +186,10 @@ const EDBManagement = () => {
                     </div>
 
                     <div className="stat-card">
-                        <div className="stat-icon" style={{ background: 'linear-gradient(135deg, #3B82F6 0%, #1D4ED8 100%)' }}>
+                        <div
+                            className="stat-icon"
+                            style={{ background: 'linear-gradient(135deg, #3B82F6 0%, #1D4ED8 100%)' }}
+                        >
                             <FolderOpen size={28} />
                         </div>
                         <div className="stat-content">
@@ -216,30 +241,43 @@ const EDBManagement = () => {
                                     filteredEdbs.map((edb) => (
                                         <tr key={edb.edbId}>
                                             <td>
-                                                <span style={{
-                                                    fontWeight: '700',
-                                                    color: '#00A651',
-                                                    fontSize: '0.95rem'
-                                                }}>
+                                                <span
+                                                    style={{
+                                                        fontWeight: '700',
+                                                        color: '#00A651',
+                                                        fontSize: '0.95rem'
+                                                    }}
+                                                >
                                                     #{edb.edbId}
                                                 </span>
                                             </td>
                                             <td>
-                                                <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem' }}>
+                                                <div
+                                                    style={{
+                                                        display: 'flex',
+                                                        alignItems: 'center',
+                                                        gap: '0.75rem'
+                                                    }}
+                                                >
                                                     <FileText size={18} style={{ color: '#00A651' }} />
                                                     <span style={{ fontWeight: '600' }}>{edb.fileName}</span>
                                                 </div>
                                             </td>
                                             <td>
-                                                <span style={{
-                                                    color: edb.projectId === 0 ? '#999' : '#333',
-                                                    fontStyle: edb.projectId === 0 ? 'italic' : 'normal'
-                                                }}>
+                                                <span
+                                                    style={{
+                                                        color: edb.projectId === 0 ? '#999' : '#333',
+                                                        fontStyle: edb.projectId === 0 ? 'italic' : 'normal'
+                                                    }}
+                                                >
                                                     {getProjectName(edb.projectId)}
                                                 </span>
                                             </td>
                                             <td>
-                                                <span className={`status-badge ${edb.projectId === 0 ? 'inactive' : 'active'}`}>
+                                                <span
+                                                    className={`status-badge ${edb.projectId === 0 ? 'inactive' : 'active'
+                                                        }`}
+                                                >
                                                     {edb.projectId === 0 ? 'Non assigné' : 'Assigné'}
                                                 </span>
                                             </td>
@@ -249,7 +287,11 @@ const EDBManagement = () => {
                                                         className="btn-icon"
                                                         onClick={() => window.open(edb.fileUrl, '_blank')}
                                                         title="Voir"
-                                                        style={{ background: 'linear-gradient(135deg, #E3F2FD 0%, #BBDEFB 100%)', color: '#1976D2' }}
+                                                        style={{
+                                                            background:
+                                                                'linear-gradient(135deg, #E3F2FD 0%, #BBDEFB 100%)',
+                                                            color: '#1976D2'
+                                                        }}
                                                     >
                                                         <Eye size={16} />
                                                     </button>
@@ -257,13 +299,19 @@ const EDBManagement = () => {
                                                         className="btn-icon"
                                                         onClick={() => handleDownload(edb)}
                                                         title="Télécharger"
-                                                        style={{ background: 'linear-gradient(135deg, #E8F5E9 0%, #C8E6C9 100%)', color: '#388E3C' }}
+                                                        style={{
+                                                            background:
+                                                                'linear-gradient(135deg, #E8F5E9 0%, #C8E6C9 100%)',
+                                                            color: '#388E3C'
+                                                        }}
                                                     >
                                                         <Download size={16} />
                                                     </button>
                                                     <button
                                                         className="btn-icon btn-deactivate"
-                                                        onClick={() => handleDelete(edb.edbId, edb.fileName)}
+                                                        onClick={() =>
+                                                            handleDelete(edb.edbId, edb.fileName)
+                                                        }
                                                         title="Supprimer"
                                                     >
                                                         <Trash2 size={16} />
@@ -286,8 +334,14 @@ const EDBManagement = () => {
 
                 {/* Upload Modal */}
                 {showUploadModal && (
-                    <div className="modal-overlay" onClick={() => !uploading && setShowUploadModal(false)}>
-                        <div className="modal-content" onClick={(e) => e.stopPropagation()}>
+                    <div
+                        className="modal-overlay"
+                        onClick={() => !uploading && setShowUploadModal(false)}
+                    >
+                        <div
+                            className="modal-content"
+                            onClick={(e) => e.stopPropagation()}
+                        >
                             <div className="modal-header">
                                 <h3>Uploader un EDB</h3>
                                 <button
@@ -315,15 +369,48 @@ const EDBManagement = () => {
                                         }}
                                     />
                                     {selectedFile && (
-                                        <p style={{
-                                            marginTop: '0.5rem',
-                                            color: '#00A651',
-                                            fontWeight: '600',
-                                            fontSize: '0.95rem'
-                                        }}>
-                                            📄 {selectedFile.name} ({(selectedFile.size / 1024 / 1024).toFixed(2)} MB)
+                                        <p
+                                            style={{
+                                                marginTop: '0.5rem',
+                                                color: '#00A651',
+                                                fontWeight: '600',
+                                                fontSize: '0.95rem'
+                                            }}
+                                        >
+                                            📄 {selectedFile.name} (
+                                            {(selectedFile.size / 1024 / 1024).toFixed(2)} MB)
                                         </p>
                                     )}
+                                </div>
+
+                                {/* Sélection de projet */}
+                                <div className="form-group">
+                                    <label>Projet associé *</label>
+                                    <select
+                                        value={selectedProjectId || ''}
+                                        onChange={(e) =>
+                                            setSelectedProjectId(Number(e.target.value))
+                                        }
+                                        disabled={uploading}
+                                        required
+                                        style={{
+                                            width: '100%',
+                                            padding: '0.75rem',
+                                            border: '2px solid #ddd',
+                                            borderRadius: '12px',
+                                            fontSize: '1rem',
+                                            fontFamily: 'Outfit, sans-serif'
+                                        }}
+                                    >
+                                        <option value="" disabled>
+                                            Choisir un projet...
+                                        </option>
+                                        {projects.map((p) => (
+                                            <option key={p.projectId} value={p.projectId}>
+                                                {p.projectName}
+                                            </option>
+                                        ))}
+                                    </select>
                                 </div>
 
                                 <div className="form-group">

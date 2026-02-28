@@ -245,11 +245,7 @@ namespace ProjectManagementAPI.Controllers
 
         [HttpPut("{userId}/deadline")]
         [Authorize(Roles = "Manager,Reporting")]
-        public async Task<IActionResult> SetAccountDeadline(int userId, [FromBody] DateTime? deadline)
-        {
-            var result = await _userService.SetAccountDeadlineAsync(userId, deadline);
-            return result.Success ? Ok(result) : BadRequest(result);
-        }
+      
 
         // ============= Password Management =============
 

@@ -3,6 +3,7 @@ using System;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Infrastructure;
 using Microsoft.EntityFrameworkCore.Metadata;
+using Microsoft.EntityFrameworkCore.Migrations;
 using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 using ProjectManagementAPI.Data;
 
@@ -11,9 +12,11 @@ using ProjectManagementAPI.Data;
 namespace ProjectManagementAPI.Migrations
 {
     [DbContext(typeof(ApplicationDbContext))]
-    partial class ApplicationDbContextModelSnapshot : ModelSnapshot
+    [Migration("20260227165554_datetimecancelproject")]
+    partial class datetimecancelproject
     {
-        protected override void BuildModel(ModelBuilder modelBuilder)
+        /// <inheritdoc />
+        protected override void BuildTargetModel(ModelBuilder modelBuilder)
         {
 #pragma warning disable 612, 618
             modelBuilder
@@ -64,21 +67,6 @@ namespace ProjectManagementAPI.Migrations
 
                     SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<int>("EdbId"));
 
-                    b.Property<string>("FileName")
-                        .IsRequired()
-                        .HasColumnType("nvarchar(max)");
-
-                    b.Property<string>("FilePath")
-                        .IsRequired()
-                        .HasColumnType("nvarchar(max)");
-
-                    b.Property<long>("FileSize")
-                        .HasColumnType("bigint");
-
-                    b.Property<string>("FileType")
-                        .IsRequired()
-                        .HasColumnType("nvarchar(max)");
-
                     b.Property<string>("FileUrl")
                         .IsRequired()
                         .HasColumnType("nvarchar(max)");
@@ -86,17 +74,9 @@ namespace ProjectManagementAPI.Migrations
                     b.Property<int?>("ProjectId")
                         .HasColumnType("int");
 
-                    b.Property<DateTime>("UploadedAt")
-                        .HasColumnType("datetime2");
-
-                    b.Property<int?>("UploadedByUserId")
-                        .HasColumnType("int");
-
                     b.HasKey("EdbId");
 
                     b.HasIndex("ProjectId");
-
-                    b.HasIndex("UploadedByUserId");
 
                     b.ToTable("EDBs");
                 });
@@ -457,6 +437,9 @@ namespace ProjectManagementAPI.Migrations
                     b.Property<DateTime?>("LeftDate")
                         .HasColumnType("datetime2");
 
+                    b.Property<int>("TeamMemberId")
+                        .HasColumnType("int");
+
                     b.HasKey("TeamId", "UserId");
 
                     b.HasIndex("UserId");
@@ -471,6 +454,9 @@ namespace ProjectManagementAPI.Migrations
                         .HasColumnType("int");
 
                     SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<int>("UserId"));
+
+                    b.Property<DateTime?>("AccountDeadline")
+                        .HasColumnType("datetime2");
 
                     b.Property<DateTime>("CreatedAt")
                         .HasColumnType("datetime2");
@@ -555,13 +541,7 @@ namespace ProjectManagementAPI.Migrations
                         .HasForeignKey("ProjectId")
                         .OnDelete(DeleteBehavior.Cascade);
 
-                    b.HasOne("ProjectManagementAPI.Models.User", "UploadedByUser")
-                        .WithMany()
-                        .HasForeignKey("UploadedByUserId");
-
                     b.Navigation("Project");
-
-                    b.Navigation("UploadedByUser");
                 });
 
             modelBuilder.Entity("ProjectManagementAPI.Models.Notification", b =>

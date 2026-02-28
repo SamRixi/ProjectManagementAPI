@@ -3,6 +3,7 @@ using System;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Infrastructure;
 using Microsoft.EntityFrameworkCore.Metadata;
+using Microsoft.EntityFrameworkCore.Migrations;
 using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 using ProjectManagementAPI.Data;
 
@@ -11,9 +12,11 @@ using ProjectManagementAPI.Data;
 namespace ProjectManagementAPI.Migrations
 {
     [DbContext(typeof(ApplicationDbContext))]
-    partial class ApplicationDbContextModelSnapshot : ModelSnapshot
+    [Migration("20260227225351_UpdateTeamAndProjectManagerLogic")]
+    partial class UpdateTeamAndProjectManagerLogic
     {
-        protected override void BuildModel(ModelBuilder modelBuilder)
+        /// <inheritdoc />
+        protected override void BuildTargetModel(ModelBuilder modelBuilder)
         {
 #pragma warning disable 612, 618
             modelBuilder
@@ -89,7 +92,7 @@ namespace ProjectManagementAPI.Migrations
                     b.Property<DateTime>("UploadedAt")
                         .HasColumnType("datetime2");
 
-                    b.Property<int?>("UploadedByUserId")
+                    b.Property<int>("UploadedByUserId")
                         .HasColumnType("int");
 
                     b.HasKey("EdbId");
@@ -557,7 +560,9 @@ namespace ProjectManagementAPI.Migrations
 
                     b.HasOne("ProjectManagementAPI.Models.User", "UploadedByUser")
                         .WithMany()
-                        .HasForeignKey("UploadedByUserId");
+                        .HasForeignKey("UploadedByUserId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
 
                     b.Navigation("Project");
 

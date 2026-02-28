@@ -2,9 +2,7 @@
 {
     public class TeamMemberDTO
     {
-        // ✅ Team Member identification
-        public int TeamMemberId { get; set; }  
-
+      
         // ✅ Team information
         public int TeamId { get; set; }  
         public string TeamName { get; set; } = string.Empty;  

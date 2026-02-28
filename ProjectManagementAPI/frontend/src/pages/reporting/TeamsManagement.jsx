@@ -7,7 +7,7 @@ import '../../styles/TeamsManagement.css';
 
 const TeamsManagement = () => {
     const [teams, setTeams] = useState([]);
-    const [users, setUsers] = useState([]);
+    const [availableUsers, setAvailableUsers] = useState([]); // ✅ remplace users
     const [loading, setLoading] = useState(true);
     const [showModal, setShowModal] = useState(false);
     const [showMembersModal, setShowMembersModal] = useState(false);
@@ -22,11 +22,9 @@ const TeamsManagement = () => {
     });
 
     useEffect(() => {
-        // ✅ Nettoyer l'ancien localStorage (plus nécessaire)
         localStorage.removeItem('deletedTeamIds');
         fetchTeams();
-        fetchUsers();
-    }, []);
+    }, []); // ✅ supprimé fetchUsers()
 
     // ========== FETCH TEAMS ==========
     const fetchTeams = async () => {
@@ -35,7 +33,6 @@ const TeamsManagement = () => {
             const response = await teamService.getAllTeams();
             const teamsArray = Array.isArray(response) ? response : response?.data || [];
             setTeams(teamsArray);
-            console.log('📊 Teams loaded:', teamsArray.length);
         } catch (error) {
             console.error('❌ Fetch teams error:', error);
         } finally {
@@ -43,15 +40,15 @@ const TeamsManagement = () => {
         }
     };
 
-    // ========== FETCH USERS ==========
-    const fetchUsers = async () => {
+    // ✅ NOUVEAU : fetch users disponibles (Developer + Project Manager uniquement)
+    const fetchAvailableUsers = async (teamId) => {
         try {
-            const response = await teamService.getAllUsers();
+            const response = await teamService.getAvailableUsers(teamId);
             const usersArray = Array.isArray(response) ? response : response?.data || [];
-            setUsers(usersArray);
-            console.log('👥 Loaded users:', usersArray.length);
+            setAvailableUsers(usersArray);
         } catch (error) {
-            console.error('❌ Fetch users error:', error);
+            console.error('❌ Fetch available users error:', error);
+            setAvailableUsers([]);
         }
     };
 
@@ -61,7 +58,6 @@ const TeamsManagement = () => {
             const response = await teamService.getTeamMembers(teamId);
             const membersArray = Array.isArray(response) ? response : response?.data || [];
             setTeamMembers(membersArray);
-            console.log(`👥 Team ${teamId} members:`, membersArray.length);
         } catch (error) {
             console.error('❌ Fetch team members error:', error);
             setTeamMembers([]);
@@ -72,6 +68,7 @@ const TeamsManagement = () => {
     const handleManageMembers = async (team) => {
         setSelectedTeam(team);
         await fetchTeamMembers(team.teamId);
+        await fetchAvailableUsers(team.teamId); // ✅ charger les users filtrés
         setShowMembersModal(true);
         setSelectedUser('');
         setIsProjectManager(false);
@@ -96,6 +93,7 @@ const TeamsManagement = () => {
             if (response.success) {
                 alert('✅ Membre ajouté avec succès!');
                 await fetchTeamMembers(selectedTeam.teamId);
+                await fetchAvailableUsers(selectedTeam.teamId); // ✅ rafraîchir le dropdown
                 await fetchTeams();
                 setSelectedUser('');
                 setIsProjectManager(false);
@@ -118,6 +116,7 @@ const TeamsManagement = () => {
             if (response.success) {
                 alert('✅ Membre retiré avec succès!');
                 await fetchTeamMembers(selectedTeam.teamId);
+                await fetchAvailableUsers(selectedTeam.teamId); // ✅ rafraîchir le dropdown
                 await fetchTeams();
             } else {
                 alert(`❌ ${response.message || 'Erreur lors de la suppression'}`);
@@ -173,16 +172,13 @@ const TeamsManagement = () => {
         }
     };
 
-    // ✅ DELETE TEAM — vraie suppression via API
     const handleDeleteTeam = async (teamId, teamName) => {
         if (!window.confirm(`Voulez-vous vraiment supprimer l'équipe "${teamName}" ?\nCette action est irréversible.`)) return;
 
         try {
             const response = await teamService.deleteTeam(teamId);
-
             if (response.success) {
                 alert(`✅ ${response.message || 'Équipe supprimée avec succès !'}`);
-                // ✅ Recharger depuis le serveur
                 fetchTeams();
             } else {
                 alert(`❌ ${response.message || 'Erreur lors de la suppression'}`);
@@ -192,11 +188,6 @@ const TeamsManagement = () => {
             alert(`❌ ${error.message || 'Erreur lors de la suppression'}`);
         }
     };
-
-    // Filter out users already members
-    const availableUsers = users.filter(
-        user => !teamMembers.some(member => member.userId === user.userId)
-    );
 
     return (
         <ReportingLayout>
@@ -362,8 +353,8 @@ const TeamsManagement = () => {
                                         <p className="empty-members">Aucun membre dans cette équipe</p>
                                     ) : (
                                         <div className="members-list">
-                                            {teamMembers.map(member => (
-                                                <div key={member.teamMemberId} className="member-item">
+                                            {teamMembers.map((member, index) => (
+                                                <div key={`${member.userId}-${index}`} className="member-item">
                                                     <div className="member-info">
                                                         <div className="member-avatar">
                                                             {member.firstName?.charAt(0)}{member.lastName?.charAt(0)}

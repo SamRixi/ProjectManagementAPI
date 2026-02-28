@@ -10,14 +10,13 @@ namespace ProjectManagementAPI.Services.Interfaces
         Task<ApiResponse<TeamDetailsDTO>> GetTeamByIdAsync(int teamId);
         Task<ApiResponse<List<TeamDTO>>> GetAllTeamsAsync();
         Task<ApiResponse<TeamMemberDTO>> AddMemberAsync(AddTeamMemberDTO dto);
-        Task<ApiResponse<bool>> RemoveMemberAsync(int teamMemberId);
         Task<ApiResponse<bool>> ToggleTeamActiveAsync(int teamId, bool isActive);
-        Task<ApiResponse<bool>> ToggleMemberActiveAsync(int memberId, bool isActive);
+        Task<ApiResponse<bool>> ToggleMemberActiveAsync(int teamId, int userId, bool isActive);
         Task<ApiResponse<List<TeamMemberDTO>>> GetTeamMembersAsync(int teamId);
         Task<ApiResponse<bool>> RemoveMemberAsync(int teamId, int userId);
         Task<ApiResponse<List<ProjectManagerDTO>>> GetProjectManagersAsync();
-        Task<ApiResponse<bool>> SetProjectManagerAsync(int teamMemberId, bool isProjectManager);
-      
+        Task<ApiResponse<bool>> SetProjectManagerAsync(int teamId, int userId, bool isProjectManager);
+        Task<ApiResponse<List<TeamMemberDTO>>> GetAvailableUsersForTeamAsync(int teamId);
 
     }
 }

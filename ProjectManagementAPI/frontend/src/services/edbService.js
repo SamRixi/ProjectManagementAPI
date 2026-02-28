@@ -3,15 +3,17 @@ import api from './api';
 
 const edbService = {
     // ============= UPLOAD EDB (Reporting Only) =============
-    uploadEDB: async (file, description = '') => {
+    // file + projectId + description
+    uploadEDB: async (file, projectId, description = '') => {
         try {
             const formData = new FormData();
             formData.append('file', file);
+            formData.append('projectId', projectId); // pour [FromForm] int projectId
             if (description) {
                 formData.append('description', description);
             }
 
-            console.log('📤 Uploading EDB file:', file.name);
+            console.log('📤 Uploading EDB file:', file?.name, 'for project:', projectId);
 
             const response = await api.post('/edb/upload', formData, {
                 headers: {
@@ -27,12 +29,17 @@ const edbService = {
                 message: response.data.message || 'Fichier EDB uploadé avec succès'
             };
         } catch (error) {
-            console.error('❌ Upload EDB error:', error);
+            console.error('❌ Upload EDB error raw:', error.response?.data || error);
+            // 🔎 log détaillé pour voir la vraie erreur du backend
+            if (error.response?.data) {
+                console.log('🔍 Upload EDB error details:', JSON.stringify(error.response.data, null, 2));
+            }
             return {
                 success: false,
-                message: error.response?.data?.message ||
+                message:
+                    error.response?.data?.message ||
                     error.response?.data?.Message ||
-                    'Erreur lors de l\'upload de l\'EDB'
+                    "Erreur lors de l'upload de l'EDB"
             };
         }
     },
@@ -46,7 +53,6 @@ const edbService = {
 
             console.log('✅ Get all EDBs response:', response.data);
 
-            // Backend returns: { success: true, message: "X EDB(s) récupéré(s)", data: [...] }
             let edbsArray = [];
 
             if (response.data.success && response.data.data) {
@@ -67,7 +73,8 @@ const edbService = {
             return {
                 success: false,
                 data: [],
-                message: error.response?.data?.message ||
+                message:
+                    error.response?.data?.message ||
                     error.response?.data?.Message ||
                     'Erreur lors de la récupération des EDB'
             };
@@ -92,23 +99,23 @@ const edbService = {
             console.error('❌ Get EDB by ID error:', error);
             return {
                 success: false,
-                message: error.response?.data?.message ||
+                message:
+                    error.response?.data?.message ||
                     error.response?.data?.Message ||
-                    'Erreur lors de la récupération de l\'EDB'
+                    "Erreur lors de la récupération de l'EDB"
             };
         }
     },
 
-    // ============= GET PROJECT EDBS =============
-    getProjectEDBs: async (projectId) => {
+    // ============= GET MY PROJECT EDBS (Dev + Chef de projet) =============
+    getMyProjectEdbs: async () => {
         try {
-            console.log(`📥 Fetching EDBs for project ID: ${projectId}`);
+            console.log('📥 Fetching my project EDBs...');
 
-            const response = await api.get(`/edb/project/${projectId}`);
+            const response = await api.get('/edb/my-project-edbs');
 
-            console.log('✅ Get project EDBs response:', response.data);
+            console.log('✅ Get my project EDBs response:', response.data);
 
-            // Backend returns: { success: true, message: "X EDB(s) trouvé(s) pour le projet", data: [...] }
             let edbsArray = [];
 
             if (response.data.success && response.data.data) {
@@ -123,13 +130,26 @@ const edbService = {
                 message: response.data.message
             };
         } catch (error) {
-            console.error('❌ Get project EDBs error:', error);
+            // 🔥 LOG COMPLET DE L’ERREUR
+            console.error('❌ Get my project EDBs error (full):', error);
+
+            if (error.response) {
+                console.log('🔴 error.response.status:', error.response.status);
+                console.log('🔴 error.response.data:', JSON.stringify(error.response.data, null, 2));
+                console.log('🔴 error.response.headers:', error.response.headers);
+            } else if (error.request) {
+                console.log('🟠 error.request (no response):', error.request);
+            } else {
+                console.log('🟡 error.message:', error.message);
+            }
+
             return {
                 success: false,
                 data: [],
-                message: error.response?.data?.message ||
+                message:
+                    error.response?.data?.message ||
                     error.response?.data?.Message ||
-                    'Erreur lors de la récupération des EDB du projet'
+                    'Erreur lors de la récupération des EDB de vos projets'
             };
         }
     },
@@ -140,10 +160,9 @@ const edbService = {
             console.log(`⬇️ Downloading EDB with ID: ${edbId}`);
 
             const response = await api.get(`/edb/${edbId}/download`, {
-                responseType: 'blob' // Important for file download
+                responseType: 'blob'
             });
 
-            // Create blob URL and trigger download
             const url = window.URL.createObjectURL(new Blob([response.data]));
             const link = document.createElement('a');
             link.href = url;
@@ -163,9 +182,10 @@ const edbService = {
             console.error('❌ Download EDB error:', error);
             return {
                 success: false,
-                message: error.response?.data?.message ||
+                message:
+                    error.response?.data?.message ||
                     error.response?.data?.Message ||
-                    'Erreur lors du téléchargement de l\'EDB'
+                    "Erreur lors du téléchargement de l'EDB"
             };
         }
     },
@@ -187,9 +207,10 @@ const edbService = {
             console.error('❌ Delete EDB error:', error);
             return {
                 success: false,
-                message: error.response?.data?.message ||
+                message:
+                    error.response?.data?.message ||
                     error.response?.data?.Message ||
-                    'Erreur lors de la suppression de l\'EDB'
+                    "Erreur lors de la suppression de l'EDB"
             };
         }
     },

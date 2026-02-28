@@ -36,7 +36,7 @@ namespace ProjectManagementAPI.Services.Implementations
                     RoleId = dto.RoleId,
                     IsActive = true,
                     MustChangePassword = true,
-                    AccountDeadline = dto.AccountDeadline,
+                   
                     CreatedAt = DateTime.UtcNow
                 };
 
@@ -69,7 +69,7 @@ namespace ProjectManagementAPI.Services.Implementations
                 if (dto.FirstName != null) user.FirstName = dto.FirstName;
                 if (dto.LastName != null) user.LastName = dto.LastName;
                 if (dto.RoleId.HasValue) user.RoleId = dto.RoleId.Value;
-                if (dto.AccountDeadline.HasValue) user.AccountDeadline = dto.AccountDeadline;
+             
 
                 user.UpdatedAt = DateTime.UtcNow;
                 await _context.SaveChangesAsync();
@@ -200,7 +200,7 @@ namespace ProjectManagementAPI.Services.Implementations
                 if (user == null)
                     return new ApiResponse<bool> { Success = false, Message = "Utilisateur introuvable" };
 
-                user.AccountDeadline = deadline;
+               
                 user.UpdatedAt = DateTime.UtcNow;
                 await _context.SaveChangesAsync();
 
@@ -348,8 +348,7 @@ namespace ProjectManagementAPI.Services.Implementations
                 if (!user.IsActive)
                     return new ApiResponse<bool> { Success = false, Message = "Compte désactivé" };
 
-                if (user.AccountDeadline.HasValue && user.AccountDeadline < DateTime.UtcNow)
-                    return new ApiResponse<bool> { Success = false, Message = "Compte expiré" };
+              
 
                 return new ApiResponse<bool> { Success = true, Data = true };
             }
@@ -455,7 +454,7 @@ namespace ProjectManagementAPI.Services.Implementations
                 LastName = user.LastName,
                 IsActive = user.IsActive,
                 MustChangePassword = user.MustChangePassword,
-                AccountDeadline = user.AccountDeadline,
+            
                 CreatedAt = user.CreatedAt,
                 LastLoginAt = user.LastLoginAt,
                 RoleId = user.RoleId,

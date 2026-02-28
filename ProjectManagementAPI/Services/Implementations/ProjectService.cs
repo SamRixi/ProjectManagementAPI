@@ -590,7 +590,7 @@ public class ProjectService : IProjectService
 
             var teamMemberDTOs = members.Select(tm => new TeamMemberDTO
             {
-                TeamMemberId = tm.TeamMemberId,
+                
                 TeamId = tm.TeamId,
                 TeamName = project.Team.teamName,
                 UserId = tm.UserId,

@@ -3,6 +3,8 @@ using ProjectManagementAPI.Data;
 using ProjectManagementAPI.DTOs;
 using ProjectManagementAPI.Models;
 using ProjectManagementAPI.Services.Interfaces;
+using System.Linq;
+using System.Security.Claims;
 
 namespace ProjectManagementAPI.Services.Implementations
 {
@@ -28,18 +30,37 @@ namespace ProjectManagementAPI.Services.Implementations
             return $"{request?.Scheme}://{request?.Host}";
         }
 
-        public async Task<ApiResponse<EdbDTO>> UploadEdbAsync(IFormFile file, string? description)
+        // ========= RÉCUPÉRER L'UTILISATEUR COURANT PAR EMAIL (token) =========
+        private int? GetCurrentUserId()
+        {
+            var httpUser = _httpContextAccessor.HttpContext?.User;
+            if (httpUser == null)
+                return null;
+
+            // adapte le nom du claim si besoin: "email", "preferred_username", etc.
+            var email =
+                httpUser.FindFirst(ClaimTypes.Email)?.Value ??
+                httpUser.FindFirst("email")?.Value ??
+                httpUser.FindFirst("preferred_username")?.Value;
+
+            if (string.IsNullOrEmpty(email))
+                return null;
+
+            var user = _context.Users.FirstOrDefault(u => u.Email == email);
+            return user?.UserId;
+        }
+
+        // ============= UPLOAD EDB =============
+        public async Task<ApiResponse<EdbDTO>> UploadEdbAsync(IFormFile file, int projectId, string? description)
         {
             try
             {
                 if (file == null || file.Length == 0)
-                {
-                    return new ApiResponse<EdbDTO>
-                    {
-                        Success = false,
-                        Message = "Aucun fichier fourni"
-                    };
-                }
+                    return new ApiResponse<EdbDTO> { Success = false, Message = "Aucun fichier fourni" };
+
+                var project = await _context.Projects.FindAsync(projectId);
+                if (project == null)
+                    return new ApiResponse<EdbDTO> { Success = false, Message = "Projet introuvable" };
 
                 var uploadsFolder = Path.Combine(_environment.ContentRootPath, "Uploads", "EDBs");
                 if (!Directory.Exists(uploadsFolder))
@@ -49,26 +70,35 @@ namespace ProjectManagementAPI.Services.Implementations
                 var filePath = Path.Combine(uploadsFolder, uniqueFileName);
 
                 using (var stream = new FileStream(filePath, FileMode.Create))
-                {
                     await file.CopyToAsync(stream);
-                }
 
                 var fileUrl = $"{GetBaseUrl()}/Uploads/EDBs/{uniqueFileName}";
 
                 var edb = new EDB
                 {
+                    FileName = file.FileName,
+                    FilePath = filePath,
+                    FileType = file.ContentType,
+                    FileSize = file.Length,
                     FileUrl = fileUrl,
-                    ProjectId = null
+                    UploadedAt = DateTime.UtcNow,
+                    ProjectId = projectId,
+                    UploadedByUserId = GetCurrentUserId()
                 };
 
                 _context.EDBs.Add(edb);
                 await _context.SaveChangesAsync();
 
+                var savedEdb = await _context.EDBs
+                    .Include(e => e.Project)
+                    .Include(e => e.UploadedByUser)
+                    .FirstOrDefaultAsync(e => e.EdbId == edb.EdbId);
+
                 return new ApiResponse<EdbDTO>
                 {
                     Success = true,
                     Message = "Fichier EDB uploadé avec succès",
-                    Data = MapToDto(edb)
+                    Data = MapToDto(savedEdb!)
                 };
             }
             catch (Exception ex)
@@ -81,17 +111,19 @@ namespace ProjectManagementAPI.Services.Implementations
             }
         }
 
-        public async Task<ApiResponse<object?>> GetAllEdbsAsync()
+        // ============= GET ALL EDBS (Admin / Reporting) =============
+        public async Task<ApiResponse<List<EdbDTO>>> GetAllEdbsAsync()
         {
             try
             {
                 var edbs = await _context.EDBs
                     .Include(e => e.Project)
+                    .Include(e => e.UploadedByUser)
                     .ToListAsync();
 
-                var edbDtos = edbs.Select(e => MapToDto(e)).ToList();
+                var edbDtos = edbs.Select(MapToDto).ToList();
 
-                return new ApiResponse<object?>
+                return new ApiResponse<List<EdbDTO>>
                 {
                     Success = true,
                     Message = $"{edbDtos.Count} EDB(s) récupéré(s)",
@@ -100,7 +132,7 @@ namespace ProjectManagementAPI.Services.Implementations
             }
             catch (Exception ex)
             {
-                return new ApiResponse<object?>
+                return new ApiResponse<List<EdbDTO>>
                 {
                     Success = false,
                     Message = $"Erreur : {ex.Message}"
@@ -108,26 +140,22 @@ namespace ProjectManagementAPI.Services.Implementations
             }
         }
 
+        // ============= GET PROJECT EDBS (par projectId) =============
         public async Task<ApiResponse<List<EdbDTO>>> GetProjectEdbsAsync(int projectId)
         {
             try
             {
                 var project = await _context.Projects.FindAsync(projectId);
                 if (project == null)
-                {
-                    return new ApiResponse<List<EdbDTO>>
-                    {
-                        Success = false,
-                        Message = "Projet introuvable"
-                    };
-                }
+                    return new ApiResponse<List<EdbDTO>> { Success = false, Message = "Projet introuvable" };
 
                 var edbs = await _context.EDBs
                     .Where(e => e.ProjectId == projectId)
                     .Include(e => e.Project)
+                    .Include(e => e.UploadedByUser)
                     .ToListAsync();
 
-                var edbDtos = edbs.Select(e => MapToDto(e)).ToList();
+                var edbDtos = edbs.Select(MapToDto).ToList();
 
                 return new ApiResponse<List<EdbDTO>>
                 {
@@ -146,22 +174,91 @@ namespace ProjectManagementAPI.Services.Implementations
             }
         }
 
+        // ============= GET MY PROJECT EDBS (via TeamMember) =============
+        public async Task<ApiResponse<List<EdbDTO>>> GetMyProjectEdbsAsync()
+        {
+            try
+            {
+                var userId = GetCurrentUserId();
+                if (userId == null)
+                {
+                    return new ApiResponse<List<EdbDTO>>
+                    {
+                        Success = false,
+                        Message = "Utilisateur non authentifié"
+                    };
+                }
+
+                // 1) équipes de l'utilisateur
+                var myTeamIds = await _context.TeamMembers
+                    .Where(tm => tm.UserId == userId && tm.IsActive)
+                    .Select(tm => tm.TeamId)
+                    .ToListAsync();
+
+                if (!myTeamIds.Any())
+                {
+                    return new ApiResponse<List<EdbDTO>>
+                    {
+                        Success = true,
+                        Message = "Aucune équipe assignée",
+                        Data = new List<EdbDTO>()
+                    };
+                }
+
+                // 2) Récupérer les projets de ces équipes
+                var myProjectIds = await _context.Projects
+                    .Where(p => p.TeamId.HasValue && myTeamIds.Contains(p.TeamId.Value))
+                    .Select(p => p.ProjectId)
+                    .ToListAsync();
+
+                if (!myProjectIds.Any())
+                {
+                    return new ApiResponse<List<EdbDTO>>
+                    {
+                        Success = true,
+                        Message = "Aucun projet pour vos équipes",
+                        Data = new List<EdbDTO>()
+                    };
+                }
+
+                // 3) EDB de ces projets
+                var edbs = await _context.EDBs
+                    .Where(e => e.ProjectId.HasValue && myProjectIds.Contains(e.ProjectId.Value))
+                    .Include(e => e.Project)
+                    .Include(e => e.UploadedByUser)
+                    .ToListAsync();
+
+                var edbDtos = edbs.Select(MapToDto).ToList();
+
+                return new ApiResponse<List<EdbDTO>>
+                {
+                    Success = true,
+                    Message = $"{edbDtos.Count} EDB(s) trouvé(s) pour vos projets",
+                    Data = edbDtos
+                };
+            }
+            catch (Exception ex)
+            {
+                return new ApiResponse<List<EdbDTO>>
+                {
+                    Success = false,
+                    Message = $"Erreur : {ex.Message}"
+                };
+            }
+        }
+
+        // ============= GET EDB BY ID =============
         public async Task<ApiResponse<EdbDTO>> GetEdbByIdAsync(int edbId)
         {
             try
             {
                 var edb = await _context.EDBs
                     .Include(e => e.Project)
+                    .Include(e => e.UploadedByUser)
                     .FirstOrDefaultAsync(e => e.EdbId == edbId);
 
                 if (edb == null)
-                {
-                    return new ApiResponse<EdbDTO>
-                    {
-                        Success = false,
-                        Message = "EDB introuvable"
-                    };
-                }
+                    return new ApiResponse<EdbDTO> { Success = false, Message = "EDB introuvable" };
 
                 return new ApiResponse<EdbDTO>
                 {
@@ -180,6 +277,7 @@ namespace ProjectManagementAPI.Services.Implementations
             }
         }
 
+        // ============= DELETE EDB =============
         public async Task<ApiResponse<bool>> DeleteEdbAsync(int edbId)
         {
             try
@@ -187,21 +285,10 @@ namespace ProjectManagementAPI.Services.Implementations
                 var edb = await _context.EDBs.FindAsync(edbId);
 
                 if (edb == null)
-                {
-                    return new ApiResponse<bool>
-                    {
-                        Success = false,
-                        Message = "EDB introuvable"
-                    };
-                }
+                    return new ApiResponse<bool> { Success = false, Message = "EDB introuvable" };
 
-                // Supprimer le fichier physique
-                var fileName = Path.GetFileName(new Uri(edb.FileUrl).LocalPath);
-                var filePath = Path.Combine(_environment.ContentRootPath, "Uploads", "EDBs", fileName);
-                if (File.Exists(filePath))
-                {
-                    File.Delete(filePath);
-                }
+                if (!string.IsNullOrEmpty(edb.FilePath) && File.Exists(edb.FilePath))
+                    File.Delete(edb.FilePath);
 
                 _context.EDBs.Remove(edb);
                 await _context.SaveChangesAsync();
@@ -223,19 +310,22 @@ namespace ProjectManagementAPI.Services.Implementations
             }
         }
 
+        // ============= MAP TO DTO =============
         private static EdbDTO MapToDto(EDB edb)
         {
             return new EdbDTO
             {
                 EdbId = edb.EdbId,
-                FileName = Path.GetFileName(new Uri(edb.FileUrl).LocalPath),
+                FileName = edb.FileName,
                 FileUrl = edb.FileUrl,
-                FileSize = 0, // Pas stocké dans le model
-                FileType = "", // Pas stocké sdans le model
+                FileSize = edb.FileSize,
+                FileType = edb.FileType,
                 ProjectId = edb.ProjectId ?? 0,
                 ProjectName = edb.Project?.ProjectName ?? "Non assigné",
-                UploadedAt = DateTime.MinValue, // Pas stocké dans le model
-                UploadedByUserName = null // Pas stocké dans le model
+                UploadedAt = edb.UploadedAt,
+                UploadedByUserName = edb.UploadedByUser != null
+                    ? $"{edb.UploadedByUser.FirstName} {edb.UploadedByUser.LastName}"
+                    : null
             };
         }
     }

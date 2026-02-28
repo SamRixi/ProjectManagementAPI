@@ -13,7 +13,7 @@ namespace ProjectManagementAPI.Services.Interfaces
 
         // Account Management
         Task<ApiResponse<bool>> ToggleUserActiveAsync(int userId, bool isActive);
-        Task<ApiResponse<bool>> SetAccountDeadlineAsync(int userId, DateTime? deadline);
+
 
         // Password Management
         Task<ApiResponse<bool>> ChangePasswordAsync(int userId, ChangePasswordDTO dto);

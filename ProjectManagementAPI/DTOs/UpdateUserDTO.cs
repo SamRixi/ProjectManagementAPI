@@ -21,6 +21,6 @@ namespace ProjectManagementAPI.DTOs
 
         public int? RoleId { get; set; }  //  - Change user role
 
-        public DateTime? AccountDeadline { get; set; }
+      
     }
 }

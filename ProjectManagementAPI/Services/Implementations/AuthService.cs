@@ -107,7 +107,7 @@ namespace ProjectManagementAPI.Services.Implementations
                     };
                 }
 
-                Console.WriteLine($"✅ Found user {user.UserName}, active={user.IsActive}, deadline={user.AccountDeadline}");
+                Console.WriteLine($"✅ Found user {user.UserName}, active={user.IsActive}");
 
                 if (!user.IsActive)
                 {
@@ -122,14 +122,7 @@ namespace ProjectManagementAPI.Services.Implementations
                     };
                 }
 
-                if (user.AccountDeadline.HasValue && user.AccountDeadline.Value < DateTime.UtcNow)
-                {
-                    return new ApiResponse<LoginResponse>
-                    {
-                        Success = false,
-                        Message = "Votre compte a expiré. Contactez l'administrateur."
-                    };
-                }
+              
 
                 bool isPasswordValid = BC.Verify(request.Password, user.PasswordHash);
                 Console.WriteLine($"🔎 Password valid = {isPasswordValid}");

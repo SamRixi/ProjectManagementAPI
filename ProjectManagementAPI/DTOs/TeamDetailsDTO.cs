@@ -10,5 +10,6 @@ namespace ProjectManagementAPI.DTOs
         public List<TeamMemberDTO> Members { get; set; } = new();  // Changed from TeamMember to TeamMemberDTO
         public List<ProjectDTO> Projects { get; set; } = new();
         public DateTime CreatedAt { get; set; }
+        public DateTime? UpdatedAt { get; set; }
     }
 }

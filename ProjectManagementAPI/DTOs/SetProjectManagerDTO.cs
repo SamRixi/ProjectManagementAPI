@@ -13,6 +13,8 @@ namespace ProjectManagementAPI.DTOs
         [Required]
         public bool IsProjectManager { get; set; }  //  Set as manager or remove
         [Required]
-        public int TeamMemberId { get; set; }
+        public int TeamId { get; set; }
+
+
     }
 }

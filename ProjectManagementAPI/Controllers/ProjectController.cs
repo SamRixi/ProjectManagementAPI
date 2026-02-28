@@ -15,10 +15,12 @@ namespace ProjectManagementAPI.Controllers
     public class ProjectController : ControllerBase
     {
         private readonly IProjectService _projectService;
+        private readonly ITeamService _teamService;
 
-        public ProjectController(IProjectService projectService)
+        public ProjectController(IProjectService projectService, ITeamService teamService)
         {
             _projectService = projectService;
+            _teamService = teamService;
         }
 
         // ============= CREATE PROJECTS (Reporting/Manager) =============
@@ -243,7 +245,7 @@ namespace ProjectManagementAPI.Controllers
 
             try
             {
-                var result = await _projectService.SetProjectManagerAsync(dto.TeamMemberId, dto.IsProjectManager);
+                var result = await _teamService.SetProjectManagerAsync(dto.TeamId, dto.UserId, dto.IsProjectManager);
                 return result.Success ? Ok(result) : BadRequest(result);
             }
             catch (Exception ex)

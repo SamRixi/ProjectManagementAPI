@@ -26,6 +26,6 @@ namespace ProjectManagementAPI.DTOs
 
         [Required]
         public int RoleId { get; set; }
-        public DateTime? AccountDeadline { get; set; }
+   
     }
 }

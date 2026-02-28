@@ -2,6 +2,7 @@
 import { useNavigate } from 'react-router-dom';
 import { Folder, Users, Calendar, ArrowRight } from 'lucide-react';
 import developerService from '../../services/developerService';
+import edbService from '../../services/edbService'; // ✅ nouveau service
 import DeveloperLayout from '../../components/layout/DeveloperLayout';
 import '../../styles/Dashboard.css';
 import '../../styles/DeveloperDashboard.css';
@@ -23,22 +24,39 @@ const mapStatusForDeveloper = (statusName) => {
 const DeveloperProjects = () => {
     const navigate = useNavigate();
     const [projects, setProjects] = useState([]);
+    const [projectEdbs, setProjectEdbs] = useState({}); // ✅ { [projectId]: EDB[] }
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState('');
 
     const loadProjects = async () => {
         setLoading(true);
         try {
-            const response = await developerService.getProjects();
+            // ✅ charge projets + EDB des projets de l'utilisateur
+            const [projectsResponse, edbResponse] = await Promise.all([
+                developerService.getProjects(),
+                edbService.getMyProjectEdbs()
+            ]);
 
-            if (response.success) {
-                setProjects(response.data || []);
+            // Projets
+            if (projectsResponse.success) {
+                setProjects(projectsResponse.data || []);
                 setError('');
             } else {
-                setError(response.message || 'Erreur lors du chargement des projets');
+                setError(projectsResponse.message || 'Erreur lors du chargement des projets');
+            }
+
+            // EDBs groupés par projectId
+            if (edbResponse.success) {
+                const grouped = {};
+                (edbResponse.data || []).forEach((edb) => {
+                    const pid = edb.projectId;
+                    if (!grouped[pid]) grouped[pid] = [];
+                    grouped[pid].push(edb);
+                });
+                setProjectEdbs(grouped);
             }
         } catch (err) {
-            console.error('❌ Error loading projects:', err);
+            console.error('❌ Error loading projects or EDBs:', err);
             setError('Erreur lors de la connexion au serveur');
         } finally {
             setLoading(false);
@@ -112,11 +130,14 @@ const DeveloperProjects = () => {
             <div className="dashboard-container">
                 <div className="dashboard-content">
                     {/* Page Header */}
-                    <div className="welcome-card" style={{
-                        background: 'linear-gradient(135deg, #00A651 0%, #004D29 100%)',
-                        color: 'white',
-                        marginBottom: '30px'
-                    }}>
+                    <div
+                        className="welcome-card"
+                        style={{
+                            background: 'linear-gradient(135deg, #00A651 0%, #004D29 100%)',
+                            color: 'white',
+                            marginBottom: '30px'
+                        }}
+                    >
                         <div style={{ display: 'flex', alignItems: 'center', gap: '15px' }}>
                             <Folder size={40} />
                             <div>
@@ -135,11 +156,13 @@ const DeveloperProjects = () => {
                             <p>📁 Aucun projet assigné pour le moment.</p>
                         </div>
                     ) : (
-                        <div style={{
-                            display: 'grid',
-                            gridTemplateColumns: 'repeat(auto-fill, minmax(380px, 1fr))',
-                            gap: '20px'
-                        }}>
+                        <div
+                            style={{
+                                display: 'grid',
+                                gridTemplateColumns: 'repeat(auto-fill, minmax(380px, 1fr))',
+                                gap: '20px'
+                            }}
+                        >
                             {projects.map((project) => (
                                 <div
                                     key={project.projectId}
@@ -163,176 +186,284 @@ const DeveloperProjects = () => {
                                     }}
                                 >
                                     {/* Project Header */}
-                                    <div style={{
-                                        display: 'flex',
-                                        justifyContent: 'space-between',
-                                        alignItems: 'flex-start',
-                                        marginBottom: '16px'
-                                    }}>
+                                    <div
+                                        style={{
+                                            display: 'flex',
+                                            justifyContent: 'space-between',
+                                            alignItems: 'flex-start',
+                                            marginBottom: '16px'
+                                        }}
+                                    >
                                         <div style={{ flex: 1 }}>
-                                            <h3 style={{
-                                                margin: '0 0 8px 0',
-                                                fontSize: '1.3rem',
-                                                color: '#333'
-                                            }}>
+                                            <h3
+                                                style={{
+                                                    margin: '0 0 8px 0',
+                                                    fontSize: '1.3rem',
+                                                    color: '#333'
+                                                }}
+                                            >
                                                 {project.projectName || 'Sans nom'}
                                             </h3>
-                                            <p style={{
-                                                margin: 0,
-                                                fontSize: '0.9rem',
-                                                color: '#666',
-                                                lineHeight: '1.5'
-                                            }}>
+                                            <p
+                                                style={{
+                                                    margin: 0,
+                                                    fontSize: '0.9rem',
+                                                    color: '#666',
+                                                    lineHeight: '1.5'
+                                                }}
+                                            >
                                                 {project.description || 'Pas de description'}
                                             </p>
                                         </div>
-                                        <span style={{
-                                            padding: '6px 14px',
-                                            backgroundColor: getStatusColor(project.statusName),
-                                            color: 'white',
-                                            borderRadius: '20px',
-                                            fontSize: '0.8rem',
-                                            fontWeight: '600',
-                                            whiteSpace: 'nowrap',
-                                            marginLeft: '12px',
-                                            textTransform: 'uppercase',
-                                            letterSpacing: '0.5px'
-                                        }}>
+                                        <span
+                                            style={{
+                                                padding: '6px 14px',
+                                                backgroundColor: getStatusColor(project.statusName),
+                                                color: 'white',
+                                                borderRadius: '20px',
+                                                fontSize: '0.8rem',
+                                                fontWeight: '600',
+                                                whiteSpace: 'nowrap',
+                                                marginLeft: '12px',
+                                                textTransform: 'uppercase',
+                                                letterSpacing: '0.5px'
+                                            }}
+                                        >
                                             {mapStatusForDeveloper(project.statusName)}
                                         </span>
                                     </div>
 
                                     {/* Project Manager */}
-                                    <div style={{
-                                        display: 'flex',
-                                        alignItems: 'center',
-                                        gap: '8px',
-                                        marginBottom: '16px',
-                                        paddingBottom: '16px',
-                                        borderBottom: '1px solid #f0f0f0'
-                                    }}>
+                                    <div
+                                        style={{
+                                            display: 'flex',
+                                            alignItems: 'center',
+                                            gap: '8px',
+                                            marginBottom: '16px',
+                                            paddingBottom: '16px',
+                                            borderBottom: '1px solid #f0f0f0'
+                                        }}
+                                    >
                                         <Users size={16} color="#666" />
                                         <span style={{ fontSize: '0.9rem', color: '#666' }}>
-                                            Chef de projet: <strong>{project.projectManagerName || 'Non assigné'}</strong>
+                                            Chef de projet:{' '}
+                                            <strong>{project.projectManagerName || 'Non assigné'}</strong>
                                         </span>
                                     </div>
 
                                     {/* Progress Bar */}
                                     <div style={{ marginBottom: '16px' }}>
-                                        <div style={{
-                                            display: 'flex',
-                                            justifyContent: 'space-between',
-                                            marginBottom: '8px'
-                                        }}>
-                                            <span style={{ fontSize: '0.9rem', color: '#666', fontWeight: '500' }}>
+                                        <div
+                                            style={{
+                                                display: 'flex',
+                                                justifyContent: 'space-between',
+                                                marginBottom: '8px'
+                                            }}
+                                        >
+                                            <span
+                                                style={{
+                                                    fontSize: '0.9rem',
+                                                    color: '#666',
+                                                    fontWeight: '500'
+                                                }}
+                                            >
                                                 Progression
                                             </span>
-                                            <span style={{
-                                                fontSize: '0.95rem',
-                                                fontWeight: 'bold',
-                                                color: getProgressColor(project.progress || 0)
-                                            }}>
+                                            <span
+                                                style={{
+                                                    fontSize: '0.95rem',
+                                                    fontWeight: 'bold',
+                                                    color: getProgressColor(project.progress || 0)
+                                                }}
+                                            >
                                                 {project.progress || 0}%
                                             </span>
                                         </div>
-                                        <div style={{
-                                            width: '100%',
-                                            height: '10px',
-                                            backgroundColor: '#f0f0f0',
-                                            borderRadius: '5px',
-                                            overflow: 'hidden'
-                                        }}>
-                                            <div style={{
-                                                width: `${project.progress || 0}%`,
-                                                height: '100%',
-                                                backgroundColor: getProgressColor(project.progress || 0),
-                                                transition: 'width 0.5s ease',
-                                                borderRadius: '5px'
-                                            }} />
+                                        <div
+                                            style={{
+                                                width: '100%',
+                                                height: '10px',
+                                                backgroundColor: '#f0f0f0',
+                                                borderRadius: '5px',
+                                                overflow: 'hidden'
+                                            }}
+                                        >
+                                            <div
+                                                style={{
+                                                    width: `${project.progress || 0}%`,
+                                                    height: '100%',
+                                                    backgroundColor: getProgressColor(project.progress || 0),
+                                                    transition: 'width 0.5s ease',
+                                                    borderRadius: '5px'
+                                                }}
+                                            />
                                         </div>
                                     </div>
 
                                     {/* Statistics */}
-                                    <div style={{
-                                        display: 'grid',
-                                        gridTemplateColumns: 'repeat(3, 1fr)',
-                                        gap: '10px',
-                                        marginBottom: '16px'
-                                    }}>
-                                        <div style={{
-                                            textAlign: 'center',
-                                            padding: '14px 8px',
-                                            backgroundColor: '#f8f9fa',
-                                            borderRadius: '10px',
-                                            border: '1px solid #e9ecef'
-                                        }}>
-                                            <div style={{
-                                                fontSize: '1.6rem',
-                                                fontWeight: 'bold',
-                                                color: '#00B050',
-                                                marginBottom: '4px'
-                                            }}>
+                                    <div
+                                        style={{
+                                            display: 'grid',
+                                            gridTemplateColumns: 'repeat(3, 1fr)',
+                                            gap: '10px',
+                                            marginBottom: '16px'
+                                        }}
+                                    >
+                                        <div
+                                            style={{
+                                                textAlign: 'center',
+                                                padding: '14px 8px',
+                                                backgroundColor: '#f8f9fa',
+                                                borderRadius: '10px',
+                                                border: '1px solid #e9ecef'
+                                            }}
+                                        >
+                                            <div
+                                                style={{
+                                                    fontSize: '1.6rem',
+                                                    fontWeight: 'bold',
+                                                    color: '#00B050',
+                                                    marginBottom: '4px'
+                                                }}
+                                            >
                                                 {project.taskCount || 0}
                                             </div>
-                                            <div style={{ fontSize: '0.75rem', color: '#666', fontWeight: '500' }}>
+                                            <div
+                                                style={{
+                                                    fontSize: '0.75rem',
+                                                    color: '#666',
+                                                    fontWeight: '500'
+                                                }}
+                                            >
                                                 Tâches
                                             </div>
                                         </div>
-                                        <div style={{
-                                            textAlign: 'center',
-                                            padding: '14px 8px',
-                                            backgroundColor: '#f8f9fa',
-                                            borderRadius: '10px',
-                                            border: '1px solid #e9ecef'
-                                        }}>
-                                            <div style={{
-                                                fontSize: '1.6rem',
-                                                fontWeight: 'bold',
-                                                color: '#4CAF50',
-                                                marginBottom: '4px'
-                                            }}>
+                                        <div
+                                            style={{
+                                                textAlign: 'center',
+                                                padding: '14px 8px',
+                                                backgroundColor: '#f8f9fa',
+                                                borderRadius: '10px',
+                                                border: '1px solid #e9ecef'
+                                            }}
+                                        >
+                                            <div
+                                                style={{
+                                                    fontSize: '1.6rem',
+                                                    fontWeight: 'bold',
+                                                    color: '#4CAF50',
+                                                    marginBottom: '4px'
+                                                }}
+                                            >
                                                 {project.completedTaskCount || 0}
                                             </div>
-                                            <div style={{ fontSize: '0.75rem', color: '#666', fontWeight: '500' }}>
+                                            <div
+                                                style={{
+                                                    fontSize: '0.75rem',
+                                                    color: '#666',
+                                                    fontWeight: '500'
+                                                }}
+                                            >
                                                 Terminées
                                             </div>
                                         </div>
-                                        <div style={{
-                                            textAlign: 'center',
-                                            padding: '14px 8px',
-                                            backgroundColor: '#f8f9fa',
-                                            borderRadius: '10px',
-                                            border: '1px solid #e9ecef'
-                                        }}>
-                                            <div style={{
-                                                fontSize: '0.9rem',
-                                                fontWeight: 'bold',
-                                                color: '#666',
-                                                marginBottom: '4px',
-                                                overflow: 'hidden',
-                                                textOverflow: 'ellipsis',
-                                                whiteSpace: 'nowrap'
-                                            }}>
+                                        <div
+                                            style={{
+                                                textAlign: 'center',
+                                                padding: '14px 8px',
+                                                backgroundColor: '#f8f9fa',
+                                                borderRadius: '10px',
+                                                border: '1px solid #e9ecef'
+                                            }}
+                                        >
+                                            <div
+                                                style={{
+                                                    fontSize: '0.9rem',
+                                                    fontWeight: 'bold',
+                                                    color: '#666',
+                                                    marginBottom: '4px',
+                                                    overflow: 'hidden',
+                                                    textOverflow: 'ellipsis',
+                                                    whiteSpace: 'nowrap'
+                                                }}
+                                            >
                                                 {project.teamName || 'N/A'}
                                             </div>
-                                            <div style={{ fontSize: '0.75rem', color: '#666', fontWeight: '500' }}>
+                                            <div
+                                                style={{
+                                                    fontSize: '0.75rem',
+                                                    color: '#666',
+                                                    fontWeight: '500'
+                                                }}
+                                            >
                                                 Équipe
                                             </div>
                                         </div>
                                     </div>
 
+                                    {/* EDB du projet */}
+                                    {(projectEdbs[project.projectId] || []).length > 0 && (
+                                        <div
+                                            style={{
+                                                marginBottom: '16px',
+                                                padding: '12px',
+                                                backgroundColor: '#f5fff8',
+                                                borderRadius: '10px',
+                                                border: '1px solid #d6f5e0'
+                                            }}
+                                        >
+                                            <div
+                                                style={{
+                                                    fontSize: '0.9rem',
+                                                    fontWeight: 600,
+                                                    marginBottom: '8px',
+                                                    color: '#006837'
+                                                }}
+                                            >
+                                                EDB de ce projet
+                                            </div>
+                                            <ul
+                                                style={{
+                                                    margin: 0,
+                                                    paddingLeft: '18px',
+                                                    fontSize: '0.85rem',
+                                                    color: '#333'
+                                                }}
+                                            >
+                                                {projectEdbs[project.projectId].map((edb) => (
+                                                    <li key={edb.edbId}>
+                                                        <a
+                                                            href={edb.fileUrl}
+                                                            target="_blank"
+                                                            rel="noopener noreferrer"
+                                                            style={{
+                                                                color: '#00B050',
+                                                                textDecoration: 'underline'
+                                                            }}
+                                                        >
+                                                            {edb.fileName}
+                                                        </a>
+                                                    </li>
+                                                ))}
+                                            </ul>
+                                        </div>
+                                    )}
+
                                     {/* Deadline */}
-                                    <div style={{
-                                        display: 'flex',
-                                        alignItems: 'center',
-                                        gap: '8px',
-                                        marginBottom: '16px',
-                                        paddingTop: '16px',
-                                        borderTop: '1px solid #f0f0f0'
-                                    }}>
+                                    <div
+                                        style={{
+                                            display: 'flex',
+                                            alignItems: 'center',
+                                            gap: '8px',
+                                            marginBottom: '16px',
+                                            paddingTop: '16px',
+                                            borderTop: '1px solid #f0f0f0'
+                                        }}
+                                    >
                                         <Calendar size={16} color="#666" />
                                         <span style={{ fontSize: '0.9rem', color: '#666' }}>
-                                            Deadline: <strong>{formatDate(project.endDate)}</strong>
+                                            Deadline:{' '}
+                                            <strong>{formatDate(project.endDate)}</strong>
                                         </span>
                                     </div>
 

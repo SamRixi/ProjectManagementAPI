@@ -91,7 +91,7 @@ const ProjectManagement = () => {
         startDate: '',
         endDate: '',
         teamId: 0,
-        edbId: 0,
+        edbId: 0,              // gardé pour l'édition
         projectManagerId: 0,
         priorityId: 0,
     };
@@ -173,15 +173,8 @@ const ProjectManagement = () => {
                 createdByUserId: currentUser?.userId || 0,
             };
 
-            let response;
-            if (formData.edbId && parseInt(formData.edbId) > 0) {
-                response = await projectService.createProjectWithEdb({
-                    ...projectData,
-                    edbId: parseInt(formData.edbId),
-                });
-            } else {
-                response = await projectService.createProject(projectData);
-            }
+            // 👉 plus de createProjectWithEdb ici
+            const response = await projectService.createProject(projectData);
 
             if (response.success) {
                 const newProjectId =
@@ -619,13 +612,7 @@ const ProjectManagement = () => {
                                     </div>
                                 </div>
 
-                                <div className="form-group">
-                                    <label>EDB (optionnel)</label>
-                                    <select name="edbId" value={formData.edbId} onChange={handleInputChange} disabled={submitting}>
-                                        <option value="0">Aucun EDB</option>
-                                        {getAvailableEdbs().map(e => <option key={e.edbId} value={e.edbId}>{e.fileName}</option>)}
-                                    </select>
-                                </div>
+                                {/* plus de champ EDB ici */}
 
                                 <div className="modal-actions">
                                     <button type="button" className="btn-cancel" onClick={() => setShowCreateModal(false)} disabled={submitting}>

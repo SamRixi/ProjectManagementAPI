@@ -8,6 +8,7 @@ import {
     AlertCircle
 } from 'lucide-react';
 import api from '../../services/api';
+import edbService from '../../services/edbService'; // ✅ nouveau
 import ProjectManagerLayout from '../../components/layout/ProjectManagerLayout';
 import '../../styles/Dashboard.css';
 import '../../styles/DeveloperDashboard.css';
@@ -16,6 +17,7 @@ const ProjectManagerProjects = () => {
     const { user } = useAuth();
 
     const [projects, setProjects] = useState([]);
+    const [projectEdbs, setProjectEdbs] = useState({}); // ✅ { [projectId]: EDB[] }
     const [selectedProject, setSelectedProject] = useState(null);
     const [projectStats, setProjectStats] = useState(null);
     const [showStatsModal, setShowStatsModal] = useState(false);
@@ -31,11 +33,27 @@ const ProjectManagerProjects = () => {
         try {
             setLoading(true);
             setError(null);
-            const response = await api.get('/projectmanager/my-projects');
-            if (response.data.success) {
-                setProjects(response.data.data || []);
+
+            // ✅ charge projets + EDB de mes projets
+            const [projectsResp, edbResp] = await Promise.all([
+                api.get('/projectmanager/my-projects'),
+                edbService.getMyProjectEdbs()
+            ]);
+
+            if (projectsResp.data.success) {
+                setProjects(projectsResp.data.data || []);
             } else {
-                setError(response.data.message || 'Erreur lors du chargement des projets');
+                setError(projectsResp.data.message || 'Erreur lors du chargement des projets');
+            }
+
+            if (edbResp.success) {
+                const grouped = {};
+                (edbResp.data || []).forEach((edb) => {
+                    const pid = edb.projectId;
+                    if (!grouped[pid]) grouped[pid] = [];
+                    grouped[pid].push(edb);
+                });
+                setProjectEdbs(grouped);
             }
         } catch (err) {
             setError(
@@ -91,7 +109,7 @@ const ProjectManagerProjects = () => {
                 return { backgroundColor: '#DCFCE7', color: '#15803D' };
             case 'Annulé':
                 return { backgroundColor: '#FEE2E2', color: '#B91C1C' };
-            case '✅ Prêt à finaliser':          // ✅ FIXED
+            case '✅ Prêt à finaliser':
                 return { backgroundColor: '#D1FAE5', color: '#065F46' };
             case '⏳ En attente de validation':
                 return { backgroundColor: '#FEF3C7', color: '#B45309' };
@@ -108,7 +126,7 @@ const ProjectManagerProjects = () => {
                 return '2px solid #10B981';
             case 'Annulé':
                 return '2px solid #EF4444';
-            case '✅ Prêt à finaliser':          // ✅ FIXED
+            case '✅ Prêt à finaliser':
                 return '2px solid #F59E0B';
             case '⏳ En attente de validation':
                 return '2px solid #FFA500';
@@ -324,6 +342,47 @@ const ProjectManagerProjects = () => {
                                                 </div>
                                             )}
 
+                                            {/* EDB du projet */}
+                                            {(projectEdbs[project.projectId] || []).length > 0 && (
+                                                <div
+                                                    style={{
+                                                        marginTop: '1rem',
+                                                        padding: '0.8rem 1rem',
+                                                        background: '#f5fff8',
+                                                        borderRadius: '10px',
+                                                        border: '1px solid #d6f5e0',
+                                                        fontSize: '0.85rem'
+                                                    }}
+                                                >
+                                                    <div
+                                                        style={{
+                                                            fontWeight: 600,
+                                                            marginBottom: '0.4rem',
+                                                            color: '#006837'
+                                                        }}
+                                                    >
+                                                        EDB de ce projet
+                                                    </div>
+                                                    <ul style={{ margin: 0, paddingLeft: '18px' }}>
+                                                        {projectEdbs[project.projectId].map((edb) => (
+                                                            <li key={edb.edbId}>
+                                                                <a
+                                                                    href={edb.fileUrl}
+                                                                    target="_blank"
+                                                                    rel="noopener noreferrer"
+                                                                    style={{
+                                                                        color: '#00B050',
+                                                                        textDecoration: 'underline'
+                                                                    }}
+                                                                >
+                                                                    {edb.fileName}
+                                                                </a>
+                                                            </li>
+                                                        ))}
+                                                    </ul>
+                                                </div>
+                                            )}
+
                                             {/* Boutons */}
                                             <div style={{
                                                 display: 'flex',
@@ -354,7 +413,6 @@ const ProjectManagerProjects = () => {
                                                     Statistiques Détaillées
                                                 </button>
 
-                                                {/* ✅ FIXED : était '✅ Prêt à clôturer' */}
                                                 {project.statusName === '✅ Prêt à finaliser' && (
                                                     <button
                                                         onClick={() => handleCloseProject(project.projectId)}

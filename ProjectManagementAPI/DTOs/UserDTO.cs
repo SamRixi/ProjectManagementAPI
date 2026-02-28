@@ -11,7 +11,7 @@
         public int? RoleId { get; set; }
         public bool IsActive { get; set; }
         public bool MustChangePassword { get; set; }
-        public DateTime? AccountDeadline { get; set; }
+    
         public DateTime CreatedAt { get; set; }
         public DateTime? LastLoginAt { get; set; }
         public List<TeamMemberDTO>? TeamMemberships { get; set; }

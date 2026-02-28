@@ -14,7 +14,7 @@
         public string Email { get; set; }
         public bool IsActive { get; set; } = true;
         public bool MustChangePassword { get; set; } = false;
-        public DateTime? AccountDeadline { get; set; }
+ 
         public string? PasswordResetToken { get; set; }
         public DateTime? PasswordResetTokenExpiry { get; set; }
         public DateTime? LastLoginAt { get; set; }
