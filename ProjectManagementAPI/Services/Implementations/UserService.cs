@@ -36,7 +36,6 @@ namespace ProjectManagementAPI.Services.Implementations
                     RoleId = dto.RoleId,
                     IsActive = true,
                     MustChangePassword = true,
-                   
                     CreatedAt = DateTime.UtcNow
                 };
 
@@ -69,7 +68,6 @@ namespace ProjectManagementAPI.Services.Implementations
                 if (dto.FirstName != null) user.FirstName = dto.FirstName;
                 if (dto.LastName != null) user.LastName = dto.LastName;
                 if (dto.RoleId.HasValue) user.RoleId = dto.RoleId.Value;
-             
 
                 user.UpdatedAt = DateTime.UtcNow;
                 await _context.SaveChangesAsync();
@@ -200,7 +198,6 @@ namespace ProjectManagementAPI.Services.Implementations
                 if (user == null)
                     return new ApiResponse<bool> { Success = false, Message = "Utilisateur introuvable" };
 
-               
                 user.UpdatedAt = DateTime.UtcNow;
                 await _context.SaveChangesAsync();
 
@@ -217,7 +214,6 @@ namespace ProjectManagementAPI.Services.Implementations
             }
         }
 
-        // ✅ FIXED — Notifie Reporting quand Developer change MDP temporaire
         public async Task<ApiResponse<bool>> ChangePasswordAsync(int userId, ChangePasswordDTO dto)
         {
             try
@@ -232,7 +228,6 @@ namespace ProjectManagementAPI.Services.Implementations
                 if (!BC.Verify(dto.CurrentPassword, user.PasswordHash))
                     return new ApiResponse<bool> { Success = false, Message = "Mot de passe actuel incorrect" };
 
-                // ✅ Sauvegarder l'état AVANT de changer
                 bool wasMustChange = user.MustChangePassword;
 
                 user.PasswordHash = BC.HashPassword(dto.NewPassword);
@@ -240,7 +235,6 @@ namespace ProjectManagementAPI.Services.Implementations
                 user.UpdatedAt = DateTime.UtcNow;
                 await _context.SaveChangesAsync();
 
-                // ✅ Notifier Reporting UNIQUEMENT si c'était un MDP temporaire
                 if (wasMustChange)
                 {
                     var reportingUsers = await _context.Users
@@ -348,8 +342,6 @@ namespace ProjectManagementAPI.Services.Implementations
                 if (!user.IsActive)
                     return new ApiResponse<bool> { Success = false, Message = "Compte désactivé" };
 
-              
-
                 return new ApiResponse<bool> { Success = true, Data = true };
             }
             catch (Exception ex)
@@ -395,31 +387,159 @@ namespace ProjectManagementAPI.Services.Implementations
             }
         }
 
+        // ✅ FIX FINAL : RejectUserAsync — gère tous les Restrict + NoAction
+        public async Task<ApiResponse<bool>> RejectUserAsync(int userId)
+        {
+            try
+            {
+                var user = await _context.Users.FindAsync(userId);
+                if (user == null)
+                    return new ApiResponse<bool> { Success = false, Message = "Utilisateur introuvable" };
+
+                // 1. Nullifier RelatedUserId dans les notifications
+                var notifsRelated = await _context.Notifications
+                    .Where(n => n.RelatedUserId == userId)
+                    .ToListAsync();
+                foreach (var n in notifsRelated)
+                    n.RelatedUserId = null;
+
+                // 2. Supprimer les notifications dont cet user est destinataire
+                var notifsOwned = await _context.Notifications
+                    .Where(n => n.UserId == userId)
+                    .ToListAsync();
+                _context.Notifications.RemoveRange(notifsOwned);
+
+                // 3. Supprimer les PasswordResetTokens
+                var tokens = await _context.PasswordResetTokens
+                    .Where(t => t.UserId == userId)
+                    .ToListAsync();
+                _context.PasswordResetTokens.RemoveRange(tokens);
+
+                // 4. Supprimer les TeamMembers
+                var teamMembers = await _context.TeamMembers
+                    .Where(tm => tm.UserId == userId)
+                    .ToListAsync();
+                _context.TeamMembers.RemoveRange(teamMembers);
+
+                // 5. Nullifier AssignedToUserId dans les tâches
+                var assignedTasks = await _context.ProjectTasks
+                    .Where(t => t.AssignedToUserId == userId)
+                    .ToListAsync();
+                foreach (var t in assignedTasks)
+                    t.AssignedToUserId = null;
+
+                // 6. Nullifier CreatedByUserId dans les tâches
+                var createdTasks = await _context.ProjectTasks
+                    .Where(t => t.CreatedByUserId == userId)
+                    .ToListAsync();
+                foreach (var t in createdTasks)
+                    t.CreatedByUserId = null;
+
+                // 7. Nullifier ValidatedByUserId dans les tâches
+                var validatedTasks = await _context.ProjectTasks
+                    .Where(t => t.ValidatedByUserId == userId)
+                    .ToListAsync();
+                foreach (var t in validatedTasks)
+                    t.ValidatedByUserId = null;
+
+                // 8. Nullifier ProjectManagerId dans les projets
+                var managedProjects = await _context.Projects
+                    .Where(p => p.ProjectManagerId == userId)
+                    .ToListAsync();
+                foreach (var p in managedProjects)
+                    p.ProjectManagerId = null;
+
+                // 9. Nullifier CreatedByUserId dans les projets
+                var createdProjects = await _context.Projects
+                    .Where(p => p.CreatedByUserId == userId)
+                    .ToListAsync();
+                foreach (var p in createdProjects)
+                    p.CreatedByUserId = null;
+
+                // 10. Nullifier CreatedByUserId dans les commentaires
+                var comments = await _context.Comments
+                    .Where(c => c.CreatedByUserId == userId)
+                    .ToListAsync();
+                foreach (var c in comments)
+                    c.CreatedByUserId = null;
+
+                // 11. Sauvegarder tous les NULL
+                await _context.SaveChangesAsync();
+
+                // 12. Supprimer l'utilisateur
+                _context.Users.Remove(user);
+                await _context.SaveChangesAsync();
+
+                return new ApiResponse<bool>
+                {
+                    Success = true,
+                    Message = "Utilisateur rejeté et supprimé avec succès",
+                    Data = true
+                };
+            }
+            catch (Exception ex)
+            {
+                return new ApiResponse<bool> { Success = false, Message = $"Erreur: {ex.Message}" };
+            }
+        }
+
+        // ✅ FIX : DeleteUserAsync — même logique que RejectUserAsync
         public async Task<ApiResponse<bool>> DeleteUserAsync(int userId)
         {
             try
             {
-                var user = await _context.Users
-                    .Include(u => u.TeamMembers)
-                    .FirstOrDefaultAsync(u => u.UserId == userId);
-
+                var user = await _context.Users.FindAsync(userId);
                 if (user == null)
                     return new ApiResponse<bool> { Success = false, Message = "Utilisateur introuvable" };
 
-                if (user.TeamMembers != null && user.TeamMembers.Any())
-                    _context.TeamMembers.RemoveRange(user.TeamMembers);
-
-                var relatedNotifs = await _context.Notifications
-                    .Where(n => n.UserId == userId || n.RelatedUserId == userId)
+                // 1. Nullifier RelatedUserId
+                var notifsRelated = await _context.Notifications
+                    .Where(n => n.RelatedUserId == userId)
                     .ToListAsync();
+                foreach (var n in notifsRelated)
+                    n.RelatedUserId = null;
 
-                if (relatedNotifs.Any())
-                    _context.Notifications.RemoveRange(relatedNotifs);
+                // 2. Supprimer notifs destinataire
+                var notifsOwned = await _context.Notifications
+                    .Where(n => n.UserId == userId)
+                    .ToListAsync();
+                _context.Notifications.RemoveRange(notifsOwned);
+
+                // 3. Supprimer tokens
+                var tokens = await _context.PasswordResetTokens
+                    .Where(t => t.UserId == userId)
+                    .ToListAsync();
+                _context.PasswordResetTokens.RemoveRange(tokens);
+
+                // 4. Supprimer TeamMembers
+                var teamMembers = await _context.TeamMembers
+                    .Where(tm => tm.UserId == userId)
+                    .ToListAsync();
+                _context.TeamMembers.RemoveRange(teamMembers);
+
+                // 5-10. Nullifier toutes les FK Restrict
+                var assignedTasks = await _context.ProjectTasks.Where(t => t.AssignedToUserId == userId).ToListAsync();
+                foreach (var t in assignedTasks) t.AssignedToUserId = null;
+
+                var createdTasks = await _context.ProjectTasks.Where(t => t.CreatedByUserId == userId).ToListAsync();
+                foreach (var t in createdTasks) t.CreatedByUserId = null;
+
+                var validatedTasks = await _context.ProjectTasks.Where(t => t.ValidatedByUserId == userId).ToListAsync();
+                foreach (var t in validatedTasks) t.ValidatedByUserId = null;
+
+                var managedProjects = await _context.Projects.Where(p => p.ProjectManagerId == userId).ToListAsync();
+                foreach (var p in managedProjects) p.ProjectManagerId = null;
+
+                var createdProjects = await _context.Projects.Where(p => p.CreatedByUserId == userId).ToListAsync();
+                foreach (var p in createdProjects) p.CreatedByUserId = null;
+
+                var comments = await _context.Comments.Where(c => c.CreatedByUserId == userId).ToListAsync();
+                foreach (var c in comments) c.CreatedByUserId = null;
+
+                await _context.SaveChangesAsync();
 
                 _context.Users.Remove(user);
                 await _context.SaveChangesAsync();
-
-                Console.WriteLine($"🗑️ User deleted: {user.UserName} (ID: {userId})");
 
                 return new ApiResponse<bool>
                 {
@@ -430,8 +550,7 @@ namespace ProjectManagementAPI.Services.Implementations
             }
             catch (Exception ex)
             {
-                Console.WriteLine($"❌ Delete user error: {ex.Message}");
-                return new ApiResponse<bool> { Success = false, Message = $"Erreur: {ex.Message}", Data = false };
+                return new ApiResponse<bool> { Success = false, Message = $"Erreur: {ex.Message}" };
             }
         }
 
@@ -454,7 +573,6 @@ namespace ProjectManagementAPI.Services.Implementations
                 LastName = user.LastName,
                 IsActive = user.IsActive,
                 MustChangePassword = user.MustChangePassword,
-            
                 CreatedAt = user.CreatedAt,
                 LastLoginAt = user.LastLoginAt,
                 RoleId = user.RoleId,

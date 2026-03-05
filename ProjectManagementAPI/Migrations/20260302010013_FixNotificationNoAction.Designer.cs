@@ -3,6 +3,7 @@ using System;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Infrastructure;
 using Microsoft.EntityFrameworkCore.Metadata;
+using Microsoft.EntityFrameworkCore.Migrations;
 using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 using ProjectManagementAPI.Data;
 
@@ -11,9 +12,11 @@ using ProjectManagementAPI.Data;
 namespace ProjectManagementAPI.Migrations
 {
     [DbContext(typeof(ApplicationDbContext))]
-    partial class ApplicationDbContextModelSnapshot : ModelSnapshot
+    [Migration("20260302010013_FixNotificationNoAction")]
+    partial class FixNotificationNoAction
     {
-        protected override void BuildModel(ModelBuilder modelBuilder)
+        /// <inheritdoc />
+        protected override void BuildTargetModel(ModelBuilder modelBuilder)
         {
 #pragma warning disable 612, 618
             modelBuilder
@@ -38,7 +41,7 @@ namespace ProjectManagementAPI.Migrations
                     b.Property<DateTime>("CreatedAt")
                         .HasColumnType("datetime2");
 
-                    b.Property<int?>("CreatedByUserId")
+                    b.Property<int>("CreatedByUserId")
                         .HasColumnType("int");
 
                     b.Property<int>("TaskId")
@@ -310,7 +313,7 @@ namespace ProjectManagementAPI.Migrations
                     b.Property<int?>("AssignedToUserId")
                         .HasColumnType("int");
 
-                    b.Property<int?>("CreatedByUserId")
+                    b.Property<int>("CreatedByUserId")
                         .HasColumnType("int");
 
                     b.Property<string>("Description")
@@ -534,7 +537,8 @@ namespace ProjectManagementAPI.Migrations
                     b.HasOne("ProjectManagementAPI.Models.User", "CreatedByUser")
                         .WithMany("Comments")
                         .HasForeignKey("CreatedByUserId")
-                        .OnDelete(DeleteBehavior.Restrict);
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
 
                     b.HasOne("ProjectManagementAPI.Models.ProjectTask", "ProjectTask")
                         .WithMany("Comments")
@@ -658,7 +662,8 @@ namespace ProjectManagementAPI.Migrations
                     b.HasOne("ProjectManagementAPI.Models.User", "CreatedByUser")
                         .WithMany("CreatedTasks")
                         .HasForeignKey("CreatedByUserId")
-                        .OnDelete(DeleteBehavior.Restrict);
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
 
                     b.HasOne("ProjectManagementAPI.Models.Priority", "Priority")
                         .WithMany("ProjectTasks")

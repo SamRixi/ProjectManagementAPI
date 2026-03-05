@@ -360,8 +360,10 @@ namespace ProjectManagementAPI.Controllers
                         message = "Impossible de rejeter un utilisateur déjà actif"
                     });
 
-                _context.Users.Remove(user);
-                await _context.SaveChangesAsync();
+                // ✅ FIX - use the service which handles all FK nullification
+                var result = await _userService.RejectUserAsync(userId);
+                if (!result.Success)
+                    return BadRequest(new { success = false, message = result.Message });
 
                 return Ok(new
                 {

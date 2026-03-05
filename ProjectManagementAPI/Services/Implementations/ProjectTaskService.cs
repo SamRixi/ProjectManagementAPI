@@ -509,25 +509,28 @@ namespace ProjectManagementAPI.Services.Implementations
             {
                 var task = await _context.ProjectTasks.FindAsync(taskId);
                 if (task == null)
-                    return new ApiResponse<bool>
-                    { Success = false, Message = "Tâche non trouvée" };
+                    return new ApiResponse<bool> { Success = false, Message = "Tâche introuvable" };
+
+                // ✅ Nullifier RelatedTaskId dans les notifications
+                var notifs = await _context.Notifications
+                    .Where(n => n.RelatedTaskId == taskId)
+                    .ToListAsync();
+                foreach (var n in notifs)
+                    n.RelatedTaskId = null;
+
+                await _context.SaveChangesAsync();
 
                 _context.ProjectTasks.Remove(task);
                 await _context.SaveChangesAsync();
 
-                return new ApiResponse<bool>
-                {
-                    Success = true,
-                    Data = true,
-                    Message = "Tâche supprimée avec succès"
-                };
+                return new ApiResponse<bool> { Success = true, Message = "Tâche supprimée", Data = true };
             }
             catch (Exception ex)
             {
-                return new ApiResponse<bool>
-                { Success = false, Message = $"Erreur : {ex.Message}" };
+                return new ApiResponse<bool> { Success = false, Message = $"Erreur: {ex.Message}" };
             }
         }
+
 
         // ============= RECALCUL PROGRESSION =============
         private async Task RecalculateProjectProgressAsync(int projectId)

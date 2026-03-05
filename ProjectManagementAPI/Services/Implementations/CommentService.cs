@@ -236,7 +236,7 @@ namespace ProjectManagementAPI.Services.Implementations
                 CommentId = comment.CommentId,
                 TaskId = comment.TaskId,
                 TaskName = comment.ProjectTask?.TaskName ?? "",
-                CreatedByUserId = comment.CreatedByUserId,
+                CreatedByUserId = comment.CreatedByUserId ?? 0,
                 CreatedByUserName = comment.CreatedByUser != null
                     ? $"{comment.CreatedByUser.FirstName} {comment.CreatedByUser.LastName}"
                     : "Inconnu",

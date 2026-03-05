@@ -10,7 +10,6 @@ namespace ProjectManagementAPI.Data
         {
         }
 
-        // ============= DbSets (Tables) ============= 
         public DbSet<User> Users { get; set; }
         public DbSet<Role> Roles { get; set; }
         public DbSet<Team> Teams { get; set; }
@@ -41,7 +40,7 @@ namespace ProjectManagementAPI.Data
                 .HasOne(pt => pt.AssignedToUser)
                 .WithMany(u => u.AssignedTasks)
                 .HasForeignKey(pt => pt.AssignedToUserId)
-                .OnDelete(DeleteBehavior.Restrict);  // ✅ FIXED: Changed from SetNull
+                .OnDelete(DeleteBehavior.Restrict);
 
             // ========== User - ProjectTask (CreatedBy) ==========
             modelBuilder.Entity<ProjectTask>()
@@ -55,7 +54,7 @@ namespace ProjectManagementAPI.Data
                 .HasOne(pt => pt.ValidatedByUser)
                 .WithMany()
                 .HasForeignKey(pt => pt.ValidatedByUserId)
-                .OnDelete(DeleteBehavior.Restrict);  // ✅ FIXED: Changed from SetNull
+                .OnDelete(DeleteBehavior.Restrict);
 
             // ========== User - TeamMember ==========
             modelBuilder.Entity<TeamMember>()
@@ -69,7 +68,7 @@ namespace ProjectManagementAPI.Data
                 .HasOne(tm => tm.Team)
                 .WithMany(t => t.TeamMembers)
                 .HasForeignKey(tm => tm.TeamId)
-                .OnDelete(DeleteBehavior.Cascade);  // ✅ OK: Can cascade delete team members
+                .OnDelete(DeleteBehavior.Cascade);
 
             // ========== COMPOSITE KEY: TeamMember ==========
             modelBuilder.Entity<TeamMember>()
@@ -80,7 +79,7 @@ namespace ProjectManagementAPI.Data
                 .HasOne(p => p.Team)
                 .WithMany(t => t.Projects)
                 .HasForeignKey(p => p.TeamId)
-                .OnDelete(DeleteBehavior.Restrict);  // ✅ CHANGED: Don't delete team if it has projects
+                .OnDelete(DeleteBehavior.Restrict);
 
             // ========== User - Project (CreatedBy) ==========
             modelBuilder.Entity<Project>()
@@ -115,7 +114,7 @@ namespace ProjectManagementAPI.Data
                 .HasOne(pt => pt.Project)
                 .WithMany(p => p.ProjectTasks)
                 .HasForeignKey(pt => pt.ProjectId)
-                .OnDelete(DeleteBehavior.Cascade);  // ✅ OK: Delete tasks when project deleted
+                .OnDelete(DeleteBehavior.Cascade);
 
             // ========== ProjectTaskStatus - ProjectTask ==========
             modelBuilder.Entity<ProjectTask>()
@@ -136,42 +135,53 @@ namespace ProjectManagementAPI.Data
                 .HasOne(e => e.Project)
                 .WithMany(p => p.EDBs)
                 .HasForeignKey(e => e.ProjectId)
-                .OnDelete(DeleteBehavior.Cascade);  // ✅ OK: Delete EDBs when project deleted
+                .OnDelete(DeleteBehavior.Cascade);
 
             // ========== User - PasswordResetToken ==========
             modelBuilder.Entity<PasswordResetToken>()
                 .HasOne(prt => prt.User)
                 .WithMany()
                 .HasForeignKey(prt => prt.UserId)
-                .OnDelete(DeleteBehavior.Cascade);  // ✅ OK: Delete tokens when user deleted
+                .OnDelete(DeleteBehavior.Cascade);
 
-            // ========== User - Notification ==========
+            // ========== User - Notification (destinataire) ==========
             modelBuilder.Entity<Notification>()
                 .HasOne(n => n.User)
                 .WithMany(u => u.Notifications)
                 .HasForeignKey(n => n.UserId)
-                .OnDelete(DeleteBehavior.Cascade);  // ✅ OK: Delete notifications when user deleted
+                .OnDelete(DeleteBehavior.Cascade);
 
-            // ========== Notification - Project (Optional) ==========
+            // ========== Notification - RelatedProject ==========
+            // ✅ NoAction : SQL Server ne touche rien, on gère manuellement dans le service
             modelBuilder.Entity<Notification>()
                 .HasOne(n => n.RelatedProject)
                 .WithMany()
                 .HasForeignKey(n => n.RelatedProjectId)
-                .OnDelete(DeleteBehavior.Restrict);  // ✅ FIXED: Changed from SetNull to avoid conflicts
+                .IsRequired(false)
+                .OnDelete(DeleteBehavior.NoAction); // ✅ FIX FINAL
 
-            // ========== Notification - ProjectTask (Optional) ==========
+            // ========== Notification - RelatedTask ==========
             modelBuilder.Entity<Notification>()
                 .HasOne(n => n.RelatedTask)
                 .WithMany()
                 .HasForeignKey(n => n.RelatedTaskId)
-                  .OnDelete(DeleteBehavior.SetNull);   // ✅ FIXED: Changed from SetNull to avoid conflicts
+                .IsRequired(false)
+                .OnDelete(DeleteBehavior.NoAction); // ✅ FIX FINAL
+
+            // ========== Notification - RelatedUser ==========
+            modelBuilder.Entity<Notification>()
+                .HasOne(n => n.RelatedUser)
+                .WithMany()
+                .HasForeignKey(n => n.RelatedUserId)
+                .IsRequired(false)
+                .OnDelete(DeleteBehavior.NoAction); // ✅ FIX FINAL
 
             // ========== Comment - ProjectTask ==========
             modelBuilder.Entity<Comment>()
                 .HasOne(c => c.ProjectTask)
                 .WithMany(pt => pt.Comments)
                 .HasForeignKey(c => c.TaskId)
-                .OnDelete(DeleteBehavior.Cascade);  // ✅ OK: Delete comments when task deleted
+                .OnDelete(DeleteBehavior.Cascade);
 
             // ========== Comment - User (CreatedBy) ==========
             modelBuilder.Entity<Comment>()

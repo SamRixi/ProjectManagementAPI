@@ -28,5 +28,6 @@ namespace ProjectManagementAPI.DTOs
 
         public int? ProjectManagerId { get; set; }
         public int? CreatedByUserId { get; set; }
+        public int? EdbId { get; set; }
     }
 }

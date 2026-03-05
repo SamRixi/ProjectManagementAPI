@@ -21,5 +21,7 @@
 
         public DateTime CreatedAt { get; set; }
         public DateTime? UpdatedAt { get; set; }
+        public List<EdbDTO> EDBs { get; set; } = new();
+        public bool HasEdb { get; set; }
     }
 }

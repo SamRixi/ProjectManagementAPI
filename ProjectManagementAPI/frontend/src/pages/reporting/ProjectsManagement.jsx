@@ -18,7 +18,6 @@ import ReportingLayout from '../../components/layout/ReportingLayout';
 import userService from '../../services/userService';
 import '../../styles/Dashboard.css';
 
-// ── Constantes priorité ──────────────────────────────────────
 const PRIORITIES = [
     { id: 1, label: 'Basse', emoji: '🟢' },
     { id: 2, label: 'Moyenne', emoji: '🟡' },
@@ -30,46 +29,13 @@ const getPriorityLabel = (id) => {
     return p ? `${p.emoji} ${p.label}` : 'N/A';
 };
 
-// ── Badge statut projet ──────────────────────────────────────
 const getStatusBadge = (statusId, statusName) => {
     const id = parseInt(statusId);
-
-    // 1 = Planifié, 2 = En cours, 3 = Terminé, 4 = Annulé (par ex.)
-
-    if (id === 1) {
-        return {
-            label: statusName || 'Planifié',
-            bg: '#E5E7EB',
-            color: '#374151',
-        };
-    }
-    if (id === 2) {
-        return {
-            label: statusName || 'En cours',
-            bg: '#DBEAFE',
-            color: '#1D4ED8',
-        };
-    }
-    if (id === 3) {
-        return {
-            label: statusName || 'Terminé',
-            bg: '#DCFCE7',
-            color: '#15803D',
-        };
-    }
-    if (id === 4) {
-        return {
-            label: statusName || 'Annulé',
-            bg: '#FEE2E2',
-            color: '#B91C1C',
-        };
-    }
-
-    return {
-        label: statusName || 'N/A',
-        bg: '#E5E7EB',
-        color: '#374151',
-    };
+    if (id === 1) return { label: statusName || 'Planifié', bg: '#E5E7EB', color: '#374151' };
+    if (id === 2) return { label: statusName || 'En cours', bg: '#DBEAFE', color: '#1D4ED8' };
+    if (id === 3) return { label: statusName || 'Terminé', bg: '#DCFCE7', color: '#15803D' };
+    if (id === 4) return { label: statusName || 'Annulé', bg: '#FEE2E2', color: '#B91C1C' };
+    return { label: statusName || 'N/A', bg: '#E5E7EB', color: '#374151' };
 };
 
 const ProjectManagement = () => {
@@ -91,9 +57,10 @@ const ProjectManagement = () => {
         startDate: '',
         endDate: '',
         teamId: 0,
-        edbId: 0,              // gardé pour l'édition
+        edbId: 0,       // ✅ présent dans create ET edit
         projectManagerId: 0,
         priorityId: 0,
+        projectStatusId: 1,
     };
 
     const [formData, setFormData] = useState(initialForm);
@@ -145,6 +112,14 @@ const ProjectManagement = () => {
 
     const resetForm = () => setFormData(initialForm);
 
+    // ✅ EDBs sans projet assigné + celle déjà liée au projet en cours d'édition
+    const getAvailableEdbs = (currentProjectId = null) =>
+        edbs.filter(e =>
+            !e.projectId ||
+            e.projectId === 0 ||
+            (currentProjectId && e.projectId === currentProjectId)
+        );
+
     // ── CREATE ────────────────────────────────────────────────
     const handleCreate = async (e) => {
         e.preventDefault();
@@ -171,9 +146,12 @@ const ProjectManagement = () => {
                 projectManagerId: parseInt(formData.projectManagerId) || null,
                 priorityId: parseInt(formData.priorityId) || null,
                 createdByUserId: currentUser?.userId || 0,
+                // ✅ AJOUT : envoyer edbId si sélectionné
+                edbId: parseInt(formData.edbId) > 0
+                    ? parseInt(formData.edbId)
+                    : null,
             };
 
-            // 👉 plus de createProjectWithEdb ici
             const response = await projectService.createProject(projectData);
 
             if (response.success) {
@@ -182,6 +160,7 @@ const ProjectManagement = () => {
                     response.data?.ProjectId ||
                     response.data?.id;
 
+                // Assigner l'équipe si choisie
                 const selectedTeamId = parseInt(formData.teamId);
                 if (selectedTeamId > 0 && newProjectId) {
                     const assignRes = await projectService.assignTeamToProject(
@@ -245,6 +224,7 @@ const ProjectManagement = () => {
             );
 
             if (response.success) {
+                // Assigner équipe
                 const selectedTeamId = parseInt(formData.teamId);
                 if (selectedTeamId > 0) {
                     await projectService.assignTeamToProject(
@@ -252,7 +232,7 @@ const ProjectManagement = () => {
                     );
                 }
 
-                // ✅ assigner EDB si choisi
+                // ✅ Assigner EDB si sélectionnée
                 const selectedEdbId = parseInt(formData.edbId);
                 if (selectedEdbId > 0) {
                     await projectService.assignEdbToProject(
@@ -285,15 +265,14 @@ const ProjectManagement = () => {
             startDate: project.startDate ? project.startDate.split('T')[0] : '',
             endDate: project.endDate ? project.endDate.split('T')[0] : '',
             teamId: project.teamId || 0,
-            // si plus tard tu as project.edbId, mets edbId: project.edbId || 0
-            edbId: 0,
+            edbId: 0,   // EDB déjà liée affichée séparément dans les détails
             projectManagerId: project.projectManagerId || 0,
             priorityId: project.priorityId || 0,
+            projectStatusId: project.projectStatusId || 1,
         });
         setShowEditModal(true);
     };
 
-    // ── CANCEL PROJECT (au lieu de delete) ────────────────────
     const handleCancel = async (projectId, projectName) => {
         if (!window.confirm(`Voulez-vous vraiment annuler le projet "${projectName}" ?`)) return;
         try {
@@ -323,9 +302,6 @@ const ProjectManagement = () => {
     const formatDate = (d) =>
         d ? new Date(d).toLocaleDateString('fr-FR') : 'Non défini';
 
-    const getAvailableEdbs = () =>
-        edbs.filter(e => !e.projectId || e.projectId === 0);
-
     // ── Dropdown priorité réutilisable ────────────────────────
     const PrioritySelect = () => (
         <div className="form-group">
@@ -341,6 +317,37 @@ const ProjectManagement = () => {
                 <option value="2">🟡 Moyenne</option>
                 <option value="3">🔴 Haute</option>
             </select>
+        </div>
+    );
+
+    // ── Dropdown EDB réutilisable ─────────────────────────────
+    const EdbSelect = ({ currentProjectId = null }) => (
+        <div className="form-group">
+            <label>
+                <FileText size={15} style={{ marginRight: 6, verticalAlign: 'middle' }} />
+                EDB associée (optionnel)
+            </label>
+            <select
+                name="edbId"
+                value={formData.edbId}
+                onChange={handleInputChange}
+                disabled={submitting}
+            >
+                <option value="0">-- Aucune EDB --</option>
+                {getAvailableEdbs(currentProjectId).map(e => (
+                    <option key={e.edbId} value={e.edbId}>
+                        📄 {e.fileName}
+                        {e.uploadedAt
+                            ? ` — ${new Date(e.uploadedAt).toLocaleDateString('fr-FR')}`
+                            : ''}
+                    </option>
+                ))}
+            </select>
+            {getAvailableEdbs(currentProjectId).length === 0 && (
+                <small style={{ color: '#9CA3AF', marginTop: 4, display: 'block' }}>
+                    Aucune EDB disponible — uploadez-en une depuis la section EDB
+                </small>
+            )}
         </div>
     );
 
@@ -465,43 +472,34 @@ const ProjectManagement = () => {
                                                         {project.teamName || 'Aucune équipe'}
                                                     </div>
                                                 </td>
-                                                {/* Priorité */}
                                                 <td>
                                                     <span style={{
-                                                        padding: '4px 10px',
-                                                        borderRadius: 20,
-                                                        fontSize: '0.82rem',
-                                                        fontWeight: 600,
+                                                        padding: '4px 10px', borderRadius: 20,
+                                                        fontSize: '0.82rem', fontWeight: 600,
                                                         background: project.priorityId === 3 ? '#fee2e2'
-                                                            : project.priorityId === 2 ? '#fef9c3'
-                                                                : '#dcfce7',
+                                                            : project.priorityId === 2 ? '#fef9c3' : '#dcfce7',
                                                         color: project.priorityId === 3 ? '#dc2626'
-                                                            : project.priorityId === 2 ? '#a16207'
-                                                                : '#15803d'
+                                                            : project.priorityId === 2 ? '#a16207' : '#15803d'
                                                     }}>
                                                         {getPriorityLabel(project.priorityId)}
                                                     </span>
                                                 </td>
-                                                {/* Statut */}
                                                 <td>
                                                     <span style={{
-                                                        padding: '4px 10px',
-                                                        borderRadius: 20,
-                                                        fontSize: '0.82rem',
-                                                        fontWeight: 600,
-                                                        background: status.bg,
-                                                        color: status.color,
+                                                        padding: '4px 10px', borderRadius: 20,
+                                                        fontSize: '0.82rem', fontWeight: 600,
+                                                        background: status.bg, color: status.color,
                                                     }}>
                                                         {status.label}
                                                     </span>
                                                 </td>
                                                 <td style={{ fontSize: '0.875rem', color: '#666' }}>
                                                     <div>Début: {formatDate(project.startDate)}</div>
-                                                    <div>Fin: {formatDate(project.endDate)}</div>
+                                                    <div>Fin:   {formatDate(project.endDate)}</div>
                                                 </td>
                                                 <td>
                                                     <span className={`status-badge ${project.hasEdb ? 'active' : 'inactive'}`}>
-                                                        {project.hasEdb ? 'Oui' : 'Non'}
+                                                        {project.hasEdb ? '📄 Oui' : 'Non'}
                                                     </span>
                                                 </td>
                                                 <td>
@@ -583,11 +581,12 @@ const ProjectManagement = () => {
                                         <select name="projectManagerId" value={formData.projectManagerId} onChange={handleInputChange} disabled={submitting}>
                                             <option value="0">Aucun chef de projet</option>
                                             {projectManagers.map(m => (
-                                                <option key={m.userId} value={m.userId}>{m.firstName} {m.lastName}</option>
+                                                <option key={m.userId} value={m.userId}>
+                                                    {m.firstName} {m.lastName}
+                                                </option>
                                             ))}
                                         </select>
                                     </div>
-                                    {/* Priorité */}
                                     <PrioritySelect />
                                 </div>
 
@@ -612,7 +611,8 @@ const ProjectManagement = () => {
                                     </div>
                                 </div>
 
-                                {/* plus de champ EDB ici */}
+                                {/* ✅ AJOUT : EDB dans le modal de création */}
+                                <EdbSelect />
 
                                 <div className="modal-actions">
                                     <button type="button" className="btn-cancel" onClick={() => setShowCreateModal(false)} disabled={submitting}>
@@ -663,11 +663,12 @@ const ProjectManagement = () => {
                                         <select name="projectManagerId" value={formData.projectManagerId} onChange={handleInputChange} disabled={submitting}>
                                             <option value="0">Aucun chef de projet</option>
                                             {projectManagers.map(m => (
-                                                <option key={m.userId} value={m.userId}>{m.firstName} {m.lastName}</option>
+                                                <option key={m.userId} value={m.userId}>
+                                                    {m.firstName} {m.lastName}
+                                                </option>
                                             ))}
                                         </select>
                                     </div>
-                                    {/* Priorité */}
                                     <PrioritySelect />
                                 </div>
 
@@ -692,23 +693,23 @@ const ProjectManagement = () => {
                                     </div>
                                 </div>
 
-                                {/* ✅ EDB dans le modal d'édition */}
-                                <div className="form-group">
-                                    <label>EDB assignée (optionnel)</label>
-                                    <select
-                                        name="edbId"
-                                        value={formData.edbId}
-                                        onChange={handleInputChange}
-                                        disabled={submitting}
-                                    >
-                                        <option value="0">Aucun EDB</option>
-                                        {getAvailableEdbs().map(e => (
-                                            <option key={e.edbId} value={e.edbId}>
-                                                {e.fileName}
-                                            </option>
-                                        ))}
-                                    </select>
-                                </div>
+                                {/* ✅ EDB dans edit — affiche aussi celle déjà liée au projet */}
+                                <EdbSelect currentProjectId={selectedProject.projectId} />
+
+                                {/* ✅ Info si le projet a déjà une EDB */}
+                                {selectedProject.hasEdb && (
+                                    <div style={{
+                                        padding: '0.75rem 1rem',
+                                        background: '#ECFDF5',
+                                        border: '1px solid #6EE7B7',
+                                        borderRadius: 10,
+                                        fontSize: '0.875rem',
+                                        color: '#065F46',
+                                        marginTop: '-0.5rem'
+                                    }}>
+                                        📄 Ce projet possède déjà une EDB liée. Sélectionner une nouvelle EDB remplacera l'ancienne.
+                                    </div>
+                                )}
 
                                 <div className="modal-actions">
                                     <button type="button" className="btn-cancel" onClick={() => setShowEditModal(false)} disabled={submitting}>
@@ -742,11 +743,13 @@ const ProjectManagement = () => {
                                     { label: 'Priorité', value: getPriorityLabel(selectedProject.priorityId) },
                                     { label: 'Date début', value: formatDate(selectedProject.startDate) },
                                     { label: 'Date fin', value: formatDate(selectedProject.endDate) },
-                                    { label: 'EDB', value: selectedProject.hasEdb ? 'Oui' : 'Non' },
+                                    { label: 'EDB', value: selectedProject.hasEdb ? '📄 Oui' : 'Non' },
                                     { label: 'Progression', value: `${selectedProject.progress ?? 0}%` },
                                 ].map((item, i) => (
                                     <div key={i} style={{ display: 'flex', gap: '1rem' }}>
-                                        <span style={{ fontWeight: 600, minWidth: 130, color: '#111827' }}>{item.label} :</span>
+                                        <span style={{ fontWeight: 600, minWidth: 130, color: '#111827' }}>
+                                            {item.label} :
+                                        </span>
                                         <span style={{ color: '#6b7280' }}>{item.value}</span>
                                     </div>
                                 ))}

@@ -9,8 +9,7 @@ namespace ProjectManagementAPI.Models
         [Required]
         public int TaskId { get; set; }
 
-        [Required]
-        public int CreatedByUserId { get; set; }
+        public int? CreatedByUserId { get; set; }
 
         [Required]
         [StringLength(2000)]
@@ -23,7 +22,7 @@ namespace ProjectManagementAPI.Models
 
         // Navigation properties
         public ProjectTask ProjectTask { get; set; } = null!;
-        public User CreatedByUser { get; set; }=null!;
+        public User? CreatedByUser { get; set; }
 
 
     }
