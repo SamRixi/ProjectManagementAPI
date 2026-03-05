@@ -10,16 +10,17 @@ const UpdateTaskModalContent = ({ task, onUpdate, onClose }) => {
             'En cours': 2,
             'Terminé': 3,
             'En attente de validation': 4,
-            'Validée': 5
+            'Validé': 5,
+            'Annulé': 6
         };
         return statusMap[statusText] || 1;
     }
 
     // ✅ Calcul du statut à partir de la progression
     const computeStatusIdFromProgress = (progress) => {
-        if (progress === 0) return 1;                // À faire
-        if (progress > 0 && progress < 100) return 2; // En cours
-        if (progress === 100) return 4;              // En attente de validation
+        if (progress === 0) return 1;                  // À faire
+        if (progress > 0 && progress < 100) return 2;  // En cours
+        if (progress === 100) return 4;                // En attente de validation
         return 1;
     };
 
@@ -30,11 +31,14 @@ const UpdateTaskModalContent = ({ task, onUpdate, onClose }) => {
     });
     const [loading, setLoading] = useState(false);
 
+    // ✅ CORRECTION : isLocked bloque slider/select seulement pour Validé(5) ou Annulé(6)
+    // En attente de validation(4) → le membre peut encore soumettre !
+    const isLocked = formData.taskStatusId === 5 || formData.taskStatusId === 6;
+
     const handleSubmit = async (e) => {
         e.preventDefault();
         setLoading(true);
 
-        // ✅ statut calculé automatiquement à l'enregistrement
         const finalStatus = computeStatusIdFromProgress(formData.progress);
 
         const updateData = {
@@ -85,24 +89,22 @@ const UpdateTaskModalContent = ({ task, onUpdate, onClose }) => {
                             value={formData.taskStatusId}
                             onChange={(e) => {
                                 const newStatus = parseInt(e.target.value);
-                                setFormData({
-                                    ...formData,
-                                    taskStatusId: newStatus
-                                });
+                                setFormData({ ...formData, taskStatusId: newStatus });
                             }}
                             required
                             className="form-select"
-                            disabled={formData.taskStatusId === 4 || formData.taskStatusId === 5}
+                            disabled={isLocked}
                         >
                             <option value={1}>À faire</option>
                             <option value={2}>En cours</option>
                             <option value={3}>Terminé</option>
+                            <option value={4}>En attente de validation</option>
+                            <option value={5}>Validé</option>
+                            <option value={6}>Annulé</option>
                         </select>
-                        {formData.progress === 100 && (
-                            <p
-                                className="help-text"
-                                style={{ fontSize: '0.85rem', color: '#6b7280', marginTop: '0.5rem' }}
-                            >
+
+                        {formData.progress === 100 && formData.taskStatusId !== 4 && (
+                            <p className="help-text" style={{ fontSize: '0.85rem', color: '#6b7280', marginTop: '0.5rem' }}>
                                 ℹ️ Le statut sera automatiquement "En attente de validation"
                             </p>
                         )}
@@ -114,34 +116,31 @@ const UpdateTaskModalContent = ({ task, onUpdate, onClose }) => {
                             type="range"
                             min="0"
                             max="100"
-                            step="1" 
+                            step="1"
                             value={formData.progress}
                             onChange={(e) => {
                                 const newProgress = parseInt(e.target.value);
                                 setFormData({
                                     ...formData,
                                     progress: newProgress,
-                                    // ✅ met à jour le statut en direct quand on bouge le slider
                                     taskStatusId: computeStatusIdFromProgress(newProgress)
                                 });
                             }}
                             className="progress-slider"
-                            disabled={formData.taskStatusId === 4 || formData.taskStatusId === 5}
+                            disabled={isLocked}
                         />
                         <div className="progress-bar-preview">
                             <div
-                                className={`progress-fill-preview ${formData.progress === 100
-                                        ? 'completed'
-                                        : formData.progress >= 60
-                                            ? 'high'
-                                            : formData.progress >= 30
-                                                ? 'medium'
+                                className={`progress-fill-preview ${formData.progress === 100 ? 'completed'
+                                        : formData.progress >= 60 ? 'high'
+                                            : formData.progress >= 30 ? 'medium'
                                                 : 'low'
                                     }`}
                                 style={{ width: `${formData.progress}%` }}
                             ></div>
                         </div>
-                        {formData.progress === 100 && (
+
+                        {formData.progress === 100 && formData.taskStatusId === 4 && (
                             <p className="help-text" style={{ color: '#00A651', fontWeight: '600' }}>
                                 ✅ Tâche à 100% ! Elle sera envoyée au chef de projet pour validation.
                             </p>
@@ -156,18 +155,19 @@ const UpdateTaskModalContent = ({ task, onUpdate, onClose }) => {
                                 ✅ Tâche validée par le chef de projet
                             </p>
                         )}
+                        {formData.taskStatusId === 6 && (
+                            <p className="help-text" style={{ color: '#e74c3c', fontWeight: '600' }}>
+                                ❌ Tâche annulée
+                            </p>
+                        )}
                     </div>
 
                     <div className="modal-footer">
-                        <button
-                            type="button"
-                            onClick={onClose}
-                            className="btn-cancel"
-                            disabled={loading}
-                        >
+                        <button type="button" onClick={onClose} className="btn-cancel" disabled={loading}>
                             Annuler
                         </button>
-                        <button type="submit" className="btn-save" disabled={loading}>
+                        {/* ✅ CORRECTION : bloqué seulement si loading, Validé(5) ou Annulé(6) */}
+                        <button type="submit" className="btn-save" disabled={loading || isLocked}>
                             <Save size={18} />
                             {loading ? 'Enregistrement...' : 'Enregistrer'}
                         </button>
