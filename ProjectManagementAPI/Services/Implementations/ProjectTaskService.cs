@@ -531,7 +531,6 @@ namespace ProjectManagementAPI.Services.Implementations
             }
         }
 
-
         // ============= RECALCUL PROGRESSION =============
         private async Task RecalculateProjectProgressAsync(int projectId)
         {
@@ -572,6 +571,7 @@ namespace ProjectManagementAPI.Services.Implementations
                 DueDate = task.DueDate,
                 Progress = task.Progress,
                 IsValidated = task.IsValidated,
+                ValidatedAt = task.ValidatedAt,  // ✅ FIX: was missing
                 ProjectId = task.ProjectId,
                 ProjectName = task.Project?.ProjectName ?? "",
                 StatusName = task.ProjectTasksStatus?.StatusName ?? "",

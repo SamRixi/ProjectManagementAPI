@@ -92,7 +92,8 @@ namespace ProjectManagementAPI.Controllers
                             : "Non assigné",
                         isOverdue = t.DueDate < now && t.TaskStatusId != 4 && t.TaskStatusId != 5,
                         isValidated = t.IsValidated,
-                        progress = t.Progress
+                        progress = t.Progress,
+                        validatedAt = t.ValidatedAt  // ✅ FIX: was missing
                     })
                     .ToListAsync();
 
@@ -168,7 +169,8 @@ namespace ProjectManagementAPI.Controllers
                             : "Non assigné",
                         isOverdue = t.DueDate < DateTime.Now && t.TaskStatusId != 4 && t.TaskStatusId != 5,
                         isValidated = t.IsValidated,
-                        progress = t.Progress
+                        progress = t.Progress,
+                        validatedAt = t.ValidatedAt  // ✅ FIX: was missing
                     })
                     .ToListAsync();
 
@@ -262,7 +264,7 @@ namespace ProjectManagementAPI.Controllers
                     return Unauthorized(new { success = false, message = "Utilisateur non authentifié" });
 
                 var task = await _context.ProjectTasks
-                    .Include(t => t.Project) // ✅ pour accéder au ProjectManagerId
+                    .Include(t => t.Project)
                     .FirstOrDefaultAsync(t => t.ProjectTaskId == taskId);
 
                 if (task == null)
@@ -277,7 +279,6 @@ namespace ProjectManagementAPI.Controllers
                 if (task.TaskStatusId == 4 && dto.TaskStatusId != 2)
                     return StatusCode(403, new { success = false, message = "Tâche en attente de validation. Contactez votre chef de projet." });
 
-                // 🔍 avant modification
                 var oldStatus = task.TaskStatusId;
                 var oldProgress = task.Progress;
 
@@ -286,8 +287,7 @@ namespace ProjectManagementAPI.Controllers
 
                 if (task.Progress == 100 || dto.TaskStatusId == 3)
                 {
-                    // ✅ Progress 100% → soumettre au PM
-                    task.TaskStatusId = 4; // En attente de validation
+                    task.TaskStatusId = 4;
                     task.Progress = 100;
                     task.IsValidated = false;
                 }
@@ -297,14 +297,10 @@ namespace ProjectManagementAPI.Controllers
                 }
 
                 await _context.SaveChangesAsync();
-
-                // ✅ Recalcule la progression du projet
                 await RecalculateProjectProgressAsync(task.ProjectId);
 
-                // 🔔 NOTIFICATION PM : uniquement si on vient de passer en attente de validation
                 if (task.TaskStatusId == 4 && (oldStatus != 4 || oldProgress != 100))
                 {
-                    // Récupérer le PM du projet
                     var project = task.Project;
                     if (project != null && project.ProjectManagerId.HasValue)
                     {
@@ -314,7 +310,6 @@ namespace ProjectManagementAPI.Controllers
                             ? $"{dev.FirstName} {dev.LastName}"
                             : "Un développeur";
 
-                        // ⚠️ ici on utilise directement DbContext, donc on crée une Notification manuellement
                         _context.Notifications.Add(new Notification
                         {
                             UserId = pmId,
@@ -414,26 +409,21 @@ namespace ProjectManagementAPI.Controllers
             var validatedTasks = tasks.Count(t => t.IsValidated);
             var pendingTasks = tasks.Count(t => t.TaskStatusId == 4);
 
-            // ✅ Recalcul de la progression uniquement
             project.Progress = totalTasks == 0
                 ? 0
                 : (int)Math.Round(tasks.Average(t => (double)t.Progress));
 
-            // ✅ Statut projet — seul le PM peut mettre "Terminé" via CloseProject
             if (totalTasks == 0 || project.Progress == 0)
             {
-                project.ProjectStatusId = 1; // Planifié
+                project.ProjectStatusId = 1;
             }
             else if (totalTasks > 0 && validatedTasks == totalTasks)
             {
-                // ✅ Toutes les tâches validées par PM → Terminé
                 project.ProjectStatusId = 3;
             }
             else
             {
-                // ✅ En cours, en attente de validation, ou progression partielle
-                // → JAMAIS "Terminé" automatiquement côté développeur
-                project.ProjectStatusId = 2; // En cours
+                project.ProjectStatusId = 2;
             }
 
             await _context.SaveChangesAsync();

@@ -8,6 +8,7 @@
         public DateTime DueDate { get; set; }
         public int Progress { get; set; }
         public bool IsValidated { get; set; }
+        public DateTime? ValidatedAt { get; set; }
 
         public int ProjectId { get; set; }
         public string ProjectName { get; set; }

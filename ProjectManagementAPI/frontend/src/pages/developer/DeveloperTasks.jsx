@@ -15,7 +15,7 @@ const DeveloperTasks = () => {
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState(null);
     const [selectedTask, setSelectedTask] = useState(null);
-    const [lastComments, setLastComments] = useState({}); // taskId -> dernier commentaire
+    const [lastComments, setLastComments] = useState({});
 
     useEffect(() => {
         if (user?.userId) {
@@ -33,16 +33,6 @@ const DeveloperTasks = () => {
             if (response.success) {
                 const loadedTasks = response.data.tasks || [];
 
-                console.log('📋 Tasks received:', loadedTasks);
-                console.log('🔍 First task raw =>', loadedTasks[0]);
-
-                loadedTasks.forEach((t) => {
-                    console.log(
-                        `Task "${t.taskName}" - Status: "${t.status}" - Progress: ${t.progress}% - isValidated=${t.isValidated}`
-                    );
-                });
-
-                // 🔹 Ne garder que les tâches non annulées
                 const activeTasks = loadedTasks.filter(
                     (t) => t.status !== 'Annulé'
                 );
@@ -50,7 +40,6 @@ const DeveloperTasks = () => {
                 setTasks(activeTasks);
 
                 const commentsByTask = {};
-
                 for (const t of activeTasks) {
                     try {
                         const res = await commentService.getComments(t.taskId);
@@ -58,20 +47,13 @@ const DeveloperTasks = () => {
                             commentsByTask[t.taskId] = res.data[0].content;
                         }
                     } catch (e) {
-                        console.error(
-                            '❌ Error loading comments for task',
-                            t.taskId,
-                            e
-                        );
+                        console.error('❌ Error loading comments for task', t.taskId, e);
                     }
                 }
 
                 setLastComments(commentsByTask);
             } else {
-                setError(
-                    response.message ||
-                    'Erreur lors du chargement des tâches'
-                );
+                setError(response.message || 'Erreur lors du chargement des tâches');
             }
         } catch (err) {
             console.error('❌ Error loading tasks:', err);
@@ -83,15 +65,8 @@ const DeveloperTasks = () => {
 
     const handleUpdateTask = async (taskId, updateData) => {
         try {
-            console.log('📤 Updating task:', taskId, updateData);
-
-            const result = await developerService.updateTask(
-                taskId,
-                updateData
-            );
-
+            const result = await developerService.updateTask(taskId, updateData);
             if (result.success) {
-                alert('✅ ' + result.message);
                 setSelectedTask(null);
                 fetchTasks();
             } else {
@@ -103,17 +78,10 @@ const DeveloperTasks = () => {
         }
     };
 
-    // ✅ Utilise aussi isValidated, pas seulement le texte du statut
     const isTaskValidated = (task) => {
         if (task.isValidated) return true;
-
         const status = task.status || '';
-        const validatedStatuses = [
-            'Validée',
-            'Validé',
-            'Terminé et validé',
-            'Complété'
-        ];
+        const validatedStatuses = ['Validée', 'Validé', 'Terminé et validé', 'Complété'];
         return validatedStatuses.some((s) =>
             status.toLowerCase().includes(s.toLowerCase())
         );
@@ -126,10 +94,9 @@ const DeveloperTasks = () => {
 
     const getDisplayStatus = (task) => {
         const status = task.status?.toLowerCase() || '';
-
         if (task.isValidated) return 'Validée';
-        if (status.includes('attente'))
-            return 'Terminé · En attente de validation';
+        if (status.includes('attente')) return 'En attente de validation';
+        if (status.includes('validé')) return 'Validée';
         if (status.includes('terminé')) return 'Terminé';
         if (status.includes('cours')) return 'En cours';
         if (status.includes('faire')) return 'À faire';
@@ -138,7 +105,6 @@ const DeveloperTasks = () => {
 
     const getStatusClass = (task) => {
         const statusLower = task.status?.toLowerCase() || '';
-
         if (task.isValidated) return 'completed';
         if (statusLower.includes('attente')) return 'pending-validation';
         if (statusLower.includes('cours')) return 'in-progress';
@@ -147,11 +113,7 @@ const DeveloperTasks = () => {
     };
 
     const getPriorityClass = (priority) => {
-        const priorityMap = {
-            Haute: 'high',
-            Moyenne: 'medium',
-            Basse: 'low'
-        };
+        const priorityMap = { Haute: 'high', Moyenne: 'medium', Basse: 'low' };
         return priorityMap[priority] || 'medium';
     };
 
@@ -164,18 +126,21 @@ const DeveloperTasks = () => {
 
     const formatDate = (dateString) => {
         if (!dateString) return 'N/A';
-        const date = new Date(dateString);
-        return date.toLocaleDateString('fr-FR', {
-            day: 'numeric',
-            month: 'short',
-            year: 'numeric'
+        return new Date(dateString).toLocaleDateString('fr-FR', {
+            day: 'numeric', month: 'short', year: 'numeric'
         });
     };
 
     const isTaskOverdue = (deadline, task) => {
-        if (!deadline || isTaskValidated(task) || isTaskPending(task))
-            return false;
+        if (!deadline || isTaskValidated(task) || isTaskPending(task)) return false;
         return new Date(deadline) < new Date();
+    };
+
+    const shouldShowRejectionReason = (task) => {
+        const hasComment = !!lastComments[task.taskId];
+        const isValidated = isTaskValidated(task);
+        const isPending = isTaskPending(task);
+        return hasComment && !isValidated && !isPending;
     };
 
     return (
@@ -183,41 +148,21 @@ const DeveloperTasks = () => {
             <div className="dashboard-container">
                 <div className="dashboard-content">
                     {/* Page Header */}
-                    <div
-                        className="welcome-card"
-                        style={{
-                            background:
-                                'linear-gradient(135deg, #00A651 0%, #004D29 100%)',
-                            color: 'white',
-                            marginBottom: '30px'
-                        }}
-                    >
-                        <div
-                            style={{
-                                display: 'flex',
-                                alignItems: 'center',
-                                gap: '15px'
-                            }}
-                        >
+                    <div className="welcome-card" style={{
+                        background: 'linear-gradient(135deg, #00A651 0%, #004D29 100%)',
+                        color: 'white', marginBottom: '30px'
+                    }}>
+                        <div style={{ display: 'flex', alignItems: 'center', gap: '15px' }}>
                             <CheckSquare size={40} />
                             <div>
-                                <h2 style={{ margin: 0, color: 'white' }}>
-                                    Mes Tâches
-                                </h2>
-                                <p
-                                    style={{
-                                        margin: '5px 0 0 0',
-                                        opacity: 0.9
-                                    }}
-                                >
-                                    Gérez et mettez à jour toutes vos tâches
-                                    assignées
+                                <h2 style={{ margin: 0, color: 'white' }}>Mes Tâches</h2>
+                                <p style={{ margin: '5px 0 0 0', opacity: 0.9 }}>
+                                    Gérez et mettez à jour toutes vos tâches assignées
                                 </p>
                             </div>
                         </div>
                     </div>
 
-                    {/* Error Message */}
                     {error && (
                         <div className="error-message">
                             <p>⚠️ {error}</p>
@@ -225,7 +170,6 @@ const DeveloperTasks = () => {
                         </div>
                     )}
 
-                    {/* Loading State */}
                     {loading ? (
                         <div className="loading">
                             <div className="spinner"></div>
@@ -244,244 +188,116 @@ const DeveloperTasks = () => {
 
                                         return (
                                             <div
-                                                className={`task-item ${isTaskOverdue(
-                                                    task.deadline,
-                                                    task
-                                                )
-                                                        ? 'overdue'
-                                                        : ''
-                                                    } ${isLocked ? 'locked' : ''
-                                                    }`}
+                                                className={`task-item ${isTaskOverdue(task.deadline, task) ? 'overdue' : ''} ${isLocked ? 'locked' : ''}`}
                                                 key={task.taskId}
                                             >
-                                                <div
-                                                    className={`task-status ${getStatusClass(
-                                                        task
-                                                    )}`}
-                                                ></div>
+                                                <div className={`task-status ${getStatusClass(task)}`}></div>
 
                                                 <div className="task-details">
-                                                    <div
-                                                        style={{
-                                                            display: 'flex',
-                                                            alignItems:
-                                                                'center',
-                                                            gap: '10px'
-                                                        }}
-                                                    >
+                                                    <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
                                                         <h4 style={{ margin: 0 }}>
-                                                            {task.taskName ||
-                                                                'Sans titre'}
+                                                            {task.taskName || 'Sans titre'}
                                                         </h4>
 
                                                         {validated && (
-                                                            <span
-                                                                style={{
-                                                                    display:
-                                                                        'inline-flex',
-                                                                    alignItems:
-                                                                        'center',
-                                                                    gap: '5px',
-                                                                    padding:
-                                                                        '4px 12px',
-                                                                    background:
-                                                                        '#10b981',
-                                                                    color:
-                                                                        'white',
-                                                                    borderRadius:
-                                                                        '12px',
-                                                                    fontSize:
-                                                                        '0.75rem',
-                                                                    fontWeight:
-                                                                        '700',
-                                                                    textTransform:
-                                                                        'uppercase'
-                                                                }}
-                                                            >
-                                                                <CheckCircle size={14} />
-                                                                Validée
+                                                            <span style={{
+                                                                display: 'inline-flex', alignItems: 'center', gap: '5px',
+                                                                padding: '4px 12px', background: '#10b981', color: 'white',
+                                                                borderRadius: '12px', fontSize: '0.75rem', fontWeight: '700',
+                                                                textTransform: 'uppercase'
+                                                            }}>
+                                                                <CheckCircle size={14} /> Validée
                                                             </span>
                                                         )}
 
                                                         {pending && (
-                                                            <span
-                                                                style={{
-                                                                    display:
-                                                                        'inline-flex',
-                                                                    alignItems:
-                                                                        'center',
-                                                                    gap: '5px',
-                                                                    padding:
-                                                                        '4px 12px',
-                                                                    background:
-                                                                        '#f59e0b',
-                                                                    color:
-                                                                        'white',
-                                                                    borderRadius:
-                                                                        '12px',
-                                                                    fontSize:
-                                                                        '0.75rem',
-                                                                    fontWeight:
-                                                                        '700',
-                                                                    textTransform:
-                                                                        'uppercase'
-                                                                }}
-                                                            >
-                                                                <Clock size={14} />
-                                                                En attente
+                                                            <span style={{
+                                                                display: 'inline-flex', alignItems: 'center', gap: '5px',
+                                                                padding: '4px 12px', background: '#f59e0b', color: 'white',
+                                                                borderRadius: '12px', fontSize: '0.75rem', fontWeight: '700',
+                                                                textTransform: 'uppercase'
+                                                            }}>
+                                                                <Clock size={14} /> En attente
                                                             </span>
                                                         )}
                                                     </div>
 
-                                                    <p
-                                                        style={{
-                                                            fontSize: '0.85rem',
-                                                            color: '#4b5563',
-                                                            margin:
-                                                                '0.2rem 0 0.4rem'
-                                                        }}
-                                                    >
-                                                        Statut :{' '}
-                                                        {getDisplayStatus(task)}
+                                                    <p style={{ fontSize: '0.85rem', color: '#4b5563', margin: '0.2rem 0 0.4rem' }}>
+                                                        Statut : {getDisplayStatus(task)}
                                                     </p>
 
-                                                    {lastComments[
-                                                        task.taskId
-                                                    ] && (
-                                                            <p
-                                                                style={{
-                                                                    fontSize:
-                                                                        '0.85rem',
-                                                                    color:
-                                                                        '#b91c1c',
-                                                                    margin:
-                                                                        '0.2rem 0 0.4rem',
-                                                                    fontWeight: 600
-                                                                }}
-                                                            >
-                                                                Raison du refus :{' '}
-                                                                {
-                                                                    lastComments[
-                                                                    task.taskId
-                                                                    ]
-                                                                }
-                                                            </p>
-                                                        )}
-
-                                                    <p>
-                                                        Projet:{' '}
-                                                        {task.projectName ||
-                                                            'N/A'}
-                                                    </p>
-                                                    <p
-                                                        style={{
+                                                    {shouldShowRejectionReason(task) && (
+                                                        <div style={{
                                                             fontSize: '0.85rem',
-                                                            color: '#666',
-                                                            marginTop:
-                                                                '0.25rem'
-                                                        }}
-                                                    >
-                                                        Chef de projet:{' '}
-                                                        {task.projectManagerName ||
-                                                            'N/A'}
+                                                            color: '#b91c1c',
+                                                            margin: '0.4rem 0',
+                                                            fontWeight: 600,
+                                                            padding: '0.6rem 0.9rem',
+                                                            background: '#fef2f2',
+                                                            borderRadius: '8px',
+                                                            borderLeft: '4px solid #dc2626',
+                                                            lineHeight: '1.5'
+                                                        }}>
+                                                            ❌ Raison du refus : {lastComments[task.taskId]}
+                                                        </div>
+                                                    )}
+
+                                                    <p>Projet : {task.projectName || 'N/A'}</p>
+                                                    <p style={{ fontSize: '0.85rem', color: '#666', marginTop: '0.25rem' }}>
+                                                        Chef de projet : {task.projectManagerName || 'N/A'}
                                                     </p>
-                                                    <span
-                                                        className={`task-priority ${getPriorityClass(
-                                                            task.priority
-                                                        )}`}
-                                                    >
-                                                        {task.priority ||
-                                                            'Moyenne'}{' '}
-                                                        Priorité
+                                                    <span className={`task-priority ${getPriorityClass(task.priority)}`}>
+                                                        {task.priority || 'Moyenne'} Priorité
                                                     </span>
                                                 </div>
 
                                                 <div className="task-meta">
+                                                    {/* ✅ FIX: was task.completedDate (undefined), now task.validatedAt */}
                                                     <span className="task-deadline">
                                                         {validated
-                                                            ? `Complété: ${formatDate(
-                                                                task.completedDate
-                                                            )}`
-                                                            : `Deadline: ${formatDate(
-                                                                task.deadline
-                                                            )}`}
+                                                            ? `Complété: ${formatDate(task.validatedAt)}`
+                                                            : `Deadline: ${formatDate(task.dueDate)}`}
                                                     </span>
 
-                                                    {isTaskOverdue(
-                                                        task.deadline,
-                                                        task
-                                                    ) && (
-                                                            <span className="overdue-badge">
-                                                                ⚠️ EN RETARD
-                                                            </span>
-                                                        )}
+                                                    {isTaskOverdue(task.deadline, task) && (
+                                                        <span className="overdue-badge">⚠️ EN RETARD</span>
+                                                    )}
 
-                                                    {task.progress !==
-                                                        undefined && (
-                                                            <div className="progress-wrapper">
-                                                                <div className="progress-container">
-                                                                    <div
-                                                                        className={`progress-fill ${getProgressClass(
-                                                                            task.progress
-                                                                        )}`}
-                                                                        style={{
-                                                                            width: `${task.progress}%`
-                                                                        }}
-                                                                    ></div>
-                                                                </div>
-                                                                <span className="progress-text">
-                                                                    {
-                                                                        task.progress
-                                                                    }
-                                                                    % complété
-                                                                </span>
+                                                    {task.progress !== undefined && (
+                                                        <div className="progress-wrapper">
+                                                            <div className="progress-container">
+                                                                <div
+                                                                    className={`progress-fill ${getProgressClass(task.progress)}`}
+                                                                    style={{ width: `${task.progress}%` }}
+                                                                ></div>
                                                             </div>
-                                                        )}
+                                                            <span className="progress-text">
+                                                                {task.progress}% complété
+                                                            </span>
+                                                        </div>
+                                                    )}
 
                                                     <button
                                                         className="btn-update-task"
-                                                        onClick={() =>
-                                                            !isLocked &&
-                                                            setSelectedTask(
-                                                                task
-                                                            )
-                                                        }
+                                                        onClick={() => !isLocked && setSelectedTask(task)}
                                                         disabled={isLocked}
                                                         style={{
-                                                            marginTop: '1rem',
-                                                            padding:
-                                                                '8px 16px',
-                                                            background: isLocked
-                                                                ? '#d1d5db'
-                                                                : '#00A651',
-                                                            color: isLocked
-                                                                ? '#6b7280'
-                                                                : 'white',
-                                                            border: 'none',
-                                                            borderRadius: '6px',
-                                                            cursor: isLocked
-                                                                ? 'not-allowed'
-                                                                : 'pointer',
-                                                            fontSize: '0.9rem',
-                                                            fontWeight: '600',
-                                                            transition:
-                                                                'all 0.3s',
-                                                            opacity: isLocked
-                                                                ? 0.6
-                                                                : 1
+                                                            marginTop: '1rem', padding: '8px 16px',
+                                                            background: isLocked ? '#d1d5db' : '#00A651',
+                                                            color: isLocked ? '#6b7280' : 'white',
+                                                            border: 'none', borderRadius: '6px',
+                                                            cursor: isLocked ? 'not-allowed' : 'pointer',
+                                                            fontSize: '0.9rem', fontWeight: '600',
+                                                            transition: 'all 0.3s', opacity: isLocked ? 0.6 : 1
                                                         }}
                                                         title={
-                                                            validated
-                                                                ? '✅ Tâche validée par le chef de projet - Modification impossible'
-                                                                : pending
-                                                                    ? '⏳ Tâche en attente de validation par le chef de projet'
+                                                            validated ? '✅ Tâche validée - Modification impossible'
+                                                                : pending ? '⏳ En attente de validation'
                                                                     : 'Mettre à jour la tâche'
                                                         }
                                                     >
-                                                        {validated
-                                                            ? '🔒 Validée'
-                                                            : pending
-                                                                ? '⏳ En attente'
+                                                        {validated ? '🔒 Validée'
+                                                            : pending ? '⏳ En attente'
                                                                 : '✏️ Mettre à jour'}
                                                     </button>
                                                 </div>
