@@ -1,4 +1,4 @@
-import { useState } from 'react';
+﻿import { useState } from 'react';
 import { useNavigate, Link } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
 import { Eye, EyeOff, AlertCircle, CheckCircle, Mail } from 'lucide-react';
@@ -26,130 +26,76 @@ const Register = () => {
 
     const handleChange = (e) => {
         const { name, value } = e.target;
-
-        setFormData({
-            ...formData,
-            [name]: value
-        });
+        setFormData({ ...formData, [name]: value });
         setError('');
-
-        if (name === 'password') {
-            calculatePasswordStrength(value);
-        }
+        if (name === 'password') calculatePasswordStrength(value);
     };
 
     const calculatePasswordStrength = (password) => {
         let strength = 0;
-
         if (password.length >= 6) strength += 1;
         if (password.length >= 10) strength += 1;
         if (/[a-z]/.test(password) && /[A-Z]/.test(password)) strength += 1;
         if (/\d/.test(password)) strength += 1;
         if (/[^a-zA-Z0-9]/.test(password)) strength += 1;
-
         setPasswordStrength(Math.min(strength, 4));
     };
 
     const getPasswordStrengthLabel = () => {
-        const labels = ['Tr�s faible', 'Faible', 'Moyen', 'Fort', 'Tr�s fort'];
+        const labels = ['Très faible', 'Faible', 'Moyen', 'Fort', 'Très fort'];
         const colors = ['#F44336', '#FF9800', '#FFC107', '#8BC34A', '#4CAF50'];
-        return {
-            label: labels[passwordStrength] || '',
-            color: colors[passwordStrength] || '#E0E0E0'
-        };
+        return { label: labels[passwordStrength] || '', color: colors[passwordStrength] || '#E0E0E0' };
     };
 
     const validateForm = () => {
         if (!formData.username || !formData.email || !formData.password ||
             !formData.confirmPassword || !formData.firstName || !formData.lastName) {
-            setError('Tous les champs sont obligatoires');
-            return false;
+            setError('Tous les champs sont obligatoires'); return false;
         }
-
         if (formData.username.length < 3) {
-            setError('Le nom d\'utilisateur doit contenir au moins 3 caract�res');
-            return false;
+            setError("Le nom d'utilisateur doit contenir au moins 3 caractères"); return false;
         }
-
         const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
         if (!emailRegex.test(formData.email)) {
-            setError('Veuillez entrer une adresse email valide');
-            return false;
+            setError('Veuillez entrer une adresse email valide'); return false;
         }
-
         if (formData.password.length < 6) {
-            setError('Le mot de passe doit contenir au moins 6 caract�res');
-            return false;
+            setError('Le mot de passe doit contenir au moins 6 caractères'); return false;
         }
-
         if (formData.password !== formData.confirmPassword) {
-            setError('Les mots de passe ne correspondent pas');
-            return false;
+            setError('Les mots de passe ne correspondent pas'); return false;
         }
-
         if (passwordStrength < 2) {
-            setError('Le mot de passe est trop faible. Ajoutez des majuscules, chiffres ou caract�res sp�ciaux');
-            return false;
+            setError('Le mot de passe est trop faible. Ajoutez des majuscules, chiffres ou caractères spéciaux'); return false;
         }
-
         return true;
     };
 
     const handleSubmit = async (e) => {
         e.preventDefault();
-        setError('');
-        setSuccess('');
-
-        if (!validateForm()) {
-            return;
-        }
-
+        setError(''); setSuccess('');
+        if (!validateForm()) return;
         setLoading(true);
-
         try {
-            //  Send ALL data including confirmPassword
-            const dataToSend = {
+            const result = await register({
                 username: formData.username,
                 email: formData.email,
                 password: formData.password,
                 confirmPassword: formData.confirmPassword,
                 firstName: formData.firstName,
                 lastName: formData.lastName
-            };
-
-            const result = await register(dataToSend);
-
+            });
             if (result.success) {
-                //  Set success message FIRST (while still loading)
-                setSuccess('Inscription reussie ! Redirection vers la connexion dans 3 secondes...');
-
-                //  Stop loading AFTER
-
+                setSuccess('Inscription réussie ! Redirection vers la connexion dans 3 secondes...');
                 setLoading(false);
-
-                // Clear form
-                setFormData({
-                    username: '',
-                    email: '',
-                    password: '',
-                    confirmPassword: '',
-                    firstName: '',
-                    lastName: ''
-                });
-
-                // Scroll to top to see success message
+                setFormData({ username: '', email: '', password: '', confirmPassword: '', firstName: '', lastName: '' });
                 window.scrollTo({ top: 0, behavior: 'smooth' });
-
-                // Redirect after 3 seconds
-                setTimeout(() => {
-                    navigate('/login');
-                }, 3000);
+                setTimeout(() => navigate('/login'), 3000);
             } else {
-                setError(result.message || 'Erreur lors de l\'inscription');
+                setError(result.message || "Erreur lors de l'inscription");
                 window.scrollTo({ top: 0, behavior: 'smooth' });
             }
-        } catch (error) {
-            console.error('Registration error:', error);
+        } catch  {
             setLoading(false);
             setError('Erreur de connexion au serveur');
             window.scrollTo({ top: 0, behavior: 'smooth' });
@@ -158,217 +104,178 @@ const Register = () => {
 
     const strengthInfo = getPasswordStrengthLabel();
 
+    // Styles inline pour garantir le rendu correct
+    const inputStyle = {
+        width: '100%',
+        padding: '11px 14px',
+        border: '2px solid #E8E8E8',
+        borderRadius: '10px',
+        fontSize: '13px',
+        fontFamily: 'Outfit, sans-serif',
+        boxSizing: 'border-box',
+        backgroundColor: '#FAFAFA',
+        color: '#333',
+        outline: 'none',
+        transition: 'border-color 0.3s'
+    };
+
+    const labelStyle = {
+        display: 'block',
+        marginBottom: '6px',
+        color: '#333',
+        fontWeight: '600',
+        fontSize: '12px'
+    };
+
+    const fieldStyle = {
+        marginBottom: '14px'
+    };
+
     return (
         <div className="auth-container">
-            <div className="auth-card register-card">
+            <div className="auth-card" style={{ maxWidth: '500px', padding: '32px 36px' }}>
                 <div className="auth-logo">
                     <img src="/mobilis-logo.png.png" alt="Mobilis" />
                 </div>
 
-                <h2>Creer un compte</h2>
+                <h2 style={{ fontSize: '22px', fontWeight: '700', textAlign: 'center', marginBottom: '20px' }}>
+                    Créer un compte
+                </h2>
 
                 {error && (
-                    <div className="alert alert-error" style={{ display: 'flex', alignItems: 'center' }}>
-                        <AlertCircle size={20} style={{ marginRight: '8px', flexShrink: 0 }} />
+                    <div className="alert alert-error">
+                        <AlertCircle size={18} style={{ flexShrink: 0 }} />
                         <span>{error}</span>
                     </div>
                 )}
-
                 {success && (
-                    <div className="alert alert-success" style={{ display: 'flex', alignItems: 'center' }}>
-                        <CheckCircle size={20} style={{ marginRight: '8px', flexShrink: 0 }} />
+                    <div className="alert alert-success">
+                        <CheckCircle size={18} style={{ flexShrink: 0 }} />
                         <span>{success}</span>
                     </div>
                 )}
 
                 <form onSubmit={handleSubmit}>
-                    <div className="form-row">
-                        <div className="form-group">
-                            <label>Prenom</label>
+
+                    {/* ✅ Prénom + Nom côte à côte — style inline garanti */}
+                    <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '12px', marginBottom: '14px' }}>
+                        <div>
+                            <label style={labelStyle}>Prénom *</label>
                             <input
+                                style={inputStyle}
                                 type="text"
                                 name="firstName"
                                 value={formData.firstName}
                                 onChange={handleChange}
-                                placeholder="Entrez votre prenom"
+                                placeholder="Prénom"
                                 disabled={loading}
-                                autoComplete="given-name"
                             />
                         </div>
-
-                        <div className="form-group">
-                            <label>Nom</label>
+                        <div>
+                            <label style={labelStyle}>Nom *</label>
                             <input
+                                style={inputStyle}
                                 type="text"
                                 name="lastName"
                                 value={formData.lastName}
                                 onChange={handleChange}
-                                placeholder="Entrez votre nom"
+                                placeholder="Nom"
                                 disabled={loading}
-                                autoComplete="family-name"
                             />
                         </div>
                     </div>
 
-                    <div className="form-group">
-                        <label>Nom d'utilisateur</label>
+                    {/* Nom d'utilisateur */}
+                    <div style={fieldStyle}>
+                        <label style={labelStyle}>Nom d'utilisateur *</label>
                         <input
+                            style={inputStyle}
                             type="text"
                             name="username"
                             value={formData.username}
                             onChange={handleChange}
                             placeholder="Entrez votre nom d'utilisateur"
                             disabled={loading}
-                            autoComplete="username"
                         />
                     </div>
 
-                    <div className="form-group">
-                        <label>Email</label>
+                    {/* Email */}
+                    <div style={fieldStyle}>
+                        <label style={labelStyle}>Email *</label>
                         <div style={{ position: 'relative' }}>
                             <input
+                                style={{ ...inputStyle, paddingLeft: '38px' }}
                                 type="email"
                                 name="email"
                                 value={formData.email}
                                 onChange={handleChange}
                                 placeholder="votre.email@mobilis.dz"
                                 disabled={loading}
-                                autoComplete="email"
-                                style={{ paddingLeft: '40px' }}
                             />
-                            <Mail
-                                size={20}
-                                style={{
-                                    position: 'absolute',
-                                    left: '12px',
-                                    top: '50%',
-                                    transform: 'translateY(-50%)',
-                                    color: '#999'
-                                }}
-                            />
+                            <Mail size={16} style={{ position: 'absolute', left: '12px', top: '50%', transform: 'translateY(-50%)', color: '#999' }} />
                         </div>
                     </div>
 
-                    <div className="form-group">
-                        <label>Mot de passe</label>
+                    {/* Mot de passe */}
+                    <div style={fieldStyle}>
+                        <label style={labelStyle}>Mot de passe *</label>
                         <div style={{ position: 'relative' }}>
                             <input
-                                type={showPassword ? "text" : "password"}
+                                style={{ ...inputStyle, paddingRight: '42px' }}
+                                type={showPassword ? 'text' : 'password'}
                                 name="password"
                                 value={formData.password}
                                 onChange={handleChange}
-                                placeholder="Entrez votre mot de passe"
+                                placeholder="Minimum 6 caractères"
                                 disabled={loading}
-                                autoComplete="new-password"
-                                style={{ paddingRight: '45px' }}
                             />
-                            <button
-                                type="button"
-                                onClick={() => setShowPassword(!showPassword)}
-                                disabled={loading}
-                                style={{
-                                    position: 'absolute',
-                                    right: '12px',
-                                    top: '50%',
-                                    transform: 'translateY(-50%)',
-                                    background: 'none',
-                                    border: 'none',
-                                    cursor: 'pointer',
-                                    color: '#666',
-                                    padding: '4px',
-                                    display: 'flex'
-                                }}
-                            >
-                                {showPassword ? <EyeOff size={20} /> : <Eye size={20} />}
+                            <button type="button" onClick={() => setShowPassword(!showPassword)} disabled={loading}
+                                style={{ position: 'absolute', right: '10px', top: '50%', transform: 'translateY(-50%)', background: 'none', border: 'none', cursor: 'pointer', color: '#666', display: 'flex' }}>
+                                {showPassword ? <EyeOff size={18} /> : <Eye size={18} />}
                             </button>
                         </div>
-
                         {formData.password && (
-                            <div style={{ marginTop: '8px' }}>
-                                <div style={{
-                                    display: 'flex',
-                                    gap: '4px',
-                                    marginBottom: '4px'
-                                }}>
-                                    {[...Array(4)].map((_, index) => (
-                                        <div
-                                            key={index}
-                                            style={{
-                                                flex: 1,
-                                                height: '4px',
-                                                borderRadius: '2px',
-                                                background: index < passwordStrength ? strengthInfo.color : '#E0E0E0',
-                                                transition: 'background 0.3s'
-                                            }}
-                                        />
+                            <div style={{ marginTop: '6px' }}>
+                                <div style={{ display: 'flex', gap: '4px', marginBottom: '3px' }}>
+                                    {[...Array(4)].map((_, i) => (
+                                        <div key={i} style={{ flex: 1, height: '3px', borderRadius: '2px', background: i < passwordStrength ? strengthInfo.color : '#E0E0E0', transition: 'background 0.3s' }} />
                                     ))}
                                 </div>
-                                <div style={{
-                                    fontSize: '12px',
-                                    color: strengthInfo.color,
-                                    fontWeight: '600'
-                                }}>
-                                    {strengthInfo.label}
-                                </div>
+                                <div style={{ fontSize: '11px', color: strengthInfo.color, fontWeight: '600' }}>{strengthInfo.label}</div>
                             </div>
                         )}
                     </div>
 
-                    <div className="form-group">
-                        <label>Confirmer le mot de passe</label>
+                    {/* Confirmer mot de passe */}
+                    <div style={fieldStyle}>
+                        <label style={labelStyle}>Confirmer le mot de passe *</label>
                         <div style={{ position: 'relative' }}>
                             <input
-                                type={showConfirmPassword ? "text" : "password"}
+                                style={{ ...inputStyle, paddingRight: '42px' }}
+                                type={showConfirmPassword ? 'text' : 'password'}
                                 name="confirmPassword"
                                 value={formData.confirmPassword}
                                 onChange={handleChange}
-                                placeholder="Confirmez votre mot de passe"
+                                placeholder="Retapez le mot de passe"
                                 disabled={loading}
-                                autoComplete="new-password"
-                                style={{ paddingRight: '45px' }}
                             />
-                            <button
-                                type="button"
-                                onClick={() => setShowConfirmPassword(!showConfirmPassword)}
-                                disabled={loading}
-                                style={{
-                                    position: 'absolute',
-                                    right: '12px',
-                                    top: '50%',
-                                    transform: 'translateY(-50%)',
-                                    background: 'none',
-                                    border: 'none',
-                                    cursor: 'pointer',
-                                    color: '#666',
-                                    padding: '4px',
-                                    display: 'flex'
-                                }}
-                            >
-                                {showConfirmPassword ? <EyeOff size={20} /> : <Eye size={20} />}
+                            <button type="button" onClick={() => setShowConfirmPassword(!showConfirmPassword)} disabled={loading}
+                                style={{ position: 'absolute', right: '10px', top: '50%', transform: 'translateY(-50%)', background: 'none', border: 'none', cursor: 'pointer', color: '#666', display: 'flex' }}>
+                                {showConfirmPassword ? <EyeOff size={18} /> : <Eye size={18} />}
                             </button>
                         </div>
                         {formData.confirmPassword && formData.password !== formData.confirmPassword && (
-                            <div style={{
-                                fontSize: '12px',
-                                color: '#F44336',
-                                marginTop: '4px'
-                            }}>
-                                Les mots de passe ne correspondent pas
-                            </div>
+                            <div style={{ fontSize: '11px', color: '#F44336', marginTop: '4px' }}>Les mots de passe ne correspondent pas</div>
                         )}
                     </div>
 
-                    <button
-                        type="submit"
-                        className={`btn-primary ${loading ? 'loading' : ''}`}
-                        disabled={loading}
-                    >
-                        {loading ? 'Inscription...' : 'S\'inscrire'}
+                    <button type="submit" className="btn-primary" disabled={loading} style={{ marginTop: '8px' }}>
+                        {loading ? 'Inscription...' : "S'inscrire"}
                     </button>
                 </form>
 
                 <p className="auth-footer">
-                    Vous avez deja un compte ? <Link to="/login">Se connecter</Link>
+                    Vous avez déjà un compte ? <Link to="/login">Se connecter</Link>
                 </p>
             </div>
         </div>

@@ -131,7 +131,11 @@ const DeveloperTasks = () => {
         });
     };
 
-    const isTaskOverdue = (deadline, task) => {
+    // ✅ FIX: utilise dueDate en priorité
+    const getTaskDeadline = (task) => task.dueDate || task.deadline || null;
+
+    const isTaskOverdue = (task) => {
+        const deadline = getTaskDeadline(task);
         if (!deadline || isTaskValidated(task) || isTaskPending(task)) return false;
         return new Date(deadline) < new Date();
     };
@@ -188,7 +192,8 @@ const DeveloperTasks = () => {
 
                                         return (
                                             <div
-                                                className={`task-item ${isTaskOverdue(task.deadline, task) ? 'overdue' : ''} ${isLocked ? 'locked' : ''}`}
+                                                // ✅ FIX: isTaskOverdue prend task directement
+                                                className={`task-item ${isTaskOverdue(task) ? 'overdue' : ''} ${isLocked ? 'locked' : ''}`}
                                                 key={task.taskId}
                                             >
                                                 <div className={`task-status ${getStatusClass(task)}`}></div>
@@ -252,14 +257,15 @@ const DeveloperTasks = () => {
                                                 </div>
 
                                                 <div className="task-meta">
-                                                    {/* ✅ FIX: was task.completedDate (undefined), now task.validatedAt */}
+                                                    {/* ✅ FIX: getTaskDeadline() au lieu de task.deadline */}
                                                     <span className="task-deadline">
                                                         {validated
                                                             ? `Complété: ${formatDate(task.validatedAt)}`
-                                                            : `Deadline: ${formatDate(task.dueDate)}`}
+                                                            : `Deadline: ${formatDate(getTaskDeadline(task))}`}
                                                     </span>
 
-                                                    {isTaskOverdue(task.deadline, task) && (
+                                                    {/* ✅ FIX: isTaskOverdue(task) */}
+                                                    {isTaskOverdue(task) && (
                                                         <span className="overdue-badge">⚠️ EN RETARD</span>
                                                     )}
 

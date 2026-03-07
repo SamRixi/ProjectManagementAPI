@@ -85,7 +85,6 @@ namespace ProjectManagementAPI.Services.Implementations
                 _context.Projects.Add(project);
                 await _context.SaveChangesAsync();
 
-                // ✅ FIX : lier l'EDB si fournie dans le DTO
                 if (dto.EdbId.HasValue)
                 {
                     var edb = await _context.EDBs.FindAsync(dto.EdbId.Value);
@@ -118,7 +117,7 @@ namespace ProjectManagementAPI.Services.Implementations
                     .Include(p => p.Priority)
                     .Include(p => p.ProjectManager)
                     .Include(p => p.ProjectTasks)
-                    .Include(p => p.EDBs)  // ✅ inclure EDBs dans le retour
+                    .Include(p => p.EDBs)
                     .FirstOrDefaultAsync(p => p.ProjectId == project.ProjectId);
 
                 return new ApiResponse<ProjectDTO>
@@ -135,11 +134,10 @@ namespace ProjectManagementAPI.Services.Implementations
         }
 
         // ─────────────────────────────────────────────────────────────
-        // CREATE PROJECT WITH EDB (redirige vers CreateProjectAsync)
+        // CREATE PROJECT WITH EDB
         // ─────────────────────────────────────────────────────────────
         public async Task<ApiResponse<ProjectDTO>> CreateProjectWithEdbAsync(CreateProjectWithEdbDTO dto)
         {
-            // ✅ FIX : évite la duplication, réutilise CreateProjectAsync
             var createDto = new CreateProjectDTO
             {
                 ProjectName = dto.ProjectName,
@@ -201,7 +199,7 @@ namespace ProjectManagementAPI.Services.Implementations
                     .Include(p => p.Priority)
                     .Include(p => p.ProjectManager)
                     .Include(p => p.ProjectTasks)
-                    .Include(p => p.EDBs)  // ✅ inclure EDBs
+                    .Include(p => p.EDBs)
                     .FirstOrDefaultAsync(p => p.ProjectId == dto.ProjectId);
 
                 return new ApiResponse<ProjectDTO>
@@ -228,20 +226,17 @@ namespace ProjectManagementAPI.Services.Implementations
                 if (project == null)
                     return new ApiResponse<bool> { Success = false, Message = "Projet introuvable" };
 
-                // Étape 1 : Nullifier RelatedProjectId dans les notifications
                 var notifsByProject = await _context.Notifications
                     .Where(n => n.RelatedProjectId == projectId)
                     .ToListAsync();
                 foreach (var n in notifsByProject)
                     n.RelatedProjectId = null;
 
-                // Étape 2 : Récupérer les IDs des tâches de ce projet
                 var taskIds = await _context.ProjectTasks
                     .Where(t => t.ProjectId == projectId)
                     .Select(t => t.ProjectTaskId)
                     .ToListAsync();
 
-                // Étape 3 : Nullifier RelatedTaskId dans les notifications liées à ces tâches
                 if (taskIds.Any())
                 {
                     var notifsByTask = await _context.Notifications
@@ -251,17 +246,14 @@ namespace ProjectManagementAPI.Services.Implementations
                         n.RelatedTaskId = null;
                 }
 
-                // ✅ Étape 4 : Détacher les EDBs (nullifier ProjectId) avant suppression
                 var edbs = await _context.EDBs
                     .Where(e => e.ProjectId == projectId)
                     .ToListAsync();
                 foreach (var e in edbs)
                     e.ProjectId = null;
 
-                // Étape 5 : Sauvegarder tous les NULL
                 await _context.SaveChangesAsync();
 
-                // Étape 6 : Supprimer le projet (cascade supprime les tâches auto)
                 _context.Projects.Remove(project);
                 await _context.SaveChangesAsync();
 
@@ -274,7 +266,7 @@ namespace ProjectManagementAPI.Services.Implementations
         }
 
         // ─────────────────────────────────────────────────────────────
-        // CANCEL PROJECT
+        // CANCEL PROJECT ✅ + Notifications Chef + Développeurs
         // ─────────────────────────────────────────────────────────────
         public async Task<ApiResponse<bool>> CancelProjectAsync(int projectId)
         {
@@ -282,13 +274,17 @@ namespace ProjectManagementAPI.Services.Implementations
             {
                 var project = await _context.Projects
                     .Include(p => p.ProjectTasks)
+                    .Include(p => p.Team)
+                        .ThenInclude(t => t.TeamMembers)
                     .FirstOrDefaultAsync(p => p.ProjectId == projectId);
 
                 if (project == null)
                     return new ApiResponse<bool> { Success = false, Message = "Projet introuvable" };
 
+                // ✅ Annuler le projet
                 project.ProjectStatusId = STATUS_ANNULE;
 
+                // ✅ Annuler toutes les tâches
                 if (project.ProjectTasks != null && project.ProjectTasks.Any())
                 {
                     foreach (var task in project.ProjectTasks)
@@ -296,6 +292,45 @@ namespace ProjectManagementAPI.Services.Implementations
                 }
 
                 await _context.SaveChangesAsync();
+
+                // ✅ Notifier le Chef de Projet
+                if (project.ProjectManagerId.HasValue)
+                {
+                    _context.Notifications.Add(new Notification
+                    {
+                        UserId = project.ProjectManagerId.Value,
+                        Title = "🚫 Projet annulé",
+                        Message = $"Le projet « {project.ProjectName} » a été annulé.",
+                        Type = "PROJECT_CANCELLED",
+                        RelatedProjectId = project.ProjectId,
+                        IsRead = false,
+                        CreatedAt = DateTime.UtcNow
+                    });
+                }
+
+                // ✅ Notifier tous les membres de l'équipe (sauf Chef de Projet)
+                if (project.Team?.TeamMembers != null)
+                {
+                    foreach (var member in project.Team.TeamMembers.Where(tm => tm.IsActive))
+                    {
+                        if (member.UserId == project.ProjectManagerId)
+                            continue;
+
+                        _context.Notifications.Add(new Notification
+                        {
+                            UserId = member.UserId,
+                            Title = "🚫 Projet annulé",
+                            Message = $"Le projet « {project.ProjectName} » auquel vous participez a été annulé.",
+                            Type = "PROJECT_CANCELLED",
+                            RelatedProjectId = project.ProjectId,
+                            IsRead = false,
+                            CreatedAt = DateTime.UtcNow
+                        });
+                    }
+                }
+
+                await _context.SaveChangesAsync();
+
                 return new ApiResponse<bool> { Success = true, Message = "Projet annulé avec succès", Data = true };
             }
             catch (Exception ex)
@@ -362,7 +397,6 @@ namespace ProjectManagementAPI.Services.Implementations
                         Progress = t.Progress,
                         StatusName = t.ProjectTasksStatus?.StatusName ?? "N/A"
                     }).ToList() ?? new List<TaskDTO>(),
-                    // ✅ FIX : exposer les EDBs dans les détails du projet
                     EDBs = project.EDBs?.Select(e => new EdbDTO
                     {
                         EdbId = e.EdbId,
@@ -748,7 +782,6 @@ namespace ProjectManagementAPI.Services.Implementations
                 if (edb == null)
                     return new ApiResponse<bool> { Success = false, Message = "EDB introuvable" };
 
-                // ✅ FIX : vérifier si l'EDB est déjà liée à un autre projet
                 if (edb.ProjectId.HasValue && edb.ProjectId != projectId)
                     return new ApiResponse<bool>
                     {

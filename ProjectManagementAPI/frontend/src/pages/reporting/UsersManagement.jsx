@@ -1,7 +1,7 @@
 ﻿import { useState, useEffect } from 'react';
 import {
     UserPlus, Edit, Key, Search, X,
-    Check, Trash2, UserCheck, UserX
+    Check, Trash2, UserCheck, UserX, AlertTriangle
 } from 'lucide-react';
 import userService from '../../services/userService';
 import ReportingLayout from '../../components/layout/ReportingLayout';
@@ -22,6 +22,31 @@ const UsersManagement = () => {
     const [approveUsername, setApproveUsername] = useState('');
     const [selectedRoleId, setSelectedRoleId] = useState(1);
 
+    // ✅ Modal de confirmation personnalisé
+    const [confirmModal, setConfirmModal] = useState({
+        show: false,
+        title: '',
+        message: '',
+        variant: 'danger', // 'danger' | 'warning'
+        onConfirm: null
+    });
+
+    // ✅ Toast notification (remplace alert)
+    const [toast, setToast] = useState({ show: false, message: '', type: 'success' });
+
+    const showToast = (message, type = 'success') => {
+        setToast({ show: true, message, type });
+        setTimeout(() => setToast({ show: false, message: '', type: 'success' }), 3500);
+    };
+
+    const openConfirm = (title, message, onConfirm, variant = 'danger') => {
+        setConfirmModal({ show: true, title, message, variant, onConfirm });
+    };
+
+    const closeConfirm = () => {
+        setConfirmModal({ show: false, title: '', message: '', variant: 'danger', onConfirm: null });
+    };
+
     const [formData, setFormData] = useState({
         username: '', email: '', password: '',
         firstName: '', lastName: '', roleId: 1
@@ -34,15 +59,11 @@ const UsersManagement = () => {
             setLoading(true);
             const response = await userService.getAllUsers();
             let usersArray = [];
-            if (Array.isArray(response)) {
-                usersArray = response;
-            } else if (response?.data && Array.isArray(response.data)) {
-                usersArray = response.data;
-            }
+            if (Array.isArray(response)) usersArray = response;
+            else if (response?.data && Array.isArray(response.data)) usersArray = response.data;
             setUsers(usersArray);
-        } catch (error) {
-            console.error('❌ ERROR:', error);
-            alert('Erreur lors de la récupération des utilisateurs');
+        } catch  {
+            showToast('Erreur lors de la récupération des utilisateurs', 'error');
         } finally {
             setLoading(false);
         }
@@ -82,15 +103,13 @@ const UsersManagement = () => {
         e.preventDefault();
         try {
             if (modalMode === 'create') {
-                const response = await userService.createUser({
-                    ...formData, confirmPassword: formData.password
-                });
+                const response = await userService.createUser({ ...formData, confirmPassword: formData.password });
                 if (response.success) {
-                    alert('Utilisateur créé avec succès !');
+                    showToast('Utilisateur créé avec succès !');
                     fetchUsers();
                     setShowModal(false);
                 } else {
-                    alert(response.message || 'Création échouée');
+                    showToast(response.message || 'Création échouée', 'error');
                 }
             } else {
                 const response = await userService.updateUser(selectedUser.userId, {
@@ -101,19 +120,18 @@ const UsersManagement = () => {
                     roleId: formData.roleId
                 });
                 if (response.success) {
-                    alert('Utilisateur modifié avec succès !');
+                    showToast('Utilisateur modifié avec succès !');
                     fetchUsers();
                     setShowModal(false);
                 } else {
-                    alert('Erreur: ' + (response.message || 'Modification échouée'));
+                    showToast(response.message || 'Modification échouée', 'error');
                 }
             }
         } catch (error) {
-            alert(error.message || 'Erreur lors de la sauvegarde');
+            showToast(error.message || 'Erreur lors de la sauvegarde', 'error');
         }
     };
 
-    // ✅ APPROVE — ouvre modal pour choisir le rôle
     const handleApprove = (userId, username) => {
         setApproveUserId(userId);
         setApproveUsername(username);
@@ -125,94 +143,106 @@ const UsersManagement = () => {
         try {
             const response = await userService.approveUser(approveUserId, selectedRoleId);
             if (response.success) {
-                alert(`✅ ${response.message}`);
+                showToast(response.message);
                 fetchUsers();
                 setShowApproveModal(false);
             } else {
-                alert(`❌ ${response.message}`);
+                showToast(response.message, 'error');
             }
-        } catch (error) {
-            console.error('❌ Approve error:', error);
-            alert("Erreur lors de l'approbation");
+        } catch  {
+            showToast("Erreur lors de l'approbation", 'error');
         }
     };
 
-    // ✅ REJECT
-    const handleReject = async (userId, username) => {
-        if (!window.confirm(`Rejeter l'inscription de "${username}" ?\n\nCette action est irréversible.`)) return;
-        try {
-            const response = await userService.rejectUser(userId);
-            if (response.success) {
-                alert(`✅ ${response.message}`);
-                fetchUsers();
-            } else {
-                alert(`❌ ${response.message}`);
-            }
-        } catch (error) {
-            console.error('❌ Reject error:', error);
-            alert('Erreur lors du rejet');
-        }
+    const handleReject = (userId, username) => {
+        openConfirm(
+            '❌ Rejeter l\'inscription',
+            `Voulez-vous rejeter l'inscription de "${username}" ? Cette action est irréversible.`,
+            async () => {
+                try {
+                    const response = await userService.rejectUser(userId);
+                    showToast(response.success ? response.message : response.message, response.success ? 'success' : 'error');
+                    if (response.success) fetchUsers();
+                } catch {
+                    showToast('Erreur lors du rejet', 'error');
+                }
+                closeConfirm();
+            },
+            'danger'
+        );
     };
 
-    // ✅ DEACTIVATE — endpoint séparé, pas de notification
-    const handleDeactivate = async (userId, userName) => {
-        if (!window.confirm(`Voulez-vous désactiver "${userName}" ?\n\nL'utilisateur verra un message sur la page Login.`)) return;
-        try {
-            const response = await userService.deactivateUser(userId);
-            if (response.success) {
-                alert(`✅ ${response.message}`);
-                fetchUsers();
-            } else {
-                alert(`❌ ${response.message}`);
-            }
-        } catch {
-            alert('Erreur lors de la désactivation');
-        }
+    const handleDeactivate = (userId, userName) => {
+        openConfirm(
+            '⚠️ Désactiver le compte',
+            `Voulez-vous désactiver le compte de "${userName}" ? L'utilisateur ne pourra plus se connecter.`,
+            async () => {
+                try {
+                    const response = await userService.deactivateUser(userId);
+                    showToast(response.success ? response.message : response.message, response.success ? 'success' : 'error');
+                    if (response.success) fetchUsers();
+                } catch {
+                    showToast('Erreur lors de la désactivation', 'error');
+                }
+                closeConfirm();
+            },
+            'warning'
+        );
     };
 
-    // ✅ ACTIVATE — endpoint séparé + notification stockée en DB
-    const handleActivate = async (userId, userName) => {
-        if (!window.confirm(`Voulez-vous réactiver "${userName}" ?`)) return;
-        try {
-            const response = await userService.activateUser(userId);
-            if (response.success) {
-                alert(`✅ ${response.message}\n\n⚠️ N'oubliez pas de générer un mot de passe temporaire !`);
-                fetchUsers();
-            } else {
-                alert(`❌ ${response.message}`);
-            }
-        } catch {
-            alert('Erreur lors de la réactivation');
-        }
+    const handleActivate = (userId, userName) => {
+        openConfirm(
+            '✅ Réactiver le compte',
+            `Voulez-vous réactiver le compte de "${userName}" ?`,
+            async () => {
+                try {
+                    const response = await userService.activateUser(userId);
+                    showToast(response.success ? response.message : response.message, response.success ? 'success' : 'error');
+                    if (response.success) fetchUsers();
+                } catch {
+                    showToast('Erreur lors de la réactivation', 'error');
+                }
+                closeConfirm();
+            },
+            'warning'
+        );
     };
 
-    // ✅ DELETE
-    const handleDelete = async (userId, username) => {
-        if (!window.confirm(`⚠️ Supprimer définitivement "${username}" ?\n\nCette action est IRRÉVERSIBLE.`)) return;
-        try {
-            const response = await userService.deleteUser(userId);
-            if (response.success) {
-                alert(`✅ ${response.message}`);
-                fetchUsers();
-            } else {
-                alert(`❌ ${response.message}`);
-            }
-        } catch {
-            alert('Erreur lors de la suppression');
-        }
+    const handleDelete = (userId, username) => {
+        openConfirm(
+            '🗑️ Supprimer définitivement',
+            `Supprimer définitivement "${username}" ? Cette action est IRRÉVERSIBLE et supprime toutes les données associées.`,
+            async () => {
+                try {
+                    const response = await userService.deleteUser(userId);
+                    showToast(response.success ? response.message : response.message, response.success ? 'success' : 'error');
+                    if (response.success) fetchUsers();
+                } catch {
+                    showToast('Erreur lors de la suppression', 'error');
+                }
+                closeConfirm();
+            },
+            'danger'
+        );
     };
 
-    // ✅ GENERATE TEMP PASSWORD
-    const handleGenerateTempPassword = async (userId, userName) => {
-        if (!window.confirm(`Générer un mot de passe temporaire pour "${userName}" ?`)) return;
-        try {
-            const response = await userService.generateTempPassword(userId);
-            setTempPassword(response.data);
-            setShowPasswordModal(true);
-            navigator.clipboard.writeText(response.data);
-        } catch (error) {
-            alert(error.message || 'Erreur lors de la génération');
-        }
+    const handleGenerateTempPassword = (userId, userName) => {
+        openConfirm(
+            '🔑 Générer mot de passe temporaire',
+            `Générer un nouveau mot de passe temporaire pour "${userName}" ?`,
+            async () => {
+                try {
+                    const response = await userService.generateTempPassword(userId);
+                    setTempPassword(response.data);
+                    setShowPasswordModal(true);
+                    navigator.clipboard.writeText(response.data);
+                } catch (error) {
+                    showToast(error.message || 'Erreur lors de la génération', 'error');
+                }
+                closeConfirm();
+            },
+            'warning'
+        );
     };
 
     const getRoleName = (roleId) => {
@@ -230,6 +260,85 @@ const UsersManagement = () => {
     return (
         <ReportingLayout>
             <div className="page-container">
+
+                {/* ✅ Toast */}
+                {toast.show && (
+                    <div style={{
+                        position: 'fixed', top: '20px', right: '20px', zIndex: 9999,
+                        padding: '14px 20px', borderRadius: '12px', fontWeight: '600',
+                        fontSize: '14px', boxShadow: '0 8px 24px rgba(0,0,0,0.15)',
+                        background: toast.type === 'success' ? '#00A651' : '#FF4444',
+                        color: 'white', display: 'flex', alignItems: 'center', gap: '8px',
+                        animation: 'slideDown 0.3s ease'
+                    }}>
+                        {toast.type === 'success' ? '✅' : '❌'} {toast.message}
+                    </div>
+                )}
+
+                {/* ✅ Modal de confirmation personnalisé */}
+                {confirmModal.show && (
+                    <div style={{
+                        position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.5)',
+                        display: 'flex', alignItems: 'center', justifyContent: 'center',
+                        zIndex: 9998, backdropFilter: 'blur(4px)'
+                    }}>
+                        <div style={{
+                            background: 'white', borderRadius: '16px', padding: '32px',
+                            maxWidth: '420px', width: '90%',
+                            boxShadow: '0 25px 60px rgba(0,0,0,0.2)',
+                            animation: 'slideIn 0.3s ease'
+                        }}>
+                            {/* Icône */}
+                            <div style={{ textAlign: 'center', marginBottom: '16px' }}>
+                                <div style={{
+                                    width: '56px', height: '56px', borderRadius: '50%',
+                                    background: confirmModal.variant === 'danger' ? '#FFF0F0' : '#FFFBF0',
+                                    display: 'flex', alignItems: 'center', justifyContent: 'center',
+                                    margin: '0 auto'
+                                }}>
+                                    <AlertTriangle size={28} color={confirmModal.variant === 'danger' ? '#FF4444' : '#F59E0B'} />
+                                </div>
+                            </div>
+
+                            {/* Titre */}
+                            <h3 style={{ textAlign: 'center', fontSize: '18px', fontWeight: '700', color: '#1a1a1a', marginBottom: '12px' }}>
+                                {confirmModal.title}
+                            </h3>
+
+                            {/* Message */}
+                            <p style={{ textAlign: 'center', color: '#666', fontSize: '14px', lineHeight: '1.6', marginBottom: '28px' }}>
+                                {confirmModal.message}
+                            </p>
+
+                            {/* Boutons */}
+                            <div style={{ display: 'flex', gap: '12px' }}>
+                                <button onClick={closeConfirm} style={{
+                                    flex: 1, padding: '12px', borderRadius: '10px',
+                                    border: '2px solid #E8E8E8', background: 'white',
+                                    color: '#666', fontWeight: '600', fontSize: '14px',
+                                    cursor: 'pointer', transition: 'all 0.2s'
+                                }}
+                                    onMouseEnter={e => e.target.style.borderColor = '#ccc'}
+                                    onMouseLeave={e => e.target.style.borderColor = '#E8E8E8'}>
+                                    Annuler
+                                </button>
+                                <button onClick={confirmModal.onConfirm} style={{
+                                    flex: 1, padding: '12px', borderRadius: '10px',
+                                    border: 'none',
+                                    background: confirmModal.variant === 'danger'
+                                        ? 'linear-gradient(135deg, #FF4444, #CC0000)'
+                                        : 'linear-gradient(135deg, #00A651, #004D29)',
+                                    color: 'white', fontWeight: '700', fontSize: '14px',
+                                    cursor: 'pointer', boxShadow: confirmModal.variant === 'danger'
+                                        ? '0 4px 12px rgba(255,68,68,0.3)'
+                                        : '0 4px 12px rgba(0,166,81,0.3)'
+                                }}>
+                                    Confirmer
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+                )}
 
                 {/* Header */}
                 <div className="page-header">
@@ -300,7 +409,6 @@ const UsersManagement = () => {
                                                 <td>
                                                     <div className="action-buttons">
                                                         {isPending ? (
-                                                            // ⏳ EN ATTENTE — Approuver ou Rejeter
                                                             <>
                                                                 <button className="btn-icon btn-approve"
                                                                     onClick={() => handleApprove(u.userId, u.userName)}
@@ -314,11 +422,9 @@ const UsersManagement = () => {
                                                                 </button>
                                                             </>
                                                         ) : !u.isActive ? (
-                                                            // 🔴 DÉSACTIVÉ — Modifier + Réactiver + MDP + Supprimer
                                                             <>
                                                                 <button className="btn-icon btn-edit"
-                                                                    onClick={() => handleEditUser(u)}
-                                                                    title="Modifier">
+                                                                    onClick={() => handleEditUser(u)} title="Modifier">
                                                                     <Edit size={16} />
                                                                 </button>
                                                                 <button className="btn-icon btn-activate"
@@ -338,11 +444,9 @@ const UsersManagement = () => {
                                                                 </button>
                                                             </>
                                                         ) : (
-                                                            // 🟢 ACTIF — Modifier + MDP + Désactiver
                                                             <>
                                                                 <button className="btn-icon btn-edit"
-                                                                    onClick={() => handleEditUser(u)}
-                                                                    title="Modifier">
+                                                                    onClick={() => handleEditUser(u)} title="Modifier">
                                                                     <Edit size={16} />
                                                                 </button>
                                                                 <button className="btn-icon btn-key"
@@ -388,10 +492,8 @@ const UsersManagement = () => {
                                 <p>Approuver le compte de <strong>{approveUsername}</strong> ?</p>
                                 <div className="form-group">
                                     <label>Assigner un rôle *</label>
-                                    <select
-                                        value={selectedRoleId}
-                                        onChange={(e) => setSelectedRoleId(parseInt(e.target.value))}
-                                    >
+                                    <select value={selectedRoleId}
+                                        onChange={(e) => setSelectedRoleId(parseInt(e.target.value))}>
                                         <option value={1}>Developer</option>
                                         <option value={2}>Project Manager</option>
                                         <option value={3}>Manager</option>
@@ -399,12 +501,8 @@ const UsersManagement = () => {
                                     </select>
                                 </div>
                                 <div className="modal-actions">
-                                    <button className="btn-cancel" onClick={() => setShowApproveModal(false)}>
-                                        Annuler
-                                    </button>
-                                    <button className="btn-submit" onClick={confirmApprove}>
-                                        ✅ Approuver
-                                    </button>
+                                    <button className="btn-cancel" onClick={() => setShowApproveModal(false)}>Annuler</button>
+                                    <button className="btn-submit" onClick={confirmApprove}>✅ Approuver</button>
                                 </div>
                             </div>
                         </div>
@@ -463,9 +561,7 @@ const UsersManagement = () => {
                                     </select>
                                 </div>
                                 <div className="modal-actions">
-                                    <button type="button" className="btn-cancel" onClick={() => setShowModal(false)}>
-                                        Annuler
-                                    </button>
+                                    <button type="button" className="btn-cancel" onClick={() => setShowModal(false)}>Annuler</button>
                                     <button type="submit" className="btn-submit">
                                         {modalMode === 'create' ? 'Créer' : 'Modifier'}
                                     </button>
@@ -491,7 +587,7 @@ const UsersManagement = () => {
                                     <code>{tempPassword}</code>
                                     <button className="btn-copy" onClick={() => {
                                         navigator.clipboard.writeText(tempPassword);
-                                        alert('✅ Mot de passe copié !');
+                                        showToast('Mot de passe copié !');
                                     }}>
                                         Copier
                                     </button>
