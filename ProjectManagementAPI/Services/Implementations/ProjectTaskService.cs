@@ -75,7 +75,7 @@ namespace ProjectManagementAPI.Services.Implementations
             }
         }
 
-        // ============= CREATE TASK ============= ✅ + Notification
+        // ============= CREATE TASK ============= ✅ Notification professionnelle
         public async Task<ApiResponse<TaskDTO>> CreateTaskAsync(CreateTaskDTO dto, int createdByUserId)
         {
             try
@@ -114,7 +114,7 @@ namespace ProjectManagementAPI.Services.Implementations
 
                 await _context.SaveChangesAsync();
 
-                // ✅ Notification — Tâche assignée au développeur
+                // ✅ Notification — même format que la réassignation
                 if (dto.AssignedToUserId.HasValue)
                 {
                     var chef = await _context.Users.FindAsync(createdByUserId);
@@ -125,7 +125,9 @@ namespace ProjectManagementAPI.Services.Implementations
                     await _notificationService.CreateNotificationAsync(
                         userId: dto.AssignedToUserId.Value,
                         title: "📋 Nouvelle tâche assignée",
-                        message: $"Vous avez une nouvelle tâche assignée par {chefNom} : \"{dto.TaskName}\"",
+                        message: $"Vous avez été assigné(e) à la tâche '{dto.TaskName}' " +
+                                 $"par {chefNom}. " +
+                                 $"Deadline : {dto.DueDate:dd/MM/yyyy}.",
                         type: "TASK_ASSIGNED",
                         relatedTaskId: task.ProjectTaskId
                     );
@@ -571,7 +573,7 @@ namespace ProjectManagementAPI.Services.Implementations
                 DueDate = task.DueDate,
                 Progress = task.Progress,
                 IsValidated = task.IsValidated,
-                ValidatedAt = task.ValidatedAt,  // ✅ FIX: was missing
+                ValidatedAt = task.ValidatedAt,
                 ProjectId = task.ProjectId,
                 ProjectName = task.Project?.ProjectName ?? "",
                 StatusName = task.ProjectTasksStatus?.StatusName ?? "",

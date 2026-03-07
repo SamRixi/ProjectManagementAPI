@@ -343,10 +343,12 @@ namespace ProjectManagementAPI.Controllers
                         description = t.Description,
                         status = t.ProjectTasksStatus.StatusName,
                         priority = t.Priority.Name,
+                        priorityId = t.PriorityId,
                         deadline = t.DueDate,
                         assignedToName = t.AssignedToUser != null
                             ? t.AssignedToUser.FirstName + " " + t.AssignedToUser.LastName
                             : "Non assigné",
+                        assignedToUserId = t.AssignedToUserId,
                         progress = t.Progress,
                         isValidated = t.IsValidated,
                         isOverdue = t.DueDate < DateTime.Now && t.TaskStatusId != 4 && t.TaskStatusId != 5,
@@ -394,6 +396,143 @@ namespace ProjectManagementAPI.Controllers
             }
         }
 
+        // ============= ✅ MODIFIER UNE TÂCHE =============
+        [HttpPut("tasks/{taskId}")]
+        public async Task<IActionResult> UpdateTask(int taskId, [FromBody] UpdateTaskDTO dto)
+        {
+            try
+            {
+                var userId = GetCurrentUserId();
+
+                var task = await _context.ProjectTasks
+                    .Include(t => t.Project)
+                    .Include(t => t.AssignedToUser)
+                    .FirstOrDefaultAsync(t => t.ProjectTaskId == taskId);
+
+                if (task == null)
+                    return NotFound(new { success = false, message = "Tâche non trouvée" });
+
+                if (task.Project.ProjectManagerId != userId)
+                    return StatusCode(403, new { success = false, message = "Non autorisé" });
+
+                // Bloquer modification si tâche validée ou en attente
+                if (task.IsValidated)
+                    return BadRequest(new { success = false, message = "❌ Impossible : tâche déjà validée." });
+
+                if (task.TaskStatusId == 4)
+                    return BadRequest(new { success = false, message = "❌ Impossible : tâche en attente de validation." });
+
+                // Vérifier que le membre assigné est bien un Developer
+                if (dto.AssignedToUserId.HasValue)
+                {
+                    var user = await _context.Users
+                        .Include(u => u.Role)
+                        .FirstOrDefaultAsync(u => u.UserId == dto.AssignedToUserId.Value);
+
+                    if (user == null)
+                        return BadRequest(new { success = false, message = "Utilisateur non trouvé" });
+
+                    if (user.Role.RoleName != "Developer")
+                        return BadRequest(new { success = false, message = "❌ Seuls les développeurs peuvent être assignés." });
+                }
+
+                // ✅ FIX : Sauvegarder les anciennes valeurs AVANT toute modification
+                var oldAssignedUserId = task.AssignedToUserId;
+                var oldDueDate = task.DueDate;
+
+                // Appliquer les modifications
+                if (!string.IsNullOrWhiteSpace(dto.TaskName))
+                    task.TaskName = dto.TaskName;
+
+                if (dto.Description != null)
+                    task.Description = dto.Description;
+
+                if (dto.DueDate.HasValue)
+                    task.DueDate = dto.DueDate.Value;
+
+                if (dto.PriorityId.HasValue)
+                    task.PriorityId = dto.PriorityId.Value;
+
+                task.AssignedToUserId = dto.AssignedToUserId;
+
+                // ✅ FIX : Comparer avec les ANCIENNES valeurs
+                bool isReassigned = oldAssignedUserId != dto.AssignedToUserId;
+                bool deadlineChanged = dto.DueDate.HasValue && oldDueDate.Date != dto.DueDate.Value.Date;
+
+                var pm = await _context.Users.FindAsync(userId);
+
+                // Notifier l'ANCIEN membre si réassignation
+                if (isReassigned && oldAssignedUserId.HasValue)
+                {
+                    _context.Notifications.Add(new Notification
+                    {
+                        UserId = oldAssignedUserId.Value,
+                        Title = "🔄 Tâche réassignée",
+                        Message = $"La tâche '{task.TaskName}' vous a été retirée par {pm?.FirstName} {pm?.LastName}.",
+                        Type = "TASK_REASSIGNED",
+                        RelatedTaskId = task.ProjectTaskId,
+                        RelatedProjectId = task.ProjectId,
+                        RelatedUserId = userId,
+                        IsRead = false,
+                        CreatedAt = DateTime.UtcNow
+                    });
+                }
+
+                // Notifier le NOUVEAU membre assigné
+                if (dto.AssignedToUserId.HasValue)
+                {
+                    string title;
+                    string message;
+
+                    if (isReassigned)
+                    {
+                        title = "📋 Nouvelle tâche assignée";
+                        message = $"Vous avez été assigné(e) à la tâche '{task.TaskName}' " +
+                                  $"par {pm?.FirstName} {pm?.LastName}. " +
+                                  $"Deadline : {task.DueDate:dd/MM/yyyy}.";
+                    }
+                    else if (deadlineChanged)
+                    {
+                        title = "📅 Deadline modifiée";
+                        message = $"La deadline de la tâche '{task.TaskName}' a été " +
+                                  $"modifiée au {dto.DueDate:dd/MM/yyyy} par {pm?.FirstName} {pm?.LastName}.";
+                    }
+                    else
+                    {
+                        title = "📝 Tâche mise à jour";
+                        message = $"La tâche '{task.TaskName}' a été mise à jour " +
+                                  $"par {pm?.FirstName} {pm?.LastName}.";
+                    }
+
+                    _context.Notifications.Add(new Notification
+                    {
+                        UserId = dto.AssignedToUserId.Value,
+                        Title = title,
+                        Message = message,
+                        Type = "TASK_UPDATED",
+                        RelatedTaskId = task.ProjectTaskId,
+                        RelatedProjectId = task.ProjectId,
+                        RelatedUserId = userId,
+                        IsRead = false,
+                        CreatedAt = DateTime.UtcNow
+                    });
+                }
+
+                await _context.SaveChangesAsync();
+
+                return Ok(new
+                {
+                    success = true,
+                    message = $"✅ Tâche '{task.TaskName}' modifiée avec succès",
+                    data = new { taskId = task.ProjectTaskId }
+                });
+            }
+            catch (Exception ex)
+            {
+                return StatusCode(500, new { success = false, message = "Erreur modification tâche", error = ex.Message });
+            }
+        }
+
         // ============= SUPPRIMER UNE TÂCHE =============
         [HttpDelete("tasks/{taskId}")]
         public async Task<IActionResult> DeleteTask(int taskId)
@@ -413,25 +552,13 @@ namespace ProjectManagementAPI.Controllers
                     return StatusCode(403, new { success = false, message = "Non autorisé" });
 
                 if (task.IsValidated)
-                    return BadRequest(new
-                    {
-                        success = false,
-                        message = $"❌ Impossible de supprimer : la tâche '{task.TaskName}' est déjà validée."
-                    });
+                    return BadRequest(new { success = false, message = $"❌ Impossible : la tâche '{task.TaskName}' est déjà validée." });
 
                 if (task.Progress > 0)
-                    return BadRequest(new
-                    {
-                        success = false,
-                        message = $"❌ Impossible de supprimer : la tâche '{task.TaskName}' est en cours ({task.Progress}% complétée)."
-                    });
+                    return BadRequest(new { success = false, message = $"❌ Impossible : la tâche '{task.TaskName}' est en cours ({task.Progress}%)." });
 
                 if (task.TaskStatusId == 4)
-                    return BadRequest(new
-                    {
-                        success = false,
-                        message = $"❌ Impossible de supprimer : la tâche '{task.TaskName}' est en attente de validation."
-                    });
+                    return BadRequest(new { success = false, message = $"❌ Impossible : la tâche '{task.TaskName}' est en attente de validation." });
 
                 var notifications = await _context.Notifications
                     .Where(n => n.RelatedTaskId == taskId)
@@ -490,7 +617,7 @@ namespace ProjectManagementAPI.Controllers
             }
         }
 
-        // ============= MEMBRES D'ÉQUIPE (Developers uniquement) =============
+        // ============= MEMBRES D'ÉQUIPE =============
         [HttpGet("projects/{projectId}/team-members")]
         public async Task<IActionResult> GetProjectTeamMembers(int projectId)
         {
@@ -612,23 +739,17 @@ namespace ProjectManagementAPI.Controllers
                 task.IsValidated = true;
                 task.ValidatedByUserId = userId;
                 task.ValidatedAt = DateTime.UtcNow;
-
-                // reset éventuelle info de rejet
                 task.RejectionReason = null;
                 task.RejectedAt = null;
 
                 if (task.AssignedToUserId.HasValue)
                 {
-                    var devId = task.AssignedToUserId.Value;
                     var pm = await _context.Users.FindAsync(userId);
-
                     _context.Notifications.Add(new Notification
                     {
-                        UserId = devId,
+                        UserId = task.AssignedToUserId.Value,
                         Title = "✅ Tâche validée",
-                        Message =
-                            $"Votre tâche '{task.TaskName}' a été validée par " +
-                            $"{pm?.FirstName} {pm?.LastName}.",
+                        Message = $"Votre tâche '{task.TaskName}' a été validée par {pm?.FirstName} {pm?.LastName}.",
                         Type = "TASK_VALIDATED",
                         RelatedTaskId = task.ProjectTaskId,
                         RelatedProjectId = task.ProjectId,
@@ -685,18 +806,10 @@ namespace ProjectManagementAPI.Controllers
                 var pendingTasks = tasks.Count(t => t.TaskStatusId == 4);
 
                 if (pendingTasks > 0)
-                    return BadRequest(new
-                    {
-                        success = false,
-                        message = $"❌ Impossible de finaliser : {pendingTasks} tâche(s) encore en attente de validation."
-                    });
+                    return BadRequest(new { success = false, message = $"❌ Impossible : {pendingTasks} tâche(s) encore en attente de validation." });
 
                 if (totalTasks > 0 && validatedTasks < totalTasks)
-                    return BadRequest(new
-                    {
-                        success = false,
-                        message = $"❌ Impossible de finaliser : {validatedTasks}/{totalTasks} tâche(s) validées seulement."
-                    });
+                    return BadRequest(new { success = false, message = $"❌ Impossible : {validatedTasks}/{totalTasks} tâche(s) validées seulement." });
 
                 project.Progress = 100;
                 project.ProjectStatusId = 3;
@@ -754,37 +867,21 @@ namespace ProjectManagementAPI.Controllers
                 if (task.Project.ProjectManagerId != userId)
                     return StatusCode(403, new { success = false, message = "Non autorisé" });
 
-                // Remettre la tâche "À faire"
                 task.TaskStatusId = 1;
                 task.IsValidated = false;
                 task.Progress = 0;
-
-                if (!string.IsNullOrWhiteSpace(dto.Reason))
-                {
-                    task.RejectionReason = dto.Reason;
-                    task.RejectedAt = DateTime.UtcNow;
-                }
-                else
-                {
-                    task.RejectionReason = "Aucune raison fournie";
-                    task.RejectedAt = DateTime.UtcNow;
-                }
+                task.RejectionReason = !string.IsNullOrWhiteSpace(dto.Reason) ? dto.Reason : "Aucune raison fournie";
+                task.RejectedAt = DateTime.UtcNow;
 
                 if (task.AssignedToUserId.HasValue)
                 {
-                    var devId = task.AssignedToUserId.Value;
                     var pm = await _context.Users.FindAsync(userId);
-
                     _context.Notifications.Add(new Notification
                     {
-                        UserId = devId,
+                        UserId = task.AssignedToUserId.Value,
                         Title = "❌ Tâche refusée",
-                        Message =
-                            $"Votre tâche '{task.TaskName}' a été refusée par " +
-                            $"{pm?.FirstName} {pm?.LastName}. " +
-                            (!string.IsNullOrWhiteSpace(dto.Reason)
-                                ? $"Raison : {dto.Reason}"
-                                : "Merci de corriger et de la soumettre à nouveau."),
+                        Message = $"Votre tâche '{task.TaskName}' a été refusée par {pm?.FirstName} {pm?.LastName}. " +
+                                  (!string.IsNullOrWhiteSpace(dto.Reason) ? $"Raison : {dto.Reason}" : "Merci de corriger et de la soumettre à nouveau."),
                         Type = "TASK_REJECTED",
                         RelatedTaskId = task.ProjectTaskId,
                         RelatedProjectId = task.ProjectId,

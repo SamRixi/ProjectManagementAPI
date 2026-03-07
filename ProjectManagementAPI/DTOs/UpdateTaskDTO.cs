@@ -19,5 +19,6 @@ namespace ProjectManagementAPI.DTOs
 
         public int? TaskStatusId { get; set; }
         public int? PriorityId { get; set; }
+        public int? AssignedToUserId { get; set; }
     }
 }
