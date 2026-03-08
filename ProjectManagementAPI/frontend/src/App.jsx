@@ -85,7 +85,7 @@ function App() {
                         }
                     />
                     <Route
-                        path="/manager/StatsGlobal"
+                        path="/manager/statistics" 
                         element={
                             <ProtectedRoute allowedRoles={['Manager']}>
                                 <ManagerStatistics />
@@ -93,7 +93,7 @@ function App() {
                         }
                     />
                     <Route
-                        path="/manager/teams"
+                        path="/manager/team"
                         element={
                             <ProtectedRoute allowedRoles={['Manager']}>
                                 <ManagerTeams />
