@@ -22,16 +22,10 @@ const UsersManagement = () => {
     const [approveUsername, setApproveUsername] = useState('');
     const [selectedRoleId, setSelectedRoleId] = useState(1);
 
-    // ✅ Modal de confirmation personnalisé
     const [confirmModal, setConfirmModal] = useState({
-        show: false,
-        title: '',
-        message: '',
-        variant: 'danger', // 'danger' | 'warning'
-        onConfirm: null
+        show: false, title: '', message: '', variant: 'danger', onConfirm: null
     });
 
-    // ✅ Toast notification (remplace alert)
     const [toast, setToast] = useState({ show: false, message: '', type: 'success' });
 
     const showToast = (message, type = 'success') => {
@@ -62,7 +56,7 @@ const UsersManagement = () => {
             if (Array.isArray(response)) usersArray = response;
             else if (response?.data && Array.isArray(response.data)) usersArray = response.data;
             setUsers(usersArray);
-        } catch  {
+        } catch {
             showToast('Erreur lors de la récupération des utilisateurs', 'error');
         } finally {
             setLoading(false);
@@ -149,7 +143,7 @@ const UsersManagement = () => {
             } else {
                 showToast(response.message, 'error');
             }
-        } catch  {
+        } catch {
             showToast("Erreur lors de l'approbation", 'error');
         }
     };
@@ -161,7 +155,7 @@ const UsersManagement = () => {
             async () => {
                 try {
                     const response = await userService.rejectUser(userId);
-                    showToast(response.success ? response.message : response.message, response.success ? 'success' : 'error');
+                    showToast(response.message, response.success ? 'success' : 'error');
                     if (response.success) fetchUsers();
                 } catch {
                     showToast('Erreur lors du rejet', 'error');
@@ -179,7 +173,7 @@ const UsersManagement = () => {
             async () => {
                 try {
                     const response = await userService.deactivateUser(userId);
-                    showToast(response.success ? response.message : response.message, response.success ? 'success' : 'error');
+                    showToast(response.message, response.success ? 'success' : 'error');
                     if (response.success) fetchUsers();
                 } catch {
                     showToast('Erreur lors de la désactivation', 'error');
@@ -197,7 +191,7 @@ const UsersManagement = () => {
             async () => {
                 try {
                     const response = await userService.activateUser(userId);
-                    showToast(response.success ? response.message : response.message, response.success ? 'success' : 'error');
+                    showToast(response.message, response.success ? 'success' : 'error');
                     if (response.success) fetchUsers();
                 } catch {
                     showToast('Erreur lors de la réactivation', 'error');
@@ -215,7 +209,7 @@ const UsersManagement = () => {
             async () => {
                 try {
                     const response = await userService.deleteUser(userId);
-                    showToast(response.success ? response.message : response.message, response.success ? 'success' : 'error');
+                    showToast(response.message, response.success ? 'success' : 'error');
                     if (response.success) fetchUsers();
                 } catch {
                     showToast('Erreur lors de la suppression', 'error');
@@ -261,7 +255,7 @@ const UsersManagement = () => {
         <ReportingLayout>
             <div className="page-container">
 
-                {/* ✅ Toast */}
+                {/* Toast */}
                 {toast.show && (
                     <div style={{
                         position: 'fixed', top: '20px', right: '20px', zIndex: 9999,
@@ -275,7 +269,7 @@ const UsersManagement = () => {
                     </div>
                 )}
 
-                {/* ✅ Modal de confirmation personnalisé */}
+                {/* Modal de confirmation */}
                 {confirmModal.show && (
                     <div style={{
                         position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.5)',
@@ -288,7 +282,6 @@ const UsersManagement = () => {
                             boxShadow: '0 25px 60px rgba(0,0,0,0.2)',
                             animation: 'slideIn 0.3s ease'
                         }}>
-                            {/* Icône */}
                             <div style={{ textAlign: 'center', marginBottom: '16px' }}>
                                 <div style={{
                                     width: '56px', height: '56px', borderRadius: '50%',
@@ -299,39 +292,26 @@ const UsersManagement = () => {
                                     <AlertTriangle size={28} color={confirmModal.variant === 'danger' ? '#FF4444' : '#F59E0B'} />
                                 </div>
                             </div>
-
-                            {/* Titre */}
                             <h3 style={{ textAlign: 'center', fontSize: '18px', fontWeight: '700', color: '#1a1a1a', marginBottom: '12px' }}>
                                 {confirmModal.title}
                             </h3>
-
-                            {/* Message */}
                             <p style={{ textAlign: 'center', color: '#666', fontSize: '14px', lineHeight: '1.6', marginBottom: '28px' }}>
                                 {confirmModal.message}
                             </p>
-
-                            {/* Boutons */}
                             <div style={{ display: 'flex', gap: '12px' }}>
                                 <button onClick={closeConfirm} style={{
                                     flex: 1, padding: '12px', borderRadius: '10px',
                                     border: '2px solid #E8E8E8', background: 'white',
-                                    color: '#666', fontWeight: '600', fontSize: '14px',
-                                    cursor: 'pointer', transition: 'all 0.2s'
-                                }}
-                                    onMouseEnter={e => e.target.style.borderColor = '#ccc'}
-                                    onMouseLeave={e => e.target.style.borderColor = '#E8E8E8'}>
+                                    color: '#666', fontWeight: '600', fontSize: '14px', cursor: 'pointer'
+                                }}>
                                     Annuler
                                 </button>
                                 <button onClick={confirmModal.onConfirm} style={{
-                                    flex: 1, padding: '12px', borderRadius: '10px',
-                                    border: 'none',
+                                    flex: 1, padding: '12px', borderRadius: '10px', border: 'none',
                                     background: confirmModal.variant === 'danger'
                                         ? 'linear-gradient(135deg, #FF4444, #CC0000)'
                                         : 'linear-gradient(135deg, #00A651, #004D29)',
-                                    color: 'white', fontWeight: '700', fontSize: '14px',
-                                    cursor: 'pointer', boxShadow: confirmModal.variant === 'danger'
-                                        ? '0 4px 12px rgba(255,68,68,0.3)'
-                                        : '0 4px 12px rgba(0,166,81,0.3)'
+                                    color: 'white', fontWeight: '700', fontSize: '14px', cursor: 'pointer'
                                 }}>
                                     Confirmer
                                 </button>
@@ -386,7 +366,10 @@ const UsersManagement = () => {
                             <tbody>
                                 {filteredUsers.length > 0 ? (
                                     filteredUsers.map((u) => {
-                                        const isPending = !u.isActive && !u.lastLoginAt;
+                                        // ✅ FIX : En attente = pas actif ET pas de rôle assigné
+                                        // Un compte désactivé a toujours un roleId > 0
+                                        const isPending = !u.isActive && (!u.roleId || u.roleId === 0);
+
                                         return (
                                             <tr key={u.userId}>
                                                 <td>{`${u.firstName || ''} ${u.lastName || ''}`.trim() || 'N/A'}</td>
@@ -478,7 +461,7 @@ const UsersManagement = () => {
                     </div>
                 )}
 
-                {/* ✅ APPROVE MODAL */}
+                {/* APPROVE MODAL */}
                 {showApproveModal && (
                     <div className="modal-overlay" onClick={() => setShowApproveModal(false)}>
                         <div className="modal-content" onClick={(e) => e.stopPropagation()}>
@@ -571,7 +554,7 @@ const UsersManagement = () => {
                     </div>
                 )}
 
-                {/* ✅ Password Modal */}
+                {/* Password Modal */}
                 {showPasswordModal && (
                     <div className="modal-overlay" onClick={() => setShowPasswordModal(false)}>
                         <div className="modal-content password-modal" onClick={(e) => e.stopPropagation()}>
