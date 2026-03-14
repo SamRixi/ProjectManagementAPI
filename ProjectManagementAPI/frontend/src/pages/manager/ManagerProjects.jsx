@@ -44,7 +44,6 @@ const labelStyle = {
     fontSize: '0.875rem',
 };
 
-// ✅✅✅ FormModal COMPLÈTEMENT EN DEHORS de ManagerProjects ✅✅✅
 const FormModal = ({ title, onSubmit, onClose, isEdit = false, saving, form, setForm, teams, managers }) => (
     <div className="modal-overlay" onClick={() => !saving && onClose()}>
         <div className="modal-content" onClick={e => e.stopPropagation()}
@@ -54,15 +53,12 @@ const FormModal = ({ title, onSubmit, onClose, isEdit = false, saving, form, set
                 <button className="modal-close" onClick={onClose} disabled={saving}><X size={22} /></button>
             </div>
             <div style={{ padding: '1.5rem', display: 'flex', flexDirection: 'column', gap: '1rem', background: '#ffffff' }}>
-
                 <div>
                     <label style={labelStyle}>Nom du projet *</label>
                     <input type="text" value={form.projectName}
                         onChange={e => setForm({ ...form, projectName: e.target.value })}
-                        disabled={saving} placeholder="Ex: Digitalisation RH"
-                        style={inputStyle} />
+                        disabled={saving} placeholder="Ex: Digitalisation RH" style={inputStyle} />
                 </div>
-
                 <div>
                     <label style={labelStyle}>Description</label>
                     <textarea value={form.description}
@@ -70,7 +66,6 @@ const FormModal = ({ title, onSubmit, onClose, isEdit = false, saving, form, set
                         rows={3} disabled={saving} placeholder="Description du projet..."
                         style={{ ...inputStyle, resize: 'vertical' }} />
                 </div>
-
                 <div style={{ display: 'grid', gridTemplateColumns: isEdit ? '1fr 1fr' : '1fr', gap: '1rem' }}>
                     <div>
                         <label style={labelStyle}>Priorité</label>
@@ -96,7 +91,6 @@ const FormModal = ({ title, onSubmit, onClose, isEdit = false, saving, form, set
                         </div>
                     )}
                 </div>
-
                 <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1rem' }}>
                     <div>
                         <label style={labelStyle}>Date de début *</label>
@@ -111,7 +105,6 @@ const FormModal = ({ title, onSubmit, onClose, isEdit = false, saving, form, set
                             disabled={saving} style={inputStyle} />
                     </div>
                 </div>
-
                 <div>
                     <label style={labelStyle}>Chef de projet</label>
                     <select value={form.projectManagerId}
@@ -125,7 +118,6 @@ const FormModal = ({ title, onSubmit, onClose, isEdit = false, saving, form, set
                         ))}
                     </select>
                 </div>
-
                 <div>
                     <label style={labelStyle}>Équipe assignée</label>
                     <select value={form.teamId}
@@ -135,7 +127,6 @@ const FormModal = ({ title, onSubmit, onClose, isEdit = false, saving, form, set
                         {teams.map(t => <option key={t.teamId} value={t.teamId}>{t.teamName}</option>)}
                     </select>
                 </div>
-
                 <div style={{ display: 'flex', gap: '1rem', justifyContent: 'flex-end', marginTop: '0.5rem' }}>
                     <button onClick={onClose} disabled={saving}
                         style={{ padding: '10px 24px', borderRadius: 8, border: '1.5px solid #e5e7eb', cursor: 'pointer', background: 'white', color: '#374151', fontWeight: 600, fontSize: '0.9rem' }}>
@@ -150,7 +141,6 @@ const FormModal = ({ title, onSubmit, onClose, isEdit = false, saving, form, set
         </div>
     </div>
 );
-// ✅✅✅ FIN FormModal ✅✅✅
 
 const ManagerProjects = () => {
     const [projects, setProjects] = useState([]);
@@ -225,7 +215,6 @@ const ManagerProjects = () => {
             };
             const res = await projectService.createProject(payload);
             if (!res.success) { showToast(res.message || 'Erreur', 'error'); return; }
-
             const newId = res.data?.projectId || res.data?.ProjectId || res.data?.id;
             if (parseInt(form.teamId) > 0 && newId) {
                 await projectService.assignTeamToProject(newId, parseInt(form.teamId));
@@ -256,7 +245,6 @@ const ManagerProjects = () => {
             };
             const res = await projectService.updateProject(selectedProject.projectId, payload);
             if (!res.success) { showToast(res.message || 'Erreur', 'error'); return; }
-
             if (parseInt(form.teamId) > 0) {
                 await projectService.assignTeamToProject(selectedProject.projectId, parseInt(form.teamId));
             }
@@ -329,20 +317,12 @@ const ManagerProjects = () => {
             <div className="dashboard-container">
                 <div className="dashboard-content">
 
-                    {/* Toast */}
                     {toast.show && (
-                        <div style={{
-                            position: 'fixed', top: '20px', right: '20px', zIndex: 9999,
-                            padding: '14px 20px', borderRadius: '12px', fontWeight: '600',
-                            fontSize: '14px', boxShadow: '0 8px 24px rgba(0,0,0,0.15)',
-                            background: toast.type === 'success' ? '#00A651' : '#FF4444',
-                            color: 'white', display: 'flex', alignItems: 'center', gap: '8px'
-                        }}>
+                        <div style={{ position: 'fixed', top: '20px', right: '20px', zIndex: 9999, padding: '14px 20px', borderRadius: '12px', fontWeight: '600', fontSize: '14px', boxShadow: '0 8px 24px rgba(0,0,0,0.15)', background: toast.type === 'success' ? '#00A651' : '#FF4444', color: 'white', display: 'flex', alignItems: 'center', gap: '8px' }}>
                             {toast.type === 'success' ? '✅' : '❌'} {toast.message}
                         </div>
                     )}
 
-                    {/* Confirm Modal */}
                     {confirmModal.show && (
                         <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.5)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 9998, backdropFilter: 'blur(4px)' }}>
                             <div style={{ background: 'white', borderRadius: '16px', padding: '32px', maxWidth: '420px', width: '90%', boxShadow: '0 25px 60px rgba(0,0,0,0.2)' }}>
@@ -403,79 +383,102 @@ const ManagerProjects = () => {
 
                     {error && <p style={{ color: '#ef4444', marginBottom: '1rem' }}>⚠️ {error}</p>}
 
-                    {/* TABLE */}
                     {loading ? (
                         <div className="loading"><div className="spinner" />Chargement des projets...</div>
                     ) : (
-                        <div className="table-container">
-                            <table className="data-table">
+                        <div className="table-container" style={{ overflowX: 'hidden' }}>
+                            <table className="data-table" style={{ tableLayout: 'fixed', width: '100%' }}>
                                 <thead>
                                     <tr>
-                                        <th>#</th>
-                                        <th>Projet</th>
-                                        <th>Chef de projet</th>
-                                        <th>Équipe</th>
-                                        <th>Priorité</th>
-                                        <th>Progression</th>
-                                        <th>Statut</th>
-                                        <th>Actions</th>
+                                        <th style={{ width: '4%' }}>#</th>
+                                        <th style={{ width: '18%' }}>Projet</th>
+                                        <th style={{ width: '14%' }}>Chef de projet</th>
+                                        <th style={{ width: '12%' }}>Équipe</th>
+                                        <th style={{ width: '13%' }}>Progression</th>
+                                        <th style={{ width: '10%' }}>Statut</th>
+                                        <th style={{ width: '13%' }}>Dates</th>
+                                        <th style={{ width: '16%' }}>Actions</th>
                                     </tr>
                                 </thead>
                                 <tbody>
                                     {filteredProjects.length > 0 ? filteredProjects.map(p => {
                                         const status = getStatusBadge(p.projectStatusId, p.statusName);
-                                        const priority = getPriorityLabel(p.priorityId);
                                         return (
                                             <tr key={p.projectId}>
                                                 <td style={{ fontWeight: 700, color: '#00A651' }}>#{p.projectId}</td>
                                                 <td>
-                                                    <div style={{ fontWeight: 600 }}>{p.projectName}</div>
-                                                    <div style={{ fontSize: '0.78rem', color: '#6b7280' }}>Fin : {formatDate(p.endDate)}</div>
+                                                    <div style={{ fontWeight: 600, fontSize: '0.875rem', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                                                        {p.projectName}
+                                                    </div>
+                                                    {p.description && (
+                                                        <div style={{ fontSize: '0.75rem', color: '#6b7280', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                                                            {p.description}
+                                                        </div>
+                                                    )}
                                                 </td>
+
+                                                {/* ✅ Chef de projet — whiteSpace supprimé */}
                                                 <td>
-                                                    <span style={{ padding: '4px 10px', borderRadius: 20, fontSize: '0.8rem', background: p.projectManagerName ? '#d1fae5' : '#f3f4f6', color: p.projectManagerName ? '#065f46' : '#6b7280' }}>
-                                                        {p.projectManagerName || 'Non assigné'}
-                                                    </span>
+                                                    <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+                                                        <Users size={16} style={{ color: '#00A651', flexShrink: 0 }} />
+                                                        <span style={{ fontSize: '0.875rem', color: '#374151', whiteSpace: 'nowrap' }}>
+                                                            {p.projectManagerName || 'Non assigné'}
+                                                        </span>
+                                                    </div>
                                                 </td>
+
+                                                {/* ✅ Équipe — whiteSpace supprimé */}
                                                 <td>
-                                                    <span style={{ padding: '4px 10px', borderRadius: 20, fontSize: '0.8rem', background: p.teamName ? '#dbeafe' : '#f3f4f6', color: p.teamName ? '#1d4ed8' : '#6b7280' }}>
-                                                        {p.teamName || 'Aucune'}
-                                                    </span>
+                                                    <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+                                                        <Users size={16} style={{ color: '#3B82F6', flexShrink: 0 }} />
+                                                        <span style={{ fontSize: '0.875rem', color: '#374151', whiteSpace: 'nowrap' }}>
+                                                            {p.teamName || 'Aucune'}
+                                                        </span>
+                                                    </div>
                                                 </td>
+
                                                 <td>
-                                                    <span style={{ padding: '4px 10px', borderRadius: 20, fontSize: '0.8rem', fontWeight: 600, background: priority.bg, color: priority.color }}>
-                                                        {priority.label}
-                                                    </span>
-                                                </td>
-                                                <td style={{ minWidth: 120 }}>
-                                                    <div style={{ fontSize: '0.8rem', marginBottom: 4 }}>{p.progress ?? 0}%</div>
+                                                    <div style={{ fontSize: '0.78rem', marginBottom: 3 }}>{p.progress ?? 0}%</div>
                                                     <div style={{ height: 6, borderRadius: 3, background: '#e5e7eb', overflow: 'hidden' }}>
                                                         <div style={{ height: '100%', width: `${p.progress ?? 0}%`, background: getProgressColor(p.progress ?? 0), borderRadius: 3, transition: 'width 0.3s' }} />
                                                     </div>
                                                 </td>
                                                 <td>
-                                                    <span style={{ padding: '4px 10px', borderRadius: 20, fontSize: '0.8rem', fontWeight: 600, background: status.bg, color: status.color }}>
+                                                    <span style={{ padding: '3px 8px', borderRadius: 20, fontSize: '0.78rem', fontWeight: 600, background: status.bg, color: status.color }}>
                                                         {status.label}
                                                     </span>
                                                 </td>
+                                                <td style={{ fontSize: '0.78rem', color: '#6b7280' }}>
+                                                    <div>
+                                                        <span style={{ fontWeight: 600, color: '#374151' }}>Début : </span>
+                                                        {formatDate(p.startDate)}
+                                                    </div>
+                                                    <div>
+                                                        <span style={{ fontWeight: 600, color: '#374151' }}>Fin : </span>
+                                                        <span style={{ color: p.endDate && new Date(p.endDate) < new Date() && parseInt(p.projectStatusId) !== 3 ? '#dc2626' : '#6b7280' }}>
+                                                            {formatDate(p.endDate)}
+                                                        </span>
+                                                    </div>
+                                                </td>
                                                 <td>
-                                                    <div className="action-buttons">
+                                                    <div className="action-buttons" style={{ display: 'flex', gap: '4px', flexWrap: 'nowrap' }}>
                                                         <button className="btn-icon" title="Voir détails"
                                                             onClick={() => { setSelectedProject(p); setShowDetails(true); }}
-                                                            style={{ background: 'linear-gradient(135deg,#E3F2FD,#BBDEFB)', color: '#1976D2' }}>
-                                                            <Eye size={15} />
+                                                            style={{ background: 'linear-gradient(135deg,#E3F2FD,#BBDEFB)', color: '#1976D2', flexShrink: 0 }}>
+                                                            <Eye size={14} />
                                                         </button>
                                                         {parseInt(p.projectStatusId) !== 4 && (
                                                             <button className="btn-icon btn-edit" title="Modifier"
-                                                                onClick={() => openEditModal(p)}>
-                                                                <Edit2 size={15} />
+                                                                onClick={() => openEditModal(p)}
+                                                                style={{ flexShrink: 0 }}>
+                                                                <Edit2 size={14} />
                                                             </button>
                                                         )}
                                                         {parseInt(p.projectStatusId) !== 3 && parseInt(p.projectStatusId) !== 4 && (
-                                                            <button className="btn-icon" title="Annuler le projet"
+                                                            <button className="btn-icon" title="Annuler"
                                                                 onClick={() => handleCancel(p.projectId, p.projectName)}
-                                                                style={{ background: 'linear-gradient(135deg,#FEE2E2,#FECACA)', color: '#DC2626' }}>
-                                                                <Ban size={15} />
+                                                                style={{ background: 'linear-gradient(135deg,#FEE2E2,#FECACA)', color: '#DC2626', flexShrink: 0 }}>
+                                                                <Ban size={14} />
                                                             </button>
                                                         )}
                                                     </div>
@@ -520,31 +523,15 @@ const ManagerProjects = () => {
                         </div>
                     )}
 
-                    {/* ✅ FormModal reçoit tout en props — stable, pas de re-mount */}
                     {showCreateModal && (
-                        <FormModal
-                            title="➕ Nouveau Projet"
-                            onSubmit={handleCreate}
+                        <FormModal title="➕ Nouveau Projet" onSubmit={handleCreate}
                             onClose={() => setShowCreateModal(false)}
-                            saving={saving}
-                            form={form}
-                            setForm={setForm}
-                            teams={teams}
-                            managers={managers}
-                        />
+                            saving={saving} form={form} setForm={setForm} teams={teams} managers={managers} />
                     )}
                     {showEditModal && selectedProject && (
-                        <FormModal
-                            title="✏️ Modifier le Projet"
-                            onSubmit={handleEdit}
+                        <FormModal title="✏️ Modifier le Projet" onSubmit={handleEdit}
                             onClose={() => { setShowEditModal(false); setSelectedProject(null); }}
-                            isEdit
-                            saving={saving}
-                            form={form}
-                            setForm={setForm}
-                            teams={teams}
-                            managers={managers}
-                        />
+                            isEdit saving={saving} form={form} setForm={setForm} teams={teams} managers={managers} />
                     )}
                 </div>
             </div>

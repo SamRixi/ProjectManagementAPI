@@ -9,7 +9,8 @@ import {
     Ban,
     Users,
     FileText,
-    Eye
+    Eye,
+    User
 } from 'lucide-react';
 import projectService from '../../services/projectService';
 import teamService from '../../services/teamService';
@@ -57,7 +58,7 @@ const ProjectManagement = () => {
         startDate: '',
         endDate: '',
         teamId: 0,
-        edbId: 0,       // ✅ présent dans create ET edit
+        edbId: 0,
         projectManagerId: 0,
         priorityId: 0,
         projectStatusId: 1,
@@ -112,7 +113,6 @@ const ProjectManagement = () => {
 
     const resetForm = () => setFormData(initialForm);
 
-    // ✅ EDBs sans projet assigné + celle déjà liée au projet en cours d'édition
     const getAvailableEdbs = (currentProjectId = null) =>
         edbs.filter(e =>
             !e.projectId ||
@@ -146,10 +146,7 @@ const ProjectManagement = () => {
                 projectManagerId: parseInt(formData.projectManagerId) || null,
                 priorityId: parseInt(formData.priorityId) || null,
                 createdByUserId: currentUser?.userId || 0,
-                // ✅ AJOUT : envoyer edbId si sélectionné
-                edbId: parseInt(formData.edbId) > 0
-                    ? parseInt(formData.edbId)
-                    : null,
+                edbId: parseInt(formData.edbId) > 0 ? parseInt(formData.edbId) : null,
             };
 
             const response = await projectService.createProject(projectData);
@@ -160,12 +157,9 @@ const ProjectManagement = () => {
                     response.data?.ProjectId ||
                     response.data?.id;
 
-                // Assigner l'équipe si choisie
                 const selectedTeamId = parseInt(formData.teamId);
                 if (selectedTeamId > 0 && newProjectId) {
-                    const assignRes = await projectService.assignTeamToProject(
-                        newProjectId, selectedTeamId
-                    );
+                    const assignRes = await projectService.assignTeamToProject(newProjectId, selectedTeamId);
                     if (!assignRes.success) {
                         alert(`✅ Projet créé mais équipe non assignée: ${assignRes.message}`);
                         setShowCreateModal(false);
@@ -219,26 +213,17 @@ const ProjectManagement = () => {
                 projectManagerId: parseInt(formData.projectManagerId) || null,
             };
 
-            const response = await projectService.updateProject(
-                selectedProject.projectId, projectData
-            );
+            const response = await projectService.updateProject(selectedProject.projectId, projectData);
 
             if (response.success) {
-                // Assigner équipe
                 const selectedTeamId = parseInt(formData.teamId);
                 if (selectedTeamId > 0) {
-                    await projectService.assignTeamToProject(
-                        selectedProject.projectId, selectedTeamId
-                    );
+                    await projectService.assignTeamToProject(selectedProject.projectId, selectedTeamId);
                 }
 
-                // ✅ Assigner EDB si sélectionnée
                 const selectedEdbId = parseInt(formData.edbId);
                 if (selectedEdbId > 0) {
-                    await projectService.assignEdbToProject(
-                        selectedProject.projectId,
-                        selectedEdbId
-                    );
+                    await projectService.assignEdbToProject(selectedProject.projectId, selectedEdbId);
                 }
 
                 alert('✅ Projet mis à jour avec succès !');
@@ -265,7 +250,7 @@ const ProjectManagement = () => {
             startDate: project.startDate ? project.startDate.split('T')[0] : '',
             endDate: project.endDate ? project.endDate.split('T')[0] : '',
             teamId: project.teamId || 0,
-            edbId: 0,   // EDB déjà liée affichée séparément dans les détails
+            edbId: 0,
             projectManagerId: project.projectManagerId || 0,
             priorityId: project.priorityId || 0,
             projectStatusId: project.projectStatusId || 1,
@@ -302,7 +287,6 @@ const ProjectManagement = () => {
     const formatDate = (d) =>
         d ? new Date(d).toLocaleDateString('fr-FR') : 'Non défini';
 
-    // ── Dropdown priorité réutilisable ────────────────────────
     const PrioritySelect = () => (
         <div className="form-group">
             <label>Priorité</label>
@@ -320,7 +304,6 @@ const ProjectManagement = () => {
         </div>
     );
 
-    // ── Dropdown EDB réutilisable ─────────────────────────────
     const EdbSelect = ({ currentProjectId = null }) => (
         <div className="form-group">
             <label>
@@ -337,9 +320,7 @@ const ProjectManagement = () => {
                 {getAvailableEdbs(currentProjectId).map(e => (
                     <option key={e.edbId} value={e.edbId}>
                         📄 {e.fileName}
-                        {e.uploadedAt
-                            ? ` — ${new Date(e.uploadedAt).toLocaleDateString('fr-FR')}`
-                            : ''}
+                        {e.uploadedAt ? ` — ${new Date(e.uploadedAt).toLocaleDateString('fr-FR')}` : ''}
                     </option>
                 ))}
             </select>
@@ -348,6 +329,28 @@ const ProjectManagement = () => {
                     Aucune EDB disponible — uploadez-en une depuis la section EDB
                 </small>
             )}
+        </div>
+    );
+
+    // ── Barre de progression réutilisable ─────────────────────
+    const ProgressBar = ({ value }) => (
+        <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+            <div style={{
+                width: 90, height: 8,
+                background: '#E5E7EB',
+                borderRadius: 4, overflow: 'hidden', flexShrink: 0
+            }}>
+                <div style={{
+                    width: `${value ?? 0}%`,
+                    height: '100%',
+                    background: value >= 100 ? '#15803D' : value >= 50 ? '#00A651' : '#3B82F6',
+                    borderRadius: 4,
+                    transition: 'width 0.3s ease'
+                }} />
+            </div>
+            <span style={{ fontSize: '0.82rem', fontWeight: 600, color: '#374151', minWidth: 32 }}>
+                {value ?? 0}%
+            </span>
         </div>
     );
 
@@ -434,6 +437,9 @@ const ProjectManagement = () => {
                                     <th>ID</th>
                                     <th>Nom du projet</th>
                                     <th>Équipe</th>
+                                    {/* ✅ AJOUT */}
+                                    <th>Chef de Projet</th>
+                                    <th>Progression</th>
                                     <th>Priorité</th>
                                     <th>Statut</th>
                                     <th>Dates</th>
@@ -459,7 +465,7 @@ const ProjectManagement = () => {
                                                     {project.description && (
                                                         <div style={{
                                                             fontSize: '0.875rem', color: '#666',
-                                                            maxWidth: 300, overflow: 'hidden',
+                                                            maxWidth: 250, overflow: 'hidden',
                                                             textOverflow: 'ellipsis', whiteSpace: 'nowrap'
                                                         }}>
                                                             {project.description}
@@ -467,11 +473,27 @@ const ProjectManagement = () => {
                                                     )}
                                                 </td>
                                                 <td>
-                                                    <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
-                                                        <Users size={16} style={{ color: '#00A651' }} />
+                                                    <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', whiteSpace: 'nowrap' }}>
+                                                        <Users size={16} style={{ color: '#00A651', flexShrink: 0 }} />
                                                         {project.teamName || 'Aucune équipe'}
                                                     </div>
                                                 </td>
+
+                                                {/* ✅ NOUVELLE COLONNE : Chef de Projet */}
+                                                <td>
+                                                    <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+                                                        <User size={16} style={{ color: '#3B82F6' }} />
+                                                        <span style={{ fontSize: '0.875rem', color: '#374151', whiteSpace: 'nowrap' }}>
+                                                            {project.projectManagerName || 'Non assigné'}
+                                                        </span>
+                                                    </div>
+                                                </td>
+
+                                                {/* ✅ NOUVELLE COLONNE : Progression */}
+                                                <td>
+                                                    <ProgressBar value={project.progress} />
+                                                </td>
+
                                                 <td>
                                                     <span style={{
                                                         padding: '4px 10px', borderRadius: 20,
@@ -495,7 +517,7 @@ const ProjectManagement = () => {
                                                 </td>
                                                 <td style={{ fontSize: '0.875rem', color: '#666' }}>
                                                     <div>Début: {formatDate(project.startDate)}</div>
-                                                    <div>Fin:   {formatDate(project.endDate)}</div>
+                                                    <div>Fin:&nbsp;&nbsp;&nbsp;{formatDate(project.endDate)}</div>
                                                 </td>
                                                 <td>
                                                     <span className={`status-badge ${project.hasEdb ? 'active' : 'inactive'}`}>
@@ -534,7 +556,8 @@ const ProjectManagement = () => {
                                     })
                                 ) : (
                                     <tr>
-                                        <td colSpan="8" className="no-data">
+                                        {/* ✅ colSpan mis à jour : 8 → 10 */}
+                                        <td colSpan="10" className="no-data">
                                             {searchTerm ? 'Aucun projet trouvé' : 'Aucun projet créé'}
                                         </td>
                                     </tr>
@@ -611,7 +634,6 @@ const ProjectManagement = () => {
                                     </div>
                                 </div>
 
-                                {/* ✅ AJOUT : EDB dans le modal de création */}
                                 <EdbSelect />
 
                                 <div className="modal-actions">
@@ -693,10 +715,8 @@ const ProjectManagement = () => {
                                     </div>
                                 </div>
 
-                                {/* ✅ EDB dans edit — affiche aussi celle déjà liée au projet */}
                                 <EdbSelect currentProjectId={selectedProject.projectId} />
 
-                                {/* ✅ Info si le projet a déjà une EDB */}
                                 {selectedProject.hasEdb && (
                                     <div style={{
                                         padding: '0.75rem 1rem',

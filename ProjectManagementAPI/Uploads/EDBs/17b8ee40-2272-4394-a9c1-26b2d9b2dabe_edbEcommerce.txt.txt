@@ -1,0 +1,106 @@
+EXPRESSION DE BESOIN (EDB)
+Projet: Plateforme E-Commerce Mobilis
+Date: 15/02/2026
+
+1. Contexte
+   Développement d'une plateforme e-commerce moderne
+
+2. Objectifs
+   - Interface utilisateur moderne
+   - Système de paiement sécurisé
+   - Gestion des commandes
+
+3. Fonctionnalités
+   - Catalogue produits
+   - Panier d'achat
+   - Paiement en ligne
+   - Suivi des commandes
+
+La progression globale d’un projet est calculée automatiquement comme la moyenne des progressions de toutes les tâches qui le composent.
+
+ignore la progression interne
+
+
+
+
+Pour ton app, concrètement l'interface Manager contiendra :
+
+Cards de stats : total projets, projets terminés, projets en retard, total développeurs.
+
+Graphique : nombre de projets par statut (En cours / Terminé / Annulé) ou par année.
+
+Tableau : liste des projets avec leur progression, équipe, dates.
+
+Prepared using Claude Sonnet 4.6
+2. Rôle Manager
+Ce rôle représente le responsable de la direction.
+Privilèges :
+Consulter les statistiques globales, notamment :
+nombre total de projets,
+nombre de développeurs affectés par projet,
+état d’avancement des projets (en cours, terminés, annulés),
+nombre de projets réalisés par développeur et par année, etc.
+Créer des projets et les assigner à une équipe, au même titre que le rôle Reporting.
+donc combien siderbar danas layout
+Pour ton BTS, le plus simple et logique est d’avoir une seule sidebar “Manager”, avec 4 à 5 entrées maximum.
+
+Je te conseille quelque chose comme :
+
+Tableau de bord
+
+Vue globale : cartes (total projets, projets terminés, projets en retard…), petits graphiques.
+
+Projets
+
+Liste des projets.
+
+Bouton “Créer un projet”.
+
+Possibilité d’assigner à une équipe.
+
+Statistiques / Rapports
+
+Graphiques plus détaillés :
+
+projets par statut,
+
+projets par année,
+
+projets par développeur, etc.
+
+Équipes / Utilisateurs (optionnel)
+
+Pour voir les équipes, le nombre de projets par équipe, les développeurs, etc.
+
+Donc une sidebar type :
+
+Tableau de bord
+
+Projets
+
+Statistiques
+
+Équipes (facultatif)
+
+1 tâche à 37 % → projet = 37 %.
+
+2 tâches à 0 % et 100 % → projet = 50 %.
+
+3 tâches à 100 %, 50 %, 0 % → projet = 50 %.
+
+
+
+
+
+
+
+
+progressionProjet=moyennedesprogressionsdest 
+a
+^
+ ches
+
+
+
+
+

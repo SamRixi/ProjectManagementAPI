@@ -29,7 +29,6 @@ import ProjectStats from './pages/project-manager/ProjectStats';
 import ManagerDashboard from './pages/dashboards/ManagerDashboard';
 import ManagerProjects from './pages/manager/ManagerProjects';
 import ManagerStatistics from './pages/manager/ManagerStatsGlobales/';
-import ManagerTeams from './pages/manager/ManagerTeams';
 
 const ProtectedRoute = ({ children }) => {
     const { isAuthenticated } = useAuth();
@@ -92,14 +91,7 @@ function App() {
                             </ProtectedRoute>
                         }
                     />
-                    <Route
-                        path="/manager/team"
-                        element={
-                            <ProtectedRoute allowedRoles={['Manager']}>
-                                <ManagerTeams />
-                            </ProtectedRoute>
-                        }
-                    />
+                   
 
                     {/* ========== PROTECTED DASHBOARD ========== */}
                     <Route
