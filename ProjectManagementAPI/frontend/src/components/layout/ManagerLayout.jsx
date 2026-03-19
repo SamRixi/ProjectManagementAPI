@@ -33,8 +33,17 @@ const ManagerLayout = ({ children }) => {
         { icon: BarChart3, label: 'Statistiques', path: '/manager/statistics' },
     ];
 
+    const sidebarWidth = sidebarOpen ? '280px' : '80px';
+
     return (
-        <div style={{ display: 'flex', minHeight: '100vh', backgroundColor: '#f5f5f5' }}>
+        // ✅ FIX : width 100vw + overflow hidden pour supprimer la zone grise
+        <div style={{
+            display: 'flex',
+            minHeight: '100vh',
+            width: '100vw',
+            overflow: 'hidden',
+            backgroundColor: '#f5f5f5'
+        }}>
 
             {/* ====== TOP HEADER ====== */}
             <header style={{
@@ -77,7 +86,7 @@ const ManagerLayout = ({ children }) => {
 
             {/* ====== SIDEBAR ====== */}
             <aside style={{
-                width: sidebarOpen ? '280px' : '80px',
+                width: sidebarWidth,
                 background: 'linear-gradient(180deg, #00B050 0%, #008f3f 100%)',
                 color: 'white', transition: 'width 0.3s ease',
                 position: 'fixed', height: 'calc(100vh - 70px)', top: '70px', left: 0,
@@ -176,11 +185,14 @@ const ManagerLayout = ({ children }) => {
 
             {/* ====== MAIN CONTENT ====== */}
             <main style={{
-                marginLeft: sidebarOpen ? '280px' : '80px',
+                marginLeft: sidebarWidth,
                 marginTop: '70px',
-                width: `calc(100% - ${sidebarOpen ? '280px' : '80px'})`,
+                width: `calc(100vw - ${sidebarWidth})`,
                 minHeight: 'calc(100vh - 70px)',
-                transition: 'margin-left 0.3s ease, width 0.3s ease'
+                backgroundColor: '#f5f5f5',
+                transition: 'margin-left 0.3s ease, width 0.3s ease',
+                boxSizing: 'border-box',
+                overflowX: 'hidden',
             }}>
                 {children}
             </main>

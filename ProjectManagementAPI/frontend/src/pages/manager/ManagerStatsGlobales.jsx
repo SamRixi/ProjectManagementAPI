@@ -9,12 +9,11 @@ import {
     BarChart, Bar, XAxis, YAxis, CartesianGrid,
 } from 'recharts';
 import {
-    FolderKanban, Users, Clock, CheckCircle,
+    FolderKanban, Clock, CheckCircle,
     TrendingUp, AlertTriangle, Activity, BarChart3
 } from 'lucide-react';
 import '../../styles/Dashboard.css';
 
-// ✅ Vrais statuts API (projectStatusId)
 const getStatusBadge = (statusId, statusName) => {
     const id = parseInt(statusId);
     if (id === 1) return { label: statusName || 'Planifié', bg: '#E5E7EB', color: '#374151' };
@@ -58,9 +57,58 @@ const CustomTooltipBar = ({ active, payload, label }) => {
 };
 
 const SectionTitle = ({ children, color = '#00A651' }) => (
-    <h3 style={{ color, borderBottom: `3px solid ${color}`, paddingBottom: '0.5rem', marginBottom: '1.5rem', fontSize: '1.1rem', fontWeight: 700 }}>
+    <h3 style={{
+        color,
+        borderBottom: `3px solid ${color}`,
+        paddingBottom: '0.5rem',
+        marginBottom: '1.5rem',
+        fontSize: '1.1rem',
+        fontWeight: 700
+    }}>
         {children}
     </h3>
+);
+
+const KpiCard = ({ kpi }) => (
+    <div style={{
+        padding: '1.2rem 1.5rem',
+        borderRadius: 14,
+        background: kpi.bg,
+        borderLeft: `5px solid ${kpi.color}`,
+        boxShadow: '0 2px 10px rgba(0,0,0,0.07)',
+        display: 'flex',
+        flexDirection: 'column',
+        gap: '0.4rem',
+        transition: 'transform 0.2s, box-shadow 0.2s',
+    }}
+        onMouseEnter={e => {
+            e.currentTarget.style.transform = 'translateY(-2px)';
+            e.currentTarget.style.boxShadow = '0 6px 20px rgba(0,0,0,0.12)';
+        }}
+        onMouseLeave={e => {
+            e.currentTarget.style.transform = 'translateY(0)';
+            e.currentTarget.style.boxShadow = '0 2px 10px rgba(0,0,0,0.07)';
+        }}
+    >
+        <div style={{
+            width: 42, height: 42,
+            background: `${kpi.color}25`,
+            color: kpi.color,
+            borderRadius: 10,
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            marginBottom: '0.3rem'
+        }}>
+            {kpi.icon}
+        </div>
+        <p style={{ margin: 0, fontSize: '2rem', fontWeight: 800, color: kpi.color, lineHeight: 1 }}>
+            {kpi.value}
+        </p>
+        <p style={{ margin: 0, fontSize: '0.82rem', color: '#374151', fontWeight: 600 }}>
+            {kpi.label}
+        </p>
+    </div>
 );
 
 const ManagerStatistics = () => {
@@ -103,7 +151,6 @@ const ManagerStatistics = () => {
         ? Math.round(projects.reduce((a, p) => a + (p.progress ?? 0), 0) / total)
         : 0;
 
-    // Camembert
     const pieData = [
         { name: 'Planifiés', value: planned.length },
         { name: 'En cours', value: inProgress.length },
@@ -111,7 +158,6 @@ const ManagerStatistics = () => {
         { name: 'Annulés', value: cancelled.length },
     ].filter(d => d.value > 0);
 
-    // Barres progression équipes
     const teamBarData = teams.map(team => {
         const tp = projects.filter(p => p.teamName === team.teamName);
         if (tp.length === 0) return null;
@@ -123,7 +169,6 @@ const ManagerStatistics = () => {
         };
     }).filter(Boolean);
 
-    // Barres développeurs par projet
     const devsByProjectData = projects
         .filter(p => p.teamName && p.teamName !== 'N/A' && p.teamName !== 'Aucune')
         .map(p => {
@@ -137,7 +182,6 @@ const ManagerStatistics = () => {
         })
         .filter(d => d['Développeurs'] > 0);
 
-    // Barres projets par chef de projet
     const projectsByManagerData = users
         .filter(u => u.role === 'ChefDeProjet' || u.role === 'ProjectManager')
         .map(u => {
@@ -162,14 +206,14 @@ const ManagerStatistics = () => {
     const getProgressColor = v => v >= 75 ? '#10b981' : v >= 40 ? '#f59e0b' : '#ef4444';
 
     const kpis = [
-        { label: 'Total Projets', value: total, color: '#111827', icon: <FolderKanban size={22} /> },
-        { label: 'En cours', value: inProgress.length, color: '#3b82f6', icon: <Activity size={22} /> },
-        { label: 'Terminés', value: done.length, color: '#10b981', icon: <CheckCircle size={22} /> },
-        { label: 'Planifiés', value: planned.length, color: '#6b7280', icon: <FolderKanban size={22} /> },
-        { label: 'En retard', value: late.length, color: '#ef4444', icon: <AlertTriangle size={22} /> },
-        { label: 'Annulés', value: cancelled.length, color: '#B91C1C', icon: <Clock size={22} /> },
-        { label: 'Progression moy.', value: `${avgProgress}%`, color: '#f59e0b', icon: <TrendingUp size={22} /> },
-        { label: 'Équipes actives', value: teamBarData.length, color: '#06b6d4', icon: <BarChart3 size={22} /> },
+        { label: 'Total Projets', value: total, color: '#1E40AF', bg: '#BFDBFE', icon: <FolderKanban size={22} /> },
+        { label: 'En cours', value: inProgress.length, color: '#0369A1', bg: '#BAE6FD', icon: <Activity size={22} /> },
+        { label: 'Terminés', value: done.length, color: '#15803D', bg: '#BBF7D0', icon: <CheckCircle size={22} /> },
+        { label: 'Planifiés', value: planned.length, color: '#4B5563', bg: '#D1D5DB', icon: <FolderKanban size={22} /> },
+        { label: 'En retard', value: late.length, color: '#DC2626', bg: '#FECACA', icon: <AlertTriangle size={22} /> },
+        { label: 'Annulés', value: cancelled.length, color: '#B91C1C', bg: '#FECACA', icon: <Clock size={22} /> },
+        { label: 'Progression moy.', value: `${avgProgress}%`, color: '#D97706', bg: '#FDE68A', icon: <TrendingUp size={22} /> },
+        { label: 'Équipes actives', value: teamBarData.length, color: '#0891B2', bg: '#A5F3FC', icon: <BarChart3 size={22} /> },
     ];
 
     return (
@@ -177,8 +221,16 @@ const ManagerStatistics = () => {
             <div className="dashboard-container">
                 <div className="dashboard-content">
 
+                    {/* ✅ TITRE VISIBLE */}
                     <div style={{ marginBottom: '2rem' }}>
-                        <h2 style={{ margin: 0, fontSize: '1.8rem', fontWeight: 700 }}>Statistiques Globales</h2>
+                        <h2 style={{
+                            margin: 0,
+                            fontSize: '1.8rem',
+                            fontWeight: 700,
+                            color: '#111827',
+                        }}>
+                            Statistiques Globales
+                        </h2>
                         <p style={{ color: '#6b7280', marginTop: '0.5rem' }}>
                             Vue consolidée — KPIs, graphiques et rapports de tous les projets de la DDD
                         </p>
@@ -190,24 +242,21 @@ const ManagerStatistics = () => {
                         <div className="loading"><div className="spinner" />Chargement...</div>
                     ) : (
                         <>
-                            {/* 1. KPI */}
-                            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(160px, 1fr))', gap: '1rem', marginBottom: '2.5rem' }}>
-                                {kpis.map((kpi, i) => (
-                                    <div key={i} className="stat-card" style={{ padding: '1.5rem' }}>
-                                        <div style={{ width: 44, height: 44, background: `${kpi.color}20`, color: kpi.color, borderRadius: 10, display: 'flex', alignItems: 'center', justifyContent: 'center', marginBottom: '0.75rem' }}>
-                                            {kpi.icon}
-                                        </div>
-                                        <p style={{ margin: 0, fontSize: '1.6rem', fontWeight: 700, color: kpi.color }}>{kpi.value}</p>
-                                        <p style={{ margin: 0, fontSize: '0.82rem', color: '#6b7280' }}>{kpi.label}</p>
-                                    </div>
-                                ))}
+                            {/* 1. KPI Cards */}
+                            <div style={{
+                                display: 'grid',
+                                gridTemplateColumns: 'repeat(auto-fit, minmax(160px, 1fr))',
+                                gap: '1rem',
+                                marginBottom: '2.5rem'
+                            }}>
+                                {kpis.map((kpi, i) => <KpiCard key={i} kpi={kpi} />)}
                             </div>
 
                             {/* 2. État d'avancement */}
                             <SectionTitle>📊 État d'avancement des projets</SectionTitle>
                             <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1.5rem', marginBottom: '2.5rem' }}>
                                 <div className="stat-card" style={{ padding: '1.5rem' }}>
-                                    <h4 style={{ margin: '0 0 1rem 0', fontWeight: 700 }}>Répartition par statut</h4>
+                                    <h4 style={{ margin: '0 0 1rem 0', fontWeight: 700, color: '#111827' }}>Répartition par statut</h4>
                                     {pieData.length === 0 ? (
                                         <p style={{ color: '#6b7280', textAlign: 'center', padding: '3rem 0' }}>Aucune donnée</p>
                                     ) : (
@@ -225,7 +274,7 @@ const ManagerStatistics = () => {
                                 </div>
 
                                 <div className="stat-card" style={{ padding: '1.5rem' }}>
-                                    <h4 style={{ margin: '0 0 1rem 0', fontWeight: 700 }}>Progression par équipe (%)</h4>
+                                    <h4 style={{ margin: '0 0 1rem 0', fontWeight: 700, color: '#111827' }}>Progression par équipe (%)</h4>
                                     {teamBarData.length === 0 ? (
                                         <p style={{ color: '#6b7280', textAlign: 'center', padding: '3rem 0' }}>Aucune équipe assignée</p>
                                     ) : (
