@@ -16,7 +16,6 @@ export const AuthProvider = ({ children }) => {
     const [token, setToken] = useState(null);
     const [loading, setLoading] = useState(true);
 
-    // ✅ Load user from localStorage on app start
     useEffect(() => {
         const loadUserFromStorage = () => {
             try {
@@ -48,15 +47,12 @@ export const AuthProvider = ({ children }) => {
             console.log('📥 Response from authService:', response);
 
             if (response.success) {
-                // ✅ CORRECT : Le token et l'utilisateur sont directement dans response
                 const userData = response.user;
                 const authToken = response.token;
 
-                // ✅ Save to state
                 setUser(userData);
                 setToken(authToken);
 
-                // ✅ Save to localStorage
                 localStorage.setItem('token', authToken);
                 localStorage.setItem('user', JSON.stringify(userData));
 
@@ -86,9 +82,9 @@ export const AuthProvider = ({ children }) => {
     };
 
     // ============= REGISTER =============
+    // ✅ Fix : supprimé setLoading(true/false) pour ne pas écraser le composant Register
     const register = async (userData) => {
         try {
-            setLoading(true);
             const response = await authService.register(userData);
 
             if (response.success) {
@@ -108,8 +104,6 @@ export const AuthProvider = ({ children }) => {
                 success: false,
                 message: error.response?.data?.message || 'Erreur d\'inscription'
             };
-        } finally {
-            setLoading(false);
         }
     };
 
@@ -122,18 +116,14 @@ export const AuthProvider = ({ children }) => {
         authService.logout();
     };
 
-    // ✅ Check if user has specific role(s)
     const hasRole = (roles) => {
         if (!user || !user.roleName) return false;
-
         if (Array.isArray(roles)) {
             return roles.includes(user.roleName);
         }
-
         return user.roleName === roles;
     };
 
-    // ✅ Check if user is admin (Reporting or Manager)
     const isAdmin = () => {
         return hasRole(['Reporting', 'Manager']);
     };
@@ -150,7 +140,6 @@ export const AuthProvider = ({ children }) => {
         isAuthenticated: !!token
     };
 
-    // ✅ Show loading screen while checking localStorage
     if (loading && !user) {
         return (
             <div style={{

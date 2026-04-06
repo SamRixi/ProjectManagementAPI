@@ -1,7 +1,7 @@
 ﻿import { useState } from 'react';
 import { useNavigate, Link } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
-import { Eye, EyeOff, AlertCircle, CheckCircle, Mail } from 'lucide-react';
+import { Eye, EyeOff, AlertCircle, Mail, Clock } from 'lucide-react';
 import '../styles/Auth.css';
 
 const Register = () => {
@@ -18,7 +18,7 @@ const Register = () => {
     });
 
     const [error, setError] = useState('');
-    const [success, setSuccess] = useState('');
+    const [success, setSuccess] = useState(false);
     const [loading, setLoading] = useState(false);
     const [showPassword, setShowPassword] = useState(false);
     const [showConfirmPassword, setShowConfirmPassword] = useState(false);
@@ -73,7 +73,7 @@ const Register = () => {
 
     const handleSubmit = async (e) => {
         e.preventDefault();
-        setError(''); setSuccess('');
+        setError(''); setSuccess(false);
         if (!validateForm()) return;
         setLoading(true);
         try {
@@ -86,16 +86,16 @@ const Register = () => {
                 lastName: formData.lastName
             });
             if (result.success) {
-                setSuccess('Inscription réussie ! Redirection vers la connexion dans 3 secondes...');
+                setSuccess(true);
                 setLoading(false);
                 setFormData({ username: '', email: '', password: '', confirmPassword: '', firstName: '', lastName: '' });
                 window.scrollTo({ top: 0, behavior: 'smooth' });
-                setTimeout(() => navigate('/login'), 3000);
             } else {
                 setError(result.message || "Erreur lors de l'inscription");
+                setLoading(false);
                 window.scrollTo({ top: 0, behavior: 'smooth' });
             }
-        } catch  {
+        } catch {
             setLoading(false);
             setError('Erreur de connexion au serveur');
             window.scrollTo({ top: 0, behavior: 'smooth' });
@@ -104,7 +104,6 @@ const Register = () => {
 
     const strengthInfo = getPasswordStrengthLabel();
 
-    // Styles inline pour garantir le rendu correct
     const inputStyle = {
         width: '100%',
         padding: '11px 14px',
@@ -131,6 +130,45 @@ const Register = () => {
         marginBottom: '14px'
     };
 
+    if (success) {
+        return (
+            <div className="auth-container">
+                <div className="auth-card" style={{ maxWidth: '500px', padding: '48px 36px', textAlign: 'center' }}>
+                    <div className="auth-logo">
+                        <img src="/mobilis-logo.png.png" alt="Mobilis" />
+                    </div>
+                    <div style={{
+                        width: '80px', height: '80px', background: '#FFF8E1',
+                        borderRadius: '50%', display: 'flex', alignItems: 'center',
+                        justifyContent: 'center', margin: '0 auto 24px'
+                    }}>
+                        <Clock size={40} color="#F59E0B" />
+                    </div>
+                    <h2 style={{ fontSize: '22px', fontWeight: '700', marginBottom: '12px', color: '#1a1a1a' }}>
+                        Inscription envoyée !
+                    </h2>
+                    <div style={{
+                        display: 'inline-flex', alignItems: 'center', gap: '8px',
+                        background: '#FFF8E1', border: '1.5px solid #FCD34D',
+                        borderRadius: '20px', padding: '8px 20px', marginBottom: '20px'
+                    }}>
+                        <Clock size={16} color="#F59E0B" />
+                        <span style={{ fontSize: '14px', fontWeight: '600', color: '#92400E' }}>
+                            Compte en attente d'approbation
+                        </span>
+                    </div>
+                    <p style={{ fontSize: '14px', color: '#666', lineHeight: '1.7', marginBottom: '32px' }}>
+                        Votre demande a été soumise avec succès.<br />
+                        Le <strong>Reporting</strong> va examiner votre compte et vous notifier dès qu'il sera approuvé.
+                    </p>
+                    <button onClick={() => navigate('/login')} className="btn-primary" style={{ maxWidth: '220px', margin: '0 auto' }}>
+                        Retour à la connexion
+                    </button>
+                </div>
+            </div>
+        );
+    }
+
     return (
         <div className="auth-container">
             <div className="auth-card" style={{ maxWidth: '500px', padding: '32px 36px' }}>
@@ -148,19 +186,12 @@ const Register = () => {
                         <span>{error}</span>
                     </div>
                 )}
-                {success && (
-                    <div className="alert alert-success">
-                        <CheckCircle size={18} style={{ flexShrink: 0 }} />
-                        <span>{success}</span>
-                    </div>
-                )}
 
                 <form onSubmit={handleSubmit}>
 
-                    {/* ✅ Prénom + Nom côte à côte — style inline garanti */}
                     <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '12px', marginBottom: '14px' }}>
                         <div>
-                            <label style={labelStyle}>Prénom *</label>
+                            <label style={labelStyle}>Prénom</label>
                             <input
                                 style={inputStyle}
                                 type="text"
@@ -172,7 +203,7 @@ const Register = () => {
                             />
                         </div>
                         <div>
-                            <label style={labelStyle}>Nom *</label>
+                            <label style={labelStyle}>Nom</label>
                             <input
                                 style={inputStyle}
                                 type="text"
@@ -185,9 +216,8 @@ const Register = () => {
                         </div>
                     </div>
 
-                    {/* Nom d'utilisateur */}
                     <div style={fieldStyle}>
-                        <label style={labelStyle}>Nom d'utilisateur *</label>
+                        <label style={labelStyle}>Nom d'utilisateur</label>
                         <input
                             style={inputStyle}
                             type="text"
@@ -199,9 +229,8 @@ const Register = () => {
                         />
                     </div>
 
-                    {/* Email */}
                     <div style={fieldStyle}>
-                        <label style={labelStyle}>Email *</label>
+                        <label style={labelStyle}>Email</label>
                         <div style={{ position: 'relative' }}>
                             <input
                                 style={{ ...inputStyle, paddingLeft: '38px' }}
@@ -216,9 +245,8 @@ const Register = () => {
                         </div>
                     </div>
 
-                    {/* Mot de passe */}
                     <div style={fieldStyle}>
-                        <label style={labelStyle}>Mot de passe *</label>
+                        <label style={labelStyle}>Mot de passe</label>
                         <div style={{ position: 'relative' }}>
                             <input
                                 style={{ ...inputStyle, paddingRight: '42px' }}
@@ -246,9 +274,8 @@ const Register = () => {
                         )}
                     </div>
 
-                    {/* Confirmer mot de passe */}
                     <div style={fieldStyle}>
-                        <label style={labelStyle}>Confirmer le mot de passe *</label>
+                        <label style={labelStyle}>Confirmer le mot de passe</label>
                         <div style={{ position: 'relative' }}>
                             <input
                                 style={{ ...inputStyle, paddingRight: '42px' }}

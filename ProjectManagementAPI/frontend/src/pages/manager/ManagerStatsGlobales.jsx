@@ -5,8 +5,8 @@ import projectService from '../../services/projectService';
 import teamService from '../../services/teamService';
 import userService from '../../services/userService';
 import {
-    PieChart, Pie, Cell, Tooltip, Legend, ResponsiveContainer,
-    BarChart, Bar, XAxis, YAxis, CartesianGrid,
+    ResponsiveContainer,
+    BarChart, Bar, XAxis, YAxis, CartesianGrid, Cell, Tooltip, Legend,
 } from 'recharts';
 import {
     FolderKanban, Clock, CheckCircle,
@@ -23,22 +23,7 @@ const getStatusBadge = (statusId, statusName) => {
     return { label: 'N/A', bg: '#E5E7EB', color: '#374151' };
 };
 
-const PIE_COLORS = ['#6B7280', '#3B82F6', '#10B981', '#EF4444'];
-
-const CustomTooltipPie = ({ active, payload, total }) => {
-    if (active && payload?.length) {
-        return (
-            <div style={{ background: 'white', border: '1px solid #e5e7eb', borderRadius: 8, padding: '10px 14px', boxShadow: '0 4px 12px rgba(0,0,0,0.1)' }}>
-                <p style={{ margin: 0, fontWeight: 700 }}>{payload[0].name}</p>
-                <p style={{ margin: 0, color: payload[0].fill }}>{payload[0].value} projet{payload[0].value > 1 ? 's' : ''}</p>
-                <p style={{ margin: 0, color: '#6b7280', fontSize: '0.82rem' }}>
-                    {total ? Math.round((payload[0].value / total) * 100) : 0}%
-                </p>
-            </div>
-        );
-    }
-    return null;
-};
+const getProgressColor = v => v >= 75 ? '#10b981' : v >= 40 ? '#f59e0b' : '#ef4444';
 
 const CustomTooltipBar = ({ active, payload, label }) => {
     if (active && payload?.length) {
@@ -46,10 +31,44 @@ const CustomTooltipBar = ({ active, payload, label }) => {
             <div style={{ background: 'white', border: '1px solid #e5e7eb', borderRadius: 8, padding: '10px 14px', boxShadow: '0 4px 12px rgba(0,0,0,0.1)' }}>
                 <p style={{ margin: 0, fontWeight: 700, marginBottom: 4 }}>{payload[0]?.payload?.fullName || label}</p>
                 {payload.map((p, i) => (
-                    <p key={i} style={{ margin: 0, color: p.fill, fontSize: '0.9rem' }}>
+                    <p key={i} style={{ margin: 0, color: p.fill || p.color, fontSize: '0.9rem' }}>
                         {p.name} : <strong>{p.value}{p.name === 'Progression (%)' ? '%' : ''}</strong>
                     </p>
                 ))}
+            </div>
+        );
+    }
+    return null;
+};
+
+const CustomTooltipProgression = ({ active, payload }) => {
+    if (active && payload?.length) {
+        const d = payload[0].payload;
+        const status = getStatusBadge(d.statusId, d.statusName);
+        return (
+            <div style={{ background: 'white', border: '1px solid #e5e7eb', borderRadius: 8, padding: '10px 14px', boxShadow: '0 4px 12px rgba(0,0,0,0.1)' }}>
+                <p style={{ margin: 0, fontWeight: 700, marginBottom: 4, fontSize: '0.85rem' }}>{d.fullName}</p>
+                <p style={{ margin: 0, color: '#00A651', fontSize: '0.88rem' }}>
+                    Progression : <strong>{d['Progression']}%</strong>
+                </p>
+                <span style={{ padding: '2px 8px', borderRadius: 12, fontSize: '0.75rem', fontWeight: 600, background: status.bg, color: status.color }}>
+                    {status.label}
+                </span>
+            </div>
+        );
+    }
+    return null;
+};
+
+const CustomTooltipDevs = ({ active, payload }) => {
+    if (active && payload?.length) {
+        const d = payload[0].payload;
+        return (
+            <div style={{ background: 'white', border: '1px solid #e5e7eb', borderRadius: 8, padding: '10px 14px', boxShadow: '0 4px 12px rgba(0,0,0,0.1)' }}>
+                <p style={{ margin: 0, fontWeight: 700, marginBottom: 4 }}>{d.fullName}</p>
+                <p style={{ margin: 0, color: '#8B5CF6', fontSize: '0.9rem' }}>
+                    Développeurs : <strong>{d['Développeurs']}</strong>
+                </p>
             </div>
         );
     }
@@ -67,48 +86,6 @@ const SectionTitle = ({ children, color = '#00A651' }) => (
     }}>
         {children}
     </h3>
-);
-
-const KpiCard = ({ kpi }) => (
-    <div style={{
-        padding: '1.2rem 1.5rem',
-        borderRadius: 14,
-        background: kpi.bg,
-        borderLeft: `5px solid ${kpi.color}`,
-        boxShadow: '0 2px 10px rgba(0,0,0,0.07)',
-        display: 'flex',
-        flexDirection: 'column',
-        gap: '0.4rem',
-        transition: 'transform 0.2s, box-shadow 0.2s',
-    }}
-        onMouseEnter={e => {
-            e.currentTarget.style.transform = 'translateY(-2px)';
-            e.currentTarget.style.boxShadow = '0 6px 20px rgba(0,0,0,0.12)';
-        }}
-        onMouseLeave={e => {
-            e.currentTarget.style.transform = 'translateY(0)';
-            e.currentTarget.style.boxShadow = '0 2px 10px rgba(0,0,0,0.07)';
-        }}
-    >
-        <div style={{
-            width: 42, height: 42,
-            background: `${kpi.color}25`,
-            color: kpi.color,
-            borderRadius: 10,
-            display: 'flex',
-            alignItems: 'center',
-            justifyContent: 'center',
-            marginBottom: '0.3rem'
-        }}>
-            {kpi.icon}
-        </div>
-        <p style={{ margin: 0, fontSize: '2rem', fontWeight: 800, color: kpi.color, lineHeight: 1 }}>
-            {kpi.value}
-        </p>
-        <p style={{ margin: 0, fontSize: '0.82rem', color: '#374151', fontWeight: 600 }}>
-            {kpi.label}
-        </p>
-    </div>
 );
 
 const ManagerStatistics = () => {
@@ -151,24 +128,16 @@ const ManagerStatistics = () => {
         ? Math.round(projects.reduce((a, p) => a + (p.progress ?? 0), 0) / total)
         : 0;
 
-    const pieData = [
-        { name: 'Planifiés', value: planned.length },
-        { name: 'En cours', value: inProgress.length },
-        { name: 'Terminés', value: done.length },
-        { name: 'Annulés', value: cancelled.length },
-    ].filter(d => d.value > 0);
+    // Chart 1 : Progression par projet (barres VERTICALES)
+    const progressionData = projects.map(p => ({
+        name: p.projectName?.length > 14 ? p.projectName.slice(0, 14) + '…' : p.projectName,
+        fullName: p.projectName,
+        'Progression': p.progress ?? 0,
+        statusId: p.projectStatusId,
+        statusName: p.statusName,
+    }));
 
-    const teamBarData = teams.map(team => {
-        const tp = projects.filter(p => p.teamName === team.teamName);
-        if (tp.length === 0) return null;
-        return {
-            name: team.teamName?.length > 14 ? team.teamName.slice(0, 14) + '…' : team.teamName,
-            fullName: team.teamName,
-            'Nb projets': tp.length,
-            'Progression (%)': Math.round(tp.reduce((a, p) => a + (p.progress ?? 0), 0) / tp.length),
-        };
-    }).filter(Boolean);
-
+    // Chart 2 : Développeurs par projet
     const devsByProjectData = projects
         .filter(p => p.teamName && p.teamName !== 'N/A' && p.teamName !== 'Aucune')
         .map(p => {
@@ -182,6 +151,7 @@ const ManagerStatistics = () => {
         })
         .filter(d => d['Développeurs'] > 0);
 
+    // Chart 3 : Projets par chef de projet
     const projectsByManagerData = users
         .filter(u => u.role === 'ChefDeProjet' || u.role === 'ProjectManager')
         .map(u => {
@@ -203,32 +173,30 @@ const ManagerStatistics = () => {
 
     const top5Late = [...late].sort((a, b) => (a.progress ?? 0) - (b.progress ?? 0)).slice(0, 5);
     const formatDate = d => d ? new Date(d).toLocaleDateString('fr-FR') : 'N/A';
-    const getProgressColor = v => v >= 75 ? '#10b981' : v >= 40 ? '#f59e0b' : '#ef4444';
+
+    const activeTeamsCount = teams.filter(t =>
+        projects.some(p => p.teamName === t.teamName)
+    ).length;
 
     const kpis = [
-        { label: 'Total Projets', value: total, color: '#1E40AF', bg: '#BFDBFE', icon: <FolderKanban size={22} /> },
-        { label: 'En cours', value: inProgress.length, color: '#0369A1', bg: '#BAE6FD', icon: <Activity size={22} /> },
-        { label: 'Terminés', value: done.length, color: '#15803D', bg: '#BBF7D0', icon: <CheckCircle size={22} /> },
-        { label: 'Planifiés', value: planned.length, color: '#4B5563', bg: '#D1D5DB', icon: <FolderKanban size={22} /> },
-        { label: 'En retard', value: late.length, color: '#DC2626', bg: '#FECACA', icon: <AlertTriangle size={22} /> },
-        { label: 'Annulés', value: cancelled.length, color: '#B91C1C', bg: '#FECACA', icon: <Clock size={22} /> },
-        { label: 'Progression moy.', value: `${avgProgress}%`, color: '#D97706', bg: '#FDE68A', icon: <TrendingUp size={22} /> },
-        { label: 'Équipes actives', value: teamBarData.length, color: '#0891B2', bg: '#A5F3FC', icon: <BarChart3 size={22} /> },
+        { label: 'Total Projets', sub: 'Projets créés', value: total, color: '#1E40AF', gradient: 'linear-gradient(135deg,#1E40AF,#1D4ED8)', icon: <FolderKanban size={28} /> },
+        { label: 'En cours', sub: 'Projets actifs', value: inProgress.length, color: '#0369A1', gradient: 'linear-gradient(135deg,#0369A1,#0284C7)', icon: <Activity size={28} /> },
+        { label: 'Terminés', sub: 'Projets clôturés', value: done.length, color: '#15803D', gradient: 'linear-gradient(135deg,#15803D,#16A34A)', icon: <CheckCircle size={28} /> },
+        { label: 'Planifiés', sub: 'Non démarrés', value: planned.length, color: '#4B5563', gradient: 'linear-gradient(135deg,#4B5563,#374151)', icon: <FolderKanban size={28} /> },
+        { label: 'En retard', sub: 'Projets en retard', value: late.length, color: '#DC2626', gradient: 'linear-gradient(135deg,#DC2626,#B91C1C)', icon: <AlertTriangle size={28} /> },
+        { label: 'Annulés', sub: 'Projets annulés', value: cancelled.length, color: '#B91C1C', gradient: 'linear-gradient(135deg,#EF4444,#DC2626)', icon: <Clock size={28} /> },
+        { label: 'Progression moy.', sub: 'Moyenne globale', value: `${avgProgress}%`, color: '#D97706', gradient: 'linear-gradient(135deg,#D97706,#B45309)', icon: <TrendingUp size={28} /> },
+        { label: 'Équipes actives', sub: 'Équipes assignées', value: activeTeamsCount, color: '#0891B2', gradient: 'linear-gradient(135deg,#0891B2,#0369A1)', icon: <BarChart3 size={28} /> },
     ];
 
     return (
         <ManagerLayout>
-            <div className="dashboard-container">
+            <div className="page-container">
                 <div className="dashboard-content">
 
-                    {/* ✅ TITRE VISIBLE */}
+                    {/* TITRE */}
                     <div style={{ marginBottom: '2rem' }}>
-                        <h2 style={{
-                            margin: 0,
-                            fontSize: '1.8rem',
-                            fontWeight: 700,
-                            color: '#111827',
-                        }}>
+                        <h2 style={{ margin: 0, fontSize: '1.8rem', fontWeight: 700, color: '#111827' }}>
                             Statistiques Globales
                         </h2>
                         <p style={{ color: '#6b7280', marginTop: '0.5rem' }}>
@@ -245,71 +213,176 @@ const ManagerStatistics = () => {
                             {/* 1. KPI Cards */}
                             <div style={{
                                 display: 'grid',
-                                gridTemplateColumns: 'repeat(auto-fit, minmax(160px, 1fr))',
+                                gridTemplateColumns: 'repeat(auto-fit, minmax(220px, 1fr))',
                                 gap: '1rem',
                                 marginBottom: '2.5rem'
                             }}>
-                                {kpis.map((kpi, i) => <KpiCard key={i} kpi={kpi} />)}
+                                {kpis.map((kpi, i) => (
+                                    <div key={i} style={{
+                                        background: '#ffffff',
+                                        borderRadius: 14,
+                                        padding: '1.2rem 1.4rem',
+                                        display: 'flex',
+                                        flexDirection: 'row',
+                                        alignItems: 'center',
+                                        gap: '1rem',
+                                        boxShadow: '0 2px 10px rgba(0,0,0,0.07)',
+                                        border: '1px solid #f3f4f6',
+                                        transition: 'transform 0.2s, box-shadow 0.2s',
+                                        cursor: 'default',
+                                    }}
+                                        onMouseEnter={e => {
+                                            e.currentTarget.style.transform = 'translateY(-2px)';
+                                            e.currentTarget.style.boxShadow = '0 6px 20px rgba(0,0,0,0.10)';
+                                        }}
+                                        onMouseLeave={e => {
+                                            e.currentTarget.style.transform = 'translateY(0)';
+                                            e.currentTarget.style.boxShadow = '0 2px 10px rgba(0,0,0,0.07)';
+                                        }}
+                                    >
+                                        <div style={{
+                                            width: 52, height: 52, minWidth: 52,
+                                            borderRadius: '50%',
+                                            background: kpi.gradient,
+                                            display: 'flex',
+                                            alignItems: 'center',
+                                            justifyContent: 'center',
+                                            color: '#ffffff',
+                                            flexShrink: 0,
+                                        }}>
+                                            {kpi.icon}
+                                        </div>
+                                        <div style={{ display: 'flex', flexDirection: 'column', gap: '0.15rem', minWidth: 0 }}>
+                                            <span style={{ fontSize: '0.8rem', fontWeight: 600, color: '#6b7280', whiteSpace: 'nowrap' }}>
+                                                {kpi.label}
+                                            </span>
+                                            <span style={{ fontSize: '1.75rem', fontWeight: 800, color: kpi.color, lineHeight: 1.1 }}>
+                                                {kpi.value}
+                                            </span>
+                                            <span style={{ fontSize: '0.75rem', color: '#9ca3af' }}>
+                                                {kpi.sub}
+                                            </span>
+                                        </div>
+                                    </div>
+                                ))}
                             </div>
 
-                            {/* 2. État d'avancement */}
+                            {/* 2. État d'avancement — 2 cartes côte à côte */}
                             <SectionTitle>📊 État d'avancement des projets</SectionTitle>
                             <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1.5rem', marginBottom: '2.5rem' }}>
+
+                                {/* Carte gauche : Progression par projet (VERTICAL) */}
                                 <div className="stat-card" style={{ padding: '1.5rem' }}>
-                                    <h4 style={{ margin: '0 0 1rem 0', fontWeight: 700, color: '#111827' }}>Répartition par statut</h4>
-                                    {pieData.length === 0 ? (
+                                    <h4 style={{ margin: '0 0 1rem 0', fontWeight: 700, color: '#111827' }}>
+                                        Progression par projet (%)
+                                    </h4>
+                                    {progressionData.length === 0 ? (
+                                        <p style={{ color: '#6b7280', textAlign: 'center', padding: '3rem 0' }}>Aucun projet</p>
+                                    ) : (
+                                        <>
+                                            <ResponsiveContainer width="100%" height={260}>
+                                                <BarChart
+                                                    data={progressionData}
+                                                    margin={{ top: 15, right: 10, left: -10, bottom: 60 }}
+                                                >
+                                                    <CartesianGrid strokeDasharray="3 3" stroke="#f0f0f0" />
+                                                    <XAxis
+                                                        dataKey="name"
+                                                        tick={{ fontSize: 10 }}
+                                                        angle={-35}
+                                                        textAnchor="end"
+                                                        interval={0}
+                                                    />
+                                                    <YAxis
+                                                        domain={[0, 100]}
+                                                        tickFormatter={v => `${v}%`}
+                                                        tick={{ fontSize: 11 }}
+                                                    />
+                                                    <Tooltip content={<CustomTooltipProgression />} />
+                                                    <Bar
+                                                        dataKey="Progression"
+                                                        radius={[4, 4, 0, 0]}
+                                                        maxBarSize={40}
+                                                        label={{
+                                                            position: 'top',
+                                                            formatter: v => `${v}%`,
+                                                            fontSize: 11,
+                                                            fill: '#6b7280'
+                                                        }}
+                                                    >
+                                                        {progressionData.map((entry, i) => {
+                                                            const v = entry['Progression'];
+                                                            const sid = parseInt(entry.statusId);
+                                                            const color =
+                                                                sid === 4 ? '#9ca3af' :
+                                                                    sid === 3 ? '#10b981' :
+                                                                        v >= 75 ? '#10b981' :
+                                                                            v >= 40 ? '#f59e0b' :
+                                                                                '#ef4444';
+                                                            return <Cell key={i} fill={color} />;
+                                                        })}
+                                                    </Bar>
+                                                </BarChart>
+                                            </ResponsiveContainer>
+                                            {/* Légende */}
+                                            <div style={{ display: 'flex', flexWrap: 'wrap', gap: '8px', marginTop: '10px' }}>
+                                                {[
+                                                    { color: '#10b981', label: 'Terminé / ≥75%' },
+                                                    { color: '#f59e0b', label: '40–74%' },
+                                                    { color: '#ef4444', label: '<40%' },
+                                                    { color: '#9ca3af', label: 'Annulé' },
+                                                ].map((item, i) => (
+                                                    <span key={i} style={{ display: 'flex', alignItems: 'center', gap: 4, fontSize: '0.75rem', color: '#6b7280' }}>
+                                                        <span style={{ width: 10, height: 10, borderRadius: 2, background: item.color, display: 'inline-block' }} />
+                                                        {item.label}
+                                                    </span>
+                                                ))}
+                                            </div>
+                                        </>
+                                    )}
+                                </div>
+
+                                {/* Carte droite : Développeurs par projet */}
+                                <div className="stat-card" style={{ padding: '1.5rem' }}>
+                                    <h4 style={{ margin: '0 0 1rem 0', fontWeight: 700, color: '#111827' }}>
+                                        Développeurs par projet
+                                    </h4>
+                                    {devsByProjectData.length === 0 ? (
                                         <p style={{ color: '#6b7280', textAlign: 'center', padding: '3rem 0' }}>Aucune donnée</p>
                                     ) : (
                                         <ResponsiveContainer width="100%" height={260}>
-                                            <PieChart>
-                                                <Pie data={pieData} cx="50%" cy="50%" outerRadius={85} dataKey="value"
-                                                    label={({ name, percent }) => `${(percent * 100).toFixed(0)}%`}>
-                                                    {pieData.map((_, i) => <Cell key={i} fill={PIE_COLORS[i % PIE_COLORS.length]} />)}
-                                                </Pie>
-                                                <Tooltip content={<CustomTooltipPie total={total} />} />
-                                                <Legend />
-                                            </PieChart>
-                                        </ResponsiveContainer>
-                                    )}
-                                </div>
-
-                                <div className="stat-card" style={{ padding: '1.5rem' }}>
-                                    <h4 style={{ margin: '0 0 1rem 0', fontWeight: 700, color: '#111827' }}>Progression par équipe (%)</h4>
-                                    {teamBarData.length === 0 ? (
-                                        <p style={{ color: '#6b7280', textAlign: 'center', padding: '3rem 0' }}>Aucune équipe assignée</p>
-                                    ) : (
-                                        <ResponsiveContainer width="100%" height={260}>
-                                            <BarChart data={teamBarData} margin={{ top: 5, right: 10, left: -10, bottom: 5 }}>
+                                            <BarChart
+                                                data={devsByProjectData}
+                                                margin={{ top: 15, right: 10, left: -10, bottom: 60 }}
+                                            >
                                                 <CartesianGrid strokeDasharray="3 3" stroke="#f0f0f0" />
-                                                <XAxis dataKey="name" tick={{ fontSize: 11 }} />
-                                                <YAxis domain={[0, 100]} tick={{ fontSize: 11 }} />
-                                                <Tooltip content={<CustomTooltipBar />} />
-                                                <Bar dataKey="Progression (%)" fill="#00A651" radius={[4, 4, 0, 0]} />
+                                                <XAxis
+                                                    dataKey="name"
+                                                    tick={{ fontSize: 10 }}
+                                                    angle={-35}
+                                                    textAnchor="end"
+                                                    interval={0}
+                                                />
+                                                <YAxis allowDecimals={false} tick={{ fontSize: 11 }} />
+                                                <Tooltip content={<CustomTooltipDevs />} />
+                                                <Bar
+                                                    dataKey="Développeurs"
+                                                    fill="#8B5CF6"
+                                                    radius={[4, 4, 0, 0]}
+                                                    maxBarSize={40}
+                                                    label={{
+                                                        position: 'top',
+                                                        fontSize: 11,
+                                                        fill: '#6b7280'
+                                                    }}
+                                                />
                                             </BarChart>
                                         </ResponsiveContainer>
                                     )}
                                 </div>
                             </div>
 
-                            {/* 3. Développeurs affectés par projet */}
-                            {devsByProjectData.length > 0 && (
-                                <>
-                                    <SectionTitle>👥 Développeurs affectés par projet</SectionTitle>
-                                    <div className="stat-card" style={{ padding: '1.5rem', marginBottom: '2.5rem' }}>
-                                        <ResponsiveContainer width="100%" height={240}>
-                                            <BarChart data={devsByProjectData} margin={{ top: 5, right: 10, left: -10, bottom: 5 }}>
-                                                <CartesianGrid strokeDasharray="3 3" stroke="#f0f0f0" />
-                                                <XAxis dataKey="name" tick={{ fontSize: 11 }} />
-                                                <YAxis allowDecimals={false} tick={{ fontSize: 11 }} />
-                                                <Tooltip content={<CustomTooltipBar />} />
-                                                <Bar dataKey="Développeurs" fill="#8B5CF6" radius={[4, 4, 0, 0]} />
-                                            </BarChart>
-                                        </ResponsiveContainer>
-                                    </div>
-                                </>
-                            )}
-
-                            {/* 4. Projets par chef de projet */}
+                            {/* 3. Projets par chef de projet */}
                             {projectsByManagerData.length > 0 && (
                                 <>
                                     <SectionTitle>🏆 Projets réalisés par chef de projet</SectionTitle>
@@ -329,7 +402,7 @@ const ManagerStatistics = () => {
                                 </>
                             )}
 
-                            {/* 5. En retard */}
+                            {/* 4. Projets en retard */}
                             {top5Late.length > 0 && (
                                 <>
                                     <SectionTitle color="#ef4444">⚠️ Projets en retard</SectionTitle>
@@ -337,7 +410,13 @@ const ManagerStatistics = () => {
                                         <div className="table-container">
                                             <table className="data-table">
                                                 <thead>
-                                                    <tr><th>Projet</th><th>Équipe</th><th>Chef de projet</th><th>Date fin prévue</th><th>Progression</th></tr>
+                                                    <tr>
+                                                        <th>Projet</th>
+                                                        <th>Équipe</th>
+                                                        <th>Chef de projet</th>
+                                                        <th>Date fin prévue</th>
+                                                        <th>Progression</th>
+                                                    </tr>
                                                 </thead>
                                                 <tbody>
                                                     {top5Late.map(p => (
@@ -361,13 +440,20 @@ const ManagerStatistics = () => {
                                 </>
                             )}
 
-                            {/* 6. Tous les projets */}
+                            {/* 5. Tous les projets */}
                             <SectionTitle>📋 Tous les projets</SectionTitle>
                             <div className="stat-card" style={{ padding: '1.5rem' }}>
                                 <div className="table-container">
                                     <table className="data-table">
                                         <thead>
-                                            <tr><th>Projet</th><th>Équipe</th><th>Chef de projet</th><th>Dates</th><th>Progression</th><th>Statut</th></tr>
+                                            <tr>
+                                                <th>Projet</th>
+                                                <th>Équipe</th>
+                                                <th>Chef de projet</th>
+                                                <th>Dates</th>
+                                                <th>Progression</th>
+                                                <th>Statut</th>
+                                            </tr>
                                         </thead>
                                         <tbody>
                                             {projects.length === 0 ? (

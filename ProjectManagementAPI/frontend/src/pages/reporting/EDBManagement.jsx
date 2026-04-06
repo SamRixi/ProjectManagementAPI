@@ -50,7 +50,6 @@ const EDBManagement = () => {
         if (file) setSelectedFile(file);
     };
 
-    // ✅ Upload sans projet — la liaison se fait depuis "Créer un projet"
     const handleUpload = async (e) => {
         e.preventDefault();
         if (!selectedFile) { alert('Veuillez sélectionner un fichier'); return; }
@@ -106,7 +105,6 @@ const EDBManagement = () => {
         }
     };
 
-    // ✅ Gère null, undefined et 0
     const isAssigned = (edb) => edb.projectId && edb.projectId !== 0;
 
     const getProjectName = (projectId) => {
@@ -182,19 +180,6 @@ const EDBManagement = () => {
                             <X size={18} />
                         </button>
                     )}
-                </div>
-
-                {/* ✅ Info banner */}
-                <div style={{
-                    padding: '0.75rem 1rem',
-                    background: '#EFF6FF',
-                    border: '1px solid #BFDBFE',
-                    borderRadius: 10,
-                    marginBottom: '1rem',
-                    fontSize: '0.9rem',
-                    color: '#1E40AF'
-                }}>
-                    💡 Pour lier un EDB à un projet, utilisez le dropdown <strong>"EDB associée"</strong> dans la page <strong>Gestion des Projets</strong> lors de la création ou modification d'un projet.
                 </div>
 
                 {/* TABLE */}
@@ -284,7 +269,7 @@ const EDBManagement = () => {
                     </div>
                 )}
 
-                {/* ── UPLOAD MODAL ── */}
+                {/* UPLOAD MODAL */}
                 {showUploadModal && (
                     <div className="modal-overlay" onClick={() => !uploading && setShowUploadModal(false)}>
                         <div className="modal-content" onClick={e => e.stopPropagation()}>
@@ -296,7 +281,6 @@ const EDBManagement = () => {
                             </div>
                             <form onSubmit={handleUpload} className="modal-form">
 
-                                {/* Fichier */}
                                 <div className="form-group">
                                     <label>Fichier EDB *</label>
                                     <input
@@ -319,19 +303,6 @@ const EDBManagement = () => {
                                     )}
                                 </div>
 
-                                {/* ✅ Info — pas de sélection de projet ici */}
-                                <div style={{
-                                    padding: '0.75rem 1rem',
-                                    background: '#EFF6FF',
-                                    border: '1px solid #BFDBFE',
-                                    borderRadius: 10,
-                                    fontSize: '0.875rem',
-                                    color: '#1E40AF'
-                                }}>
-                                    💡 L'EDB sera disponible dans le dropdown lors de la <strong>création ou modification d'un projet</strong>.
-                                </div>
-
-                                {/* Description */}
                                 <div className="form-group">
                                     <label>Description (optionnel)</label>
                                     <textarea
